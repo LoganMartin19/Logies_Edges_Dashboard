@@ -1,0 +1,89 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--brand-green);
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.logo img {
+  height: 40px;
+  width: auto;
+}
+
+.links a {
+  color: white;
+  margin-left: 20px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.links a:hover {
+  color: var(--brand-gold);
+}
+
+.link {
+  color: white;
+  margin-left: 20px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s, border-bottom 0.2s;
+}
+
+.link:hover {
+  color: var(--brand-gold);
+}
+
+/* ✅ Active tab (current page) */
+.active {
+  color: var(--brand-gold);
+  border-bottom: 2px solid var(--brand-gold);
+  padding-bottom: 2px;
+}
+
+/* --- Dropdown --- */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdownToggle {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+}
+
+.dropdownToggle:hover {
+  color: #00c896;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 2rem;
+  left: 0;
+  background: #1b1b1b;
+  border: 1px solid #333;
+  border-radius: 4px;
+  min-width: 180px;
+  z-index: 100;
+}
+
+.dropdownItem {
+  display: block;
+  padding: 8px 12px;
+  color: white;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.dropdownItem:hover {
+  background: #00c896;
+  color: black;
+}

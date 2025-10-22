@@ -1,0 +1,40 @@
+:root {
+    --bg: #101317;
+    --panel: #161b22;
+    --panel-2: #0f141a;
+    --text: #e6edf3;
+    --muted: #93a1b4;
+    --border: #222a33;
+    --accent: #59a9ff;
+    --accent-2: #0a66c2;
+    --win: #1f9d55;
+    --loss: #b84c4c;
+    --shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  
+  /* Page */
+  .page { color: var(--text); background: var(--bg); min-height: 100%; padding: 18px; }
+  .header { display:flex; gap:12px; align-items:center; margin-bottom:14px; }
+  .h1 { font-size:22px; margin:0; }
+  .filters { display:flex; gap:8px; flex-wrap:wrap; }
+  .sel, .btn, .inp {
+    background: var(--panel-2); color: var(--text); border:1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px;
+  }
+  .btn { cursor:pointer; }
+  .btn.active { border-color:#204463; background:#10273c; }
+  .grid { display:grid; grid-template-columns: 1fr; gap: 12px; }
+  .card {
+    background: var(--panel); border:1px solid var(--border); border-radius:12px;
+    box-shadow: var(--shadow); padding: 12px;
+  }
+  .cardHeader { font-weight:700; margin-bottom:10px; border-bottom:1px dashed var(--border); padding-bottom:6px; }
+  .table { width:100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .table thead th { text-align:left; padding:10px 8px; border-bottom:1px solid var(--border); color:var(--muted); }
+  .table td { padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.05); }
+  .num { text-align:right; }
+  .badge { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); color:var(--muted); background:var(--panel-2); }
+  .edgeGood { color:#0fd28a; font-weight:700; }
+  .edgeBad { color:#ff6b6b; font-weight:700; }
+  a.link { color: var(--accent); text-decoration: none; }
+  a.link:hover { text-decoration: underline; }

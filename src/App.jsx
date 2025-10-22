@@ -1,0 +1,58 @@
+// src/App.jsx
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
+import FixturePage from "./pages/FixturePage";
+import AboutPage from "./pages/AboutPage";
+import ContactPage from "./pages/ContactPage";
+import Fixtures from "./pages/Fixtures";
+import BetTrackerPage from "./pages/BetTrackerPage"; // ✅ NEW
+import PlayerPage from "./pages/PlayerPage";
+import FootballGames from "./pages/FootballGames";
+import NflGames from "./pages/NFLGames";
+import CfbGames from "./pages/CfbGames";
+import CfbFixturePage from "./pages/CfbFixturePage";
+import NhlGames from "./pages/NhlGames";
+import NhlGameDetail from "./pages/NhlGameDetail";
+import Tennis from "./pages/Tennis";
+import TennisMatch from "./pages/TennisMatch";
+import Basketball from "./pages/Basketball";
+import BasketballFixture from "./pages/BasketballFixture";
+import AdminPicks from "./pages/AdminPicks";
+import PublicDashboard from "./pages/PublicDashboard";
+import NavBar from "./components/NavBar";
+
+function App() {
+  return (
+    <Router>
+      {/* ✅ NavBar always visible */}
+      <NavBar />
+
+      <main style={{ padding: "20px" }}>
+        <Routes>
+          <Route path="/admin" element={<Dashboard />} />
+          <Route path="/fixture/:id" element={<FixturePage />} />
+          <Route path="/fixtures" element={<Fixtures />} />
+          <Route path="/bets" element={<BetTrackerPage />} /> {/* ✅ NEW ROUTE */}
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/football" element={<FootballGames />} />
+          <Route path="/player/:id" element={<PlayerPage />} />
+          <Route path="/nfl" element={<NflGames />} />
+          <Route path="/cfb" element={<CfbGames />} />
+          <Route path="/cfb/fixture/:id" element={<CfbFixturePage />} />
+          <Route path="/nhl" element={<NhlGames />} />
+          <Route path="/nhl/game/:id" element={<NhlGameDetail />} />
+          <Route path="/tennis" element={<Tennis />} />
+          <Route path="/tennis/match/:id" element={<TennisMatch />} />
+          <Route path="/basketball" element={<Basketball />} />
+          <Route path="/basketball/game/:id" element={<BasketballFixture />} />
+          <Route path="/admin/picks" element={<AdminPicks />} />
+          <Route path="/" element={<PublicDashboard />} />
+        </Routes>
+      </main>
+    </Router>
+  );
+}
+
+export default App;

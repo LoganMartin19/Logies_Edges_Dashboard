@@ -1,0 +1,43 @@
+/* src/styles/LeagueTable.module.css */
+
+.card {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+  }
+  
+  .heading {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  
+  .table th,
+  .table td {
+    padding: 0.5rem;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .table th {
+    background: #f8f8f8;
+    font-weight: 600;
+  }
+  
+  .highlightRow {
+    background-color: #fffae6; /* soft yellow highlight */
+    font-weight: bold;
+  }
+  
+  .empty {
+    font-style: italic;
+    color: #777;
+  }

@@ -1,0 +1,88 @@
+:root {
+    --brand-green: #0e5c3c;
+    --brand-gold: #c1a464;
+  }
+  
+  .page {
+    padding: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  
+  .title {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: var(--brand-green);
+  }
+  
+  .group {
+    margin-bottom: 30px;
+  }
+  
+  .groupTitle {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background: var(--brand-green);
+    color: #fff;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+  
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .card {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #333;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+    border-color: var(--brand-gold);
+  }
+  
+  .teams {
+    font-weight: 600;
+    color: #222;
+  }
+  
+  .vs {
+    color: var(--brand-gold);
+  }
+  
+  .kickoff {
+    color: #666;
+    font-size: 14px;
+  }
+  
+  .loading,
+  .empty {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 16px;
+    color: #666;
+  }
+
+  .teamLogo {
+    height: 24px;
+    width: 24px;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+
+  .teamName {
+    font-weight: 500;
+    margin: 0 4px;
+  }

@@ -1,0 +1,58 @@
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.heading {
+  font-size: 16px;
+  margin-bottom: 10px;
+  color: var(--brand-green);
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.item {
+  margin-bottom: 10px;
+}
+
+.link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  padding: 6px 0;
+}
+
+.teams {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.teamLogo {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.teamName {
+  font-weight: 500;
+}
+
+.vs {
+  margin: 0 6px;
+  font-size: 14px;
+  color: #888;
+}
+
+.kickoff {
+  font-size: 13px;
+  color: #666;
+}

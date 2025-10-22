@@ -1,0 +1,128 @@
+.wrapper {
+  margin: 12px 0 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.label select {
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.search {
+  min-width: 220px;
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+.loading,
+.empty {
+  padding: 10px 2px;
+  color: #666;
+}
+
+.tableWrap {
+  overflow: auto;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: #fafafa;
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e6e6e6;
+  white-space: nowrap;
+}
+
+.row td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+.row:nth-child(4n+1) td {
+  /* subtle zebra across pairs (row + explain row) */
+  background: #fff;
+}
+.row:nth-child(4n+3) td {
+  background: #fcfcfc;
+}
+
+.player { font-weight: 600; }
+.team { color: #333; }
+.market { color: #333; }
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.edgePos {
+  color: #0b7a29; /* green for +EV */
+  font-weight: 600;
+}
+
+.action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.whyBtn {
+  padding: 4px 10px;
+  font-size: 13px;
+  border: 1px solid #d5d5d5;
+  background: #fff;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.whyBtn:hover {
+  background: #f5f5f5;
+}
+
+.explainRow td {
+  padding: 0;
+  border: none;
+}
+
+.explainCell {
+  padding: 10px 12px 12px;
+  background: #f7fafc;
+  border-top: 1px dashed #e3e8ee;
+  color: #334155;
+  line-height: 1.35;
+}
+
+.explainLine {
+  margin: 4px 0;
+}
