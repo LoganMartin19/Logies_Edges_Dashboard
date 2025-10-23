@@ -1,5 +1,6 @@
 // File: src/components/InjuriesSection.jsx
 import React, { useEffect, useState, useMemo } from "react";
+import { api } from "../api"; // ✅ env-based axios client
 import styles from "../styles/FixturePage.module.css";
 
 const InjuriesSection = ({ fixtureId }) => {
@@ -7,12 +8,13 @@ const InjuriesSection = ({ fixtureId }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!fixtureId) return;
     let alive = true;
+
     (async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:8000/football/injuries?fixture_id=${fixtureId}`);
-        const json = await res.json();
-        if (alive) setData(json);
+        const res = await api.get("/football/injuries", { params: { fixture_id: fixtureId } });
+        if (alive) setData(res.data);
       } catch (err) {
         console.error("Error fetching injuries:", err);
         if (alive) setData(null);
@@ -20,6 +22,7 @@ const InjuriesSection = ({ fixtureId }) => {
         if (alive) setLoading(false);
       }
     })();
+
     return () => { alive = false; };
   }, [fixtureId]);
 
@@ -27,18 +30,17 @@ const InjuriesSection = ({ fixtureId }) => {
   const { homeList, awayList, homeTeamName, awayTeamName } = useMemo(() => {
     const payload = data || {};
 
-    // New flattened shape: data.injuries.home -> array, data.injuries.away -> array
+    // New flattened shape
     const flatHome = payload?.injuries?.home;
     const flatAway = payload?.injuries?.away;
 
-    // Old/raw shape: data.home.response -> array, data.away.response -> array
+    // Old/raw shape
     const rawHome = payload?.home?.response;
     const rawAway = payload?.away?.response;
 
     const home = Array.isArray(flatHome) ? flatHome : Array.isArray(rawHome) ? rawHome : [];
     const away = Array.isArray(flatAway) ? flatAway : Array.isArray(rawAway) ? rawAway : [];
 
-    // Try to surface team names if present in entries or top-level fields
     const pickTeamName = (sideArr, fallback) =>
       sideArr?.[0]?.team?.name || fallback || "";
 

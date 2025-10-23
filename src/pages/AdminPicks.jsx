@@ -1,13 +1,12 @@
 // src/pages/AdminPicks.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { api } from "../api"; // ✅ env-based axios client
 
-const api = "http://127.0.0.1:8000/api";
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 // British local time formatter (BST/GMT)
 const fmtUK = (iso) => {
   if (!iso) return "—";
-  // try as-is first (should include an offset from backend)
   try {
     const d = new Date(iso);
     if (!isNaN(d)) {
@@ -22,7 +21,6 @@ const fmtUK = (iso) => {
       });
     }
   } catch {}
-  // fallback: treat as UTC then convert to London
   try {
     const d2 = new Date(iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z");
     if (!isNaN(d2)) {
@@ -56,49 +54,40 @@ export default function AdminPicks() {
   const [detail, setDetail] = useState({});               // { [fixtureId]: { best_edges:[], odds:[] } }
   const [bookFilter, setBookFilter] = useState("all");    // filter inside expanded row
 
-  const qs = useMemo(() => {
-    const q = new URLSearchParams();
-    q.set("day", day);
-    q.set("sport", sport || "all");
-    return "?" + q.toString();
-  }, [day, sport]);
+  const params = useMemo(() => ({ day, sport: sport || "all" }), [day, sport]);
 
-  const loadAll = () => {
+  const loadAll = async () => {
     setLoading(true);
     setErr("");
-    Promise.all([
-      fetch(`${api}/public/fixtures/daily${qs}`).then((r) => {
-        if (!r.ok) throw new Error(`Fixtures HTTP ${r.status}`);
-        return r.json();
-      }),
-      fetch(`${api}/public/picks/daily${qs}`).then((r) => {
-        if (!r.ok) throw new Error(`Picks HTTP ${r.status}`);
-        return r.json();
-      }),
-    ])
-      .then(([f, p]) => {
-        setFixtures(f.fixtures || []);
-        setPicks(p.picks || []);
-      })
-      .catch((e) => setErr(e.message || String(e)))
-      .finally(() => setLoading(false));
+    try {
+      const [fRes, pRes] = await Promise.all([
+        api.get("/api/public/fixtures/daily", { params }),
+        api.get("/api/public/picks/daily", { params }),
+      ]);
+      setFixtures(fRes.data?.fixtures || []);
+      setPicks(pRes.data?.picks || []);
+    } catch (e) {
+      setErr(e?.response?.data?.detail || e.message || String(e));
+      setFixtures([]);
+      setPicks([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qs]);
+  }, [params.day, params.sport]);
 
   const ensureDetail = async (fixtureId) => {
     if (detail[fixtureId]) return;
     try {
-      const r = await fetch(`${api}/fixtures/id/${fixtureId}/json`);
-      if (!r.ok) throw new Error(`Detail HTTP ${r.status}`);
-      const j = await r.json();
-      setDetail((d) => ({ ...d, [fixtureId]: j || {} }));
+      const r = await api.get(`/api/fixtures/id/${fixtureId}/json`);
+      setDetail((d) => ({ ...d, [fixtureId]: r.data || {} }));
     } catch (e) {
       console.error("detail fetch failed", e);
-      setDetail((d) => ({ ...d, [fixtureId]: { error: String(e) } }));
+      setDetail((d) => ({ ...d, [fixtureId]: { error: String(e?.message || e) } }));
     }
   };
 
@@ -113,25 +102,16 @@ export default function AdminPicks() {
       return;
     }
 
-    const params = new URLSearchParams({
-      fixture_id: String(fixture.id),
-      market,
-      bookmaker,
-      price: String(price),
-    });
-    if (note) params.set("note", note);
+    const query = { fixture_id: String(fixture.id), market, bookmaker, price: String(price) };
+    if (note) query.note = note;
 
     setBusyPickId("adding");
     try {
-      const r = await fetch(`${api}/public/admin/picks/add?${params.toString()}`, {
-        method: "POST",
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      await r.json();
+      await api.post("/api/public/admin/picks/add", null, { params: query });
       form.reset();
-      loadAll();
+      await loadAll();
     } catch (e) {
-      alert("Add failed: " + e.message);
+      alert("Add failed: " + (e?.response?.data?.detail || e.message));
     } finally {
       setBusyPickId(null);
     }
@@ -141,14 +121,10 @@ export default function AdminPicks() {
     if (!window.confirm("Remove this pick?")) return;
     setBusyPickId(pickId);
     try {
-      const r = await fetch(`${api}/public/admin/picks/remove?pick_id=${pickId}`, {
-        method: "POST",
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      await r.json();
-      loadAll();
+      await api.post("/api/public/admin/picks/remove", null, { params: { pick_id: pickId } });
+      await loadAll();
     } catch (e) {
-      alert("Remove failed: " + e.message);
+      alert("Remove failed: " + (e?.response?.data?.detail || e.message));
     } finally {
       setBusyPickId(null);
     }

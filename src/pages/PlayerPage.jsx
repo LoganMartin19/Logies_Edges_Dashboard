@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import styles from "../styles/PlayerPage.module.css";
+import { api } from "../api"; // ✅ env-based axios client
 
 const safe = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
 const fmtDate = (iso) =>
@@ -379,20 +380,30 @@ export default function PlayerPage() {
     let alive = true;
 
     async function loadAll() {
-      const [sum, pm, props] = await Promise.all([
-        fetch(`http://127.0.0.1:8000/football/player/summary?fixture_id=${fixtureId}&player_id=${id}`).then((r) => r.json()),
-        fetch(`http://127.0.0.1:8000/football/players?fixture_id=${fixtureId}`).then((r) => r.json()),
-        fetch(`http://127.0.0.1:8000/football/player-props/fair?fixture_id=${fixtureId}`).then((r) => r.json()),
-      ]);
-      if (!alive) return;
-      setSummary(sum);
-      setMatchPlayers(pm?.players || { home: [], away: [] });
-      setPropsRaw(props?.props || []);
-      setLoading(false);
+      try {
+        const [sumRes, pmRes, propsRes] = await Promise.all([
+          api.get("/football/player/summary", { params: { fixture_id: fixtureId, player_id: id } }),
+          api.get("/football/players", { params: { fixture_id: fixtureId } }),
+          api.get("/football/player-props/fair", { params: { fixture_id: fixtureId } }),
+        ]);
+        if (!alive) return;
+        setSummary(sumRes.data);
+        setMatchPlayers(pmRes.data?.players || { home: [], away: [] });
+        setPropsRaw(propsRes.data?.props || []);
+      } catch (e) {
+        console.error("PlayerPage core fetch failed:", e);
+        setSummary(null);
+        setMatchPlayers({ home: [], away: [] });
+        setPropsRaw([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
     }
 
     loadAll();
-    return () => (alive = false);
+    return () => {
+      alive = false;
+    };
   }, [id, fixtureId]);
 
   // load game log (depends on lastN)
@@ -400,13 +411,20 @@ export default function PlayerPage() {
     if (!id || !fixtureId) return;
     let alive = true;
     (async () => {
-      const j = await fetch(
-        `http://127.0.0.1:8000/football/player/game-log?fixture_id=${fixtureId}&player_id=${id}&last=${lastN}`
-      ).then((r) => r.json());
-      if (!alive) return;
-      setGameLog(j?.games || []);
+      try {
+        const { data: j } = await api.get("/football/player/game-log", {
+          params: { fixture_id: fixtureId, player_id: id, last: lastN },
+        });
+        if (!alive) return;
+        setGameLog(j?.games || []);
+      } catch (e) {
+        console.error("PlayerPage game-log fetch failed:", e);
+        if (alive) setGameLog([]);
+      }
     })();
-    return () => (alive = false);
+    return () => {
+      alive = false;
+    };
   }, [id, fixtureId, lastN]);
 
   // safe render gate AFTER all hooks

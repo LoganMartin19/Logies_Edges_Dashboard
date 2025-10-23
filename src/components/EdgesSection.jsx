@@ -1,18 +1,39 @@
+// src/components/EdgesSection.jsx
 import React, { useEffect, useState } from "react";
+import { api } from "../api"; // ✅ uses env-based axios instance
 
 const EdgesSection = ({ fixtureId }) => {
   const [edges, setEdges] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/edges?fixture_id=${fixtureId}`)
-      .then((res) => res.json())
-      .then(setEdges)
-      .catch((err) => console.error("Edges fetch failed:", err));
+    if (!fixtureId) return;
+    setLoading(true);
+    setError("");
+
+    api
+      .get("/edges", { params: { fixture_id: fixtureId } })
+      .then((res) => setEdges(res.data || []))
+      .catch((err) => {
+        console.error("Edges fetch failed:", err);
+        setError("Failed to load edges");
+        setEdges([]);
+      })
+      .finally(() => setLoading(false));
   }, [fixtureId]);
 
   return (
     <div className="card">
       <h3>Edges</h3>
+
+      {loading && <p>Loading...</p>}
+      {error && <p style={{ color: "#c00" }}>{error}</p>}
+
+      {!loading && !edges.length && !error && (
+        <p style={{ color: "#666" }}>No edges available.</p>
+      )}
+
       {edges.map((edge, i) => (
         <div key={i} className="edge-row">
           <span>{edge.market}</span>

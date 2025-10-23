@@ -1,33 +1,47 @@
 // src/components/Poll.jsx
 import React, { useEffect, useState } from "react";
 import styles from "../styles/FixturePage.module.css";
+import { api } from "../api"; // ✅ env-based axios client
 
 export default function Poll({ fixtureId, homeTeam, awayTeam }) {
   const [results, setResults] = useState({ home: 0, draw: 0, away: 0 });
   const [total, setTotal] = useState(0);
   const [vote, setVote] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const load = async () => {
-    const res = await fetch(`http://127.0.0.1:8000/poll/results?fixture_id=${fixtureId}`);
-    const json = await res.json();
-    setResults(json.results || { home: 0, draw: 0, away: 0 });
-    setTotal(json.total ?? 0);
+    try {
+      setLoading(true);
+      const { data } = await api.get("/poll/results", { params: { fixture_id: fixtureId } });
+      setResults(data?.results || { home: 0, draw: 0, away: 0 });
+      setTotal(data?.total ?? 0);
+    } catch (e) {
+      // keep UI calm; log for debugging
+      console.error("Poll load failed:", e);
+      setResults({ home: 0, draw: 0, away: 0 });
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { load(); }, [fixtureId]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [fixtureId]);
 
   const cast = async (choice) => {
-    await fetch(`http://127.0.0.1:8000/poll/vote?fixture_id=${fixtureId}&choice=${choice}`, {
-      method: "POST",
-    });
-    setVote(choice);
-    load();
+    try {
+      setVote(choice); // optimistic
+      await api.post("/poll/vote", null, { params: { fixture_id: fixtureId, choice } });
+      await load();
+    } catch (e) {
+      console.error("Vote failed:", e);
+    }
   };
 
   return (
     <div className={styles.poll}>
       <h3>Who wins?</h3>
-      <div className={styles.pollOptions}>
+
+      <div className={styles.pollOptions} aria-busy={loading ? "true" : "false"}>
         <div className={styles.pollChoice}>
           <button
             className={`${styles.pollButton} ${vote === "home" ? styles.active : ""}`}
@@ -71,10 +85,7 @@ export default function Poll({ fixtureId, homeTeam, awayTeam }) {
         </div>
       </div>
 
-      {/* ✅ Total votes added back cleanly */}
-      <div className={styles.totalVotes}>
-        Total votes: {total}
-      </div>
+      <div className={styles.totalVotes}>Total votes: {total}</div>
     </div>
   );
 }

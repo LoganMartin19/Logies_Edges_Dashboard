@@ -1,26 +1,34 @@
 // src/components/LeagueTable.jsx
 import React, { useEffect, useState } from "react";
+import { api } from "../api"; // ✅ env-based axios client
 import styles from "../styles/LeagueTable.module.css";
 
 export default function LeagueTable({ league, homeTeam, awayTeam }) {
   const [table, setTable] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
 
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/admin/refresh-standings?league=${league}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (Array.isArray(json.table)) {
-          setTable(json.table);
-        } else {
-          setTable([]);
-        }
+    if (!league) return;
+    setLoading(true);
+    setErr("");
+
+    api
+      .get("/api/fixtures/league/table", { params: { league } }) // ✅ public/read endpoint
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : res.data?.table;
+        setTable(Array.isArray(data) ? data : []);
       })
-      .catch((err) => {
-        console.error("Failed to fetch standings:", err);
+      .catch((e) => {
+        console.error("Failed to fetch standings:", e);
+        setErr("Failed to fetch standings.");
         setTable([]);
-      });
+      })
+      .finally(() => setLoading(false));
   }, [league]);
 
+  if (loading) return <p className={styles.empty}>Loading table…</p>;
+  if (err) return <p className={styles.empty} style={{ color: "#c00" }}>{err}</p>;
   if (!table.length) return <p className={styles.empty}>No table available.</p>;
 
   return (
@@ -44,14 +52,9 @@ export default function LeagueTable({ league, homeTeam, awayTeam }) {
         </thead>
         <tbody>
           {table.map((row) => {
-            const isHighlighted =
-              row.team === homeTeam || row.team === awayTeam;
-
+            const isHighlighted = row.team === homeTeam || row.team === awayTeam;
             return (
-              <tr
-                key={row.team}
-                className={isHighlighted ? styles.highlightRow : ""}
-              >
+              <tr key={row.team} className={isHighlighted ? styles.highlightRow : ""}>
                 <td>{row.position}</td>
                 <td>{row.team}</td>
                 <td>{row.played}</td>

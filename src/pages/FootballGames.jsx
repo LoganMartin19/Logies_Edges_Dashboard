@@ -1,94 +1,79 @@
+// src/pages/FootballGames.jsx
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import styles from "../styles/Fixtures.module.css";
+import { api } from "../api"; // env-based axios client
 
-export default function FootballGames() {
+const FootballGames = () => {
   const [fixtures, setFixtures] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    setErr("");
-
-    fetch("http://127.0.0.1:8000/api/fixtures/all")
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then(rows => {
-        const out = (rows || []).filter(f => {
-          const sport = (f.sport || "").toLowerCase();
-          const comp  = (f.comp || "").toLowerCase();
-
-          // ✅ Only include football (soccer) fixtures
-          const isFootballSport = sport === "football" || sport === "soccer";
-          const isFootballLeague = !(
-            comp.includes("nfl") ||
-            comp.includes("ncaa") ||
-            comp.includes("nba") ||
-            comp.includes("nhl") ||
-            comp.includes("basket") ||
-            comp.includes("hockey") ||
-            comp.includes("american")
-          );
-
-          return isFootballSport || isFootballLeague;
-        });
-
-        setFixtures(out);
-      })
-      .catch(e => setErr(e.message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const timeUTC = (iso) => {
-    if (!iso) return "—";
-    const s = iso.endsWith("Z") ? iso : iso + "Z";
-    try {
-      const d = new Date(s);
-      return d.toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "UTC",
-      });
-    } catch {
-      return iso.slice(11, 16);
-    }
+  // ---- Helper: format kickoff in user timezone ----
+  const formatKickoff = (utcString, withDate = false) => {
+    if (!utcString) return "";
+    const kickoff = utcString.endsWith("Z") ? utcString : utcString + "Z"; // ensure UTC
+    return new Date(kickoff).toLocaleString(navigator.language, {
+      weekday: withDate ? "short" : undefined,
+      day: withDate ? "numeric" : undefined,
+      month: withDate ? "short" : undefined,
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
   };
 
-  return (
-    <div style={{ padding: 16 }}>
-      <h2>Football (Soccer) — Upcoming</h2>
+  useEffect(() => {
+    const fetchFixtures = async () => {
+      try {
+        // Pull all fixtures, then filter to football in case the API doesn't accept a sport param here.
+        const { data } = await api.get("/api/fixtures/all");
+        const rows = Array.isArray(data) ? data : [];
+        const footballOnly = rows.filter(
+          (f) => (f.sport || "football").toLowerCase() === "football"
+        );
+        setFixtures(footballOnly);
+      } catch (err) {
+        console.error("Error fetching football fixtures:", err);
+        setFixtures([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFixtures();
+  }, []);
 
-      {err && <p style={{ color: "#c00" }}>{err}</p>}
-      {loading ? (
-        <p>Loading…</p>
-      ) : fixtures.length === 0 ? (
-        <p>No upcoming football fixtures found.</p>
-      ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th align="left">Time (UTC)</th>
-              <th align="left">Matchup</th>
-              <th align="left">Competition</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fixtures.map(f => (
-              <tr key={f.id}>
-                <td>{timeUTC(f.kickoff_utc)}</td>
-                <td>
-                  <Link to={`/fixture/${f.id}`}>
-                    {f.home_team} vs {f.away_team}
-                  </Link>
-                </td>
-                <td>{f.comp}</td>
-              </tr>
+  if (loading) return <p className={styles.loading}>Loading football fixtures...</p>;
+  if (!fixtures.length) return <p className={styles.empty}>No football fixtures available.</p>;
+
+  // Group by competition + date
+  const grouped = fixtures.reduce((acc, f) => {
+    const date = formatKickoff(f.kickoff_utc, true); // includes weekday + date
+    const key = `${f.comp} • ${date}`;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(f);
+    return acc;
+  }, {});
+
+  return (
+    <div className={styles.page}>
+      <h2 className={styles.title}>Football Fixtures</h2>
+      {Object.keys(grouped).map((group) => (
+        <div key={group} className={styles.group}>
+          <h3 className={styles.groupTitle}>{group}</h3>
+          <div className={styles.cards}>
+            {grouped[group].map((f) => (
+              <Link key={f.id} to={`/fixture/${f.id}`} className={styles.card}>
+                <div className={styles.teams}>
+                  {f.home_team} <span className={styles.vs}>vs</span> {f.away_team}
+                </div>
+                <div className={styles.kickoff}>{formatKickoff(f.kickoff_utc)}</div>
+              </Link>
             ))}
-          </tbody>
-        </table>
-      )}
+          </div>
+        </div>
+      ))}
     </div>
   );
-}
+};
+
+export default FootballGames;

@@ -1,7 +1,6 @@
 // src/components/MatchPreview.jsx
 import React, { useEffect, useRef, useState } from "react";
-
-const API = "http://127.0.0.1:8000/api";
+import { api } from "../api"; // ← env-based axios client
 
 export default function MatchPreview({ fixtureId, isAdmin = false }) {
   const [loading, setLoading] = useState(false);
@@ -19,20 +18,14 @@ export default function MatchPreview({ fixtureId, isAdmin = false }) {
     setLoading(true);
     setError("");
     try {
-      const r = await fetch(
-        `${API}/public/ai/preview/by-fixture?fixture_id=${fixtureId}`,
-        { signal: controller.signal }
-      );
-      if (r.status === 404) {
-        setPreview(null);
-        setError("No preview yet — generate one!");
-        return;
-      }
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const j = await r.json();
-      setPreview(j.preview || null);
+      const r = await api.get("/api/public/ai/preview/by-fixture", {
+        params: { fixture_id: fixtureId },
+        signal: controller.signal,
+      });
+      setPreview(r.data?.preview || null);
+      if (!r.data?.preview) setError("No preview yet — generate one!");
     } catch (e) {
-      if (e.name !== "AbortError") {
+      if (e.name !== "CanceledError" && e.name !== "AbortError") {
         setPreview(null);
         setError(isAdmin ? "Failed to load preview." : "");
       }
@@ -46,15 +39,13 @@ export default function MatchPreview({ fixtureId, isAdmin = false }) {
     setThinking(true);
     setError("");
     try {
-      const r = await fetch(
-        `${API}/ai/preview/generate?fixture_id=${fixtureId}&overwrite=1&n=5`,
-        { method: "POST" }
-      );
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const j = await r.json();
+      const r = await api.post("/api/ai/preview/generate", null, {
+        params: { fixture_id: fixtureId, overwrite: 1, n: 5 },
+      });
+      const j = r.data || {};
       setPreview(j.preview || null);
       if (!j.preview) {
-        // fallback fetch in case the writer saved but empty text somehow
+        // fallback fetch in case writer saved but empty text
         await fetchPreview();
       }
     } catch (e) {
@@ -66,12 +57,11 @@ export default function MatchPreview({ fixtureId, isAdmin = false }) {
 
   useEffect(() => {
     fetchPreview();
-    // cleanup on unmount / id change
     return () => abortRef.current && abortRef.current.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fixtureId]);
 
-  const emptyPublicNote = (!isAdmin && !preview && !loading && !error);
+  const emptyPublicNote = !isAdmin && !preview && !loading && !error;
 
   return (
     <div style={{ marginTop: 20, background: "#f9faf9", borderRadius: 12, padding: 16 }}>
@@ -85,13 +75,9 @@ export default function MatchPreview({ fixtureId, isAdmin = false }) {
         </p>
       )}
 
-      {error && !loading && isAdmin && (
-        <p style={{ color: "#c00" }}>{error}</p>
-      )}
+      {error && !loading && isAdmin && <p style={{ color: "#c00" }}>{error}</p>}
 
-      {emptyPublicNote && (
-        <p style={{ color: "#666" }}>Preview coming soon.</p>
-      )}
+      {emptyPublicNote && <p style={{ color: "#666" }}>Preview coming soon.</p>}
 
       {isAdmin && (
         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>

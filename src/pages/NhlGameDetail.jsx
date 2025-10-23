@@ -2,6 +2,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 
+const API_BASE =
+  process.env.REACT_APP_API_BASE || "https://logies-edges-api.onrender.com";
+const api = (p) => `${API_BASE}${p}`;
+
 export default function NhlGameDetail() {
   const { id } = useParams();
   const [data, setData] = useState(null);
@@ -11,18 +15,14 @@ export default function NhlGameDetail() {
     setErr("");
     setData(null);
 
-    const url = `http://127.0.0.1:8000/api/fixtures/id/${id}/json`;
-    // console.log("Fetching NHL detail:", url);
-    fetch(url)
-      .then(r => {
+    const url = api(`/api/fixtures/id/${id}/json`);
+    fetch(url, { cache: "no-store" })
+      .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then(json => {
-        // console.log("Detail response:", json);
-        setData(json);
-      })
-      .catch(e => {
+      .then((json) => setData(json))
+      .catch((e) => {
         console.error(e);
         setErr(e.message);
       });
@@ -76,8 +76,24 @@ export default function NhlGameDetail() {
       </div>
 
       <h2>{f.home_team} vs {f.away_team}</h2>
-      <div style={{ color: "#666", marginBottom: 16 }}>
+      <div style={{ color: "#666", marginBottom: 8 }}>
         {f.comp || "NHL"} • {formatUTC(f.kickoff_utc)} UTC
+      </div>
+
+      {/* WIP note */}
+      <div
+        style={{
+          background: "#f5f7fb",
+          border: "1px solid #e5e9f2",
+          padding: "8px 12px",
+          borderRadius: 8,
+          marginBottom: 16,
+          fontSize: 13,
+          color: "#445",
+        }}
+      >
+        Deeper NHL models (player props, xG/xThreat on ice, and AI previews) are a work in progress.
+        Best-edge scanning and market odds are live below.
       </div>
 
       <h3>Best Edges</h3>
@@ -91,15 +107,16 @@ export default function NhlGameDetail() {
           </tr>
         </thead>
         <tbody>
-          {(data.best_edges || []).map((e, i) => (
-            <tr key={i}>
-              <td>{e.market}</td>
-              <td align="right">{Number(e.price).toFixed(2)}</td>
-              <td align="right">{(Number(e.edge) * 100).toFixed(1)}%</td>
-              <td>{e.bookmaker}</td>
-            </tr>
-          ))}
-          {(!data.best_edges || data.best_edges.length === 0) && (
+          {(data.best_edges || []).length ? (
+            data.best_edges.map((e, i) => (
+              <tr key={i}>
+                <td>{e.market}</td>
+                <td align="right">{Number(e.price).toFixed(2)}</td>
+                <td align="right">{(Number(e.edge) * 100).toFixed(1)}%</td>
+                <td>{e.bookmaker}</td>
+              </tr>
+            ))
+          ) : (
             <tr><td colSpan={4} style={{ color: "#666" }}>No edges yet.</td></tr>
           )}
         </tbody>

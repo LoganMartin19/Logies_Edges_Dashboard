@@ -1,5 +1,7 @@
+// src/pages/CfbGames.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../api"; // ✅ env-based axios client
 
 export default function CfbGames() {
   const [games, setGames] = useState([]);
@@ -11,29 +13,33 @@ export default function CfbGames() {
   const fetchGames = () => {
     setLoading(true);
     setError("");
-    fetch(`http://127.0.0.1:8000/api/fixtures/gridiron/upcoming?sport=cfb&days_ahead=${daysAhead}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
+    api
+      .get("/api/fixtures/gridiron/upcoming", {
+        params: { sport: "cfb", days_ahead: daysAhead },
       })
-      .then((data) => setGames(data.fixtures || []))
-      .catch((e) => setError(e.message))
+      .then(({ data }) => setGames(data.fixtures || []))
+      .catch((e) => setError(e?.message || "Failed to load CFB games"))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     fetchGames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [daysAhead]);
 
-  // 👇 Helper — avoid Safari's invalid date issue
+  // Helper — render time in UTC (stable across clients)
   const formatTimeUTC = (isoString) => {
     if (!isoString) return "—";
-    const safe = isoString.endsWith("Z") ? isoString : isoString + "Z";
+    const safe = isoString.endsWith("Z") || isoString.includes("+") ? isoString : isoString + "Z";
     try {
       const d = new Date(safe);
-      return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+      return d.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "UTC",
+      });
     } catch {
-      return isoString.slice(11, 16); // fallback
+      return (isoString || "").slice(11, 16);
     }
   };
 
@@ -76,22 +82,17 @@ export default function CfbGames() {
             {games.map((g) => (
               <tr
                 key={g.id}
-                style={{
-                  cursor: "pointer",
-                  borderBottom: "1px solid #ddd",
-                }}
+                style={{ cursor: "pointer", borderBottom: "1px solid #ddd" }}
                 onClick={() => navigate(`/cfb/fixture/${g.id}`)}
               >
                 <td>{formatTimeUTC(g.kickoff_utc)}</td>
-                <td>
-                  <strong>{g.home_team}</strong> vs {g.away_team}
-                </td>
+                <td><strong>{g.home_team}</strong> vs {g.away_team}</td>
                 <td>{g.comp || "NCAA"}</td>
                 <td align="right">
-                  {g.best_home ? `${g.best_home.price} (${g.best_home.bookmaker})` : "—"}
+                  {g.best_home ? `${Number(g.best_home.price).toFixed(2)} (${g.best_home.bookmaker})` : "—"}
                 </td>
                 <td align="right">
-                  {g.best_away ? `${g.best_away.price} (${g.best_away.bookmaker})` : "—"}
+                  {g.best_away ? `${Number(g.best_away.price).toFixed(2)} (${g.best_away.bookmaker})` : "—"}
                 </td>
               </tr>
             ))}

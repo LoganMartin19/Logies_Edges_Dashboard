@@ -1,8 +1,7 @@
 // src/pages/PublicDashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
-const apiBase = "http://127.0.0.1:8000/api/public";
+import { api, API_BASE } from "../api"; // ← env-driven base
 
 // --- tiny utils -------------------------------------------------------------
 const todayISO = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -10,18 +9,12 @@ const todayISO = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 // UK local time (BST/GMT). Safe with/without timezone in the string.
 const toUK = (iso, { withZone = false } = {}) => {
   if (!iso) return "—";
-  const fmt = {
-    timeZone: "Europe/London",
-    hour: "2-digit",
-    minute: "2-digit",
-  };
+  const fmt = { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit" };
   if (withZone) fmt.timeZoneName = "short";
   try {
-    // prefer whatever offset the backend sends
     const d = new Date(iso);
     if (!isNaN(d)) return d.toLocaleTimeString("en-GB", fmt);
   } catch {}
-  // fallback: treat as UTC then convert
   try {
     const safe = iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z";
     return new Date(safe).toLocaleTimeString("en-GB", fmt);
@@ -31,23 +24,15 @@ const toUK = (iso, { withZone = false } = {}) => {
 };
 
 const slug = (s = "") =>
-  s
-    .normalize("NFKD")
-    .replace(/[^\w\s.-]/g, "")
-    .trim()
-    .replace(/\s+/g, "_")
-    .toLowerCase();
+  s.normalize("NFKD").replace(/[^\w\s.-]/g, "").trim().replace(/\s+/g, "_").toLowerCase();
 
 // Human-readable competition names (expandable)
 const COMP_NAMES = {
-  // Europe (UEFA)
   UCL: "UEFA Champions League",
   UEL: "UEFA Europa League",
   UECL: "UEFA Europa Conference League",
   UWCL: "UEFA Women’s Champions League",
   WCQ_EUR: "World Cup Qualifying (Europe)",
-
-  // England
   EPL: "Premier League",
   CHAMP: "EFL Championship",
   LG1: "EFL League One",
@@ -55,27 +40,19 @@ const COMP_NAMES = {
   EFL_TROPHY: "EFL Trophy",
   FA_CUP: "FA Cup",
   CARABAO: "EFL Cup",
-
-  // Scotland
   SCO_PREM: "Scottish Premiership",
   SCO_CHAMP: "Scottish Championship",
   SCO1: "Scottish League One",
   SCO2: "Scottish League Two",
   SCO_CUP: "Scottish Cup",
-
-  // Spain / Germany / Italy / France
   LA_LIGA: "La Liga",
   BUNDES: "Bundesliga",
   BUNDES2: "2. Bundesliga",
   SERIE_A: "Serie A",
   SERIE_B: "Serie B",
   LIGUE1: "Ligue 1",
-
-  // Americas
   MLS: "Major League Soccer",
   BR_SERIE_A: "Brasileirão Série A",
-
-  // North American pro leagues
   NFL: "NFL",
   CFB: "College Football",
   NCAA: "College Football",
@@ -114,48 +91,16 @@ const routeFor = (f) => {
 // --- styles (inline so you can paste & go) ----------------------------------
 const S = {
   page: { maxWidth: 980, margin: "0 auto", padding: 16 },
-  headerRow: {
-    display: "flex",
-    gap: 12,
-    alignItems: "center",
-    marginBottom: 14,
-    flexWrap: "wrap",
-  },
+  headerRow: { display: "flex", gap: 12, alignItems: "center", marginBottom: 14, flexWrap: "wrap" },
   select: { padding: "6px 10px", borderRadius: 6, border: "1px solid #ccc" },
   input: { padding: "6px 10px", borderRadius: 6, border: "1px solid #ccc" },
-  btn: {
-    padding: "6px 10px",
-    borderRadius: 6,
-    border: "1px solid #ccc",
-    background: "#fafafa",
-    cursor: "pointer",
-  },
-
-  // Featured card block
-  picksWrap: {
-    background: "#0f5828",
-    color: "#fff",
-    borderRadius: 26,
-    padding: 18,
-    marginBottom: 20,
-    boxShadow: "0 10px 24px rgba(0,0,0,.08)",
-  },
+  btn: { padding: "6px 10px", borderRadius: 6, border: "1px solid #ccc", background: "#fafafa", cursor: "pointer" },
+  picksWrap: { background: "#0f5828", color: "#fff", borderRadius: 26, padding: 18, marginBottom: 20, boxShadow: "0 10px 24px rgba(0,0,0,.08)" },
   picksTitle: { fontWeight: 800, fontSize: 20, marginBottom: 8 },
-  pickRow: {
-    background: "#111",
-    borderRadius: 12,
-    padding: "10px 12px",
-    display: "grid",
-    gridTemplateColumns: "1fr auto 1fr",
-    alignItems: "center",
-    gap: 8,
-    margin: "10px 0",
-  },
+  pickRow: { background: "#111", borderRadius: 12, padding: "10px 12px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 8, margin: "10px 0" },
   pickTeam: { display: "flex", alignItems: "center", gap: 8, fontWeight: 700 },
   pickTime: { fontWeight: 700, letterSpacing: 0.2 },
   pickSub: { fontSize: 12, opacity: 0.8, marginTop: 2 },
-
-  // Fixtures table
   sectionTitle: { fontSize: 18, fontWeight: 700, marginTop: 18, marginBottom: 8 },
   tbl: { width: "100%", borderCollapse: "collapse" },
   th: { textAlign: "left", padding: "8px 6px", borderBottom: "1px solid #eee" },
@@ -175,20 +120,24 @@ export default function PublicDashboard() {
     setLoading(true);
     setErr("");
     try {
-      const fxR = await fetch(`${apiBase}/fixtures/daily?day=${day}&sport=${sport}`);
-      if (!fxR.ok) throw new Error(`Fixtures HTTP ${fxR.status}`);
-      const fxJ = await fxR.json();
+      // fixtures
+      const { data: fxJ } = await api.get("/api/public/fixtures/daily", {
+        params: { day, sport },
+      });
 
+      // picks (best-effort)
       let pkJ = { picks: [] };
       try {
-        const pkR = await fetch(`${apiBase}/picks/daily?day=${day}&sport=${sport}`);
-        if (pkR.ok) pkJ = await pkR.json();
+        const { data } = await api.get("/api/public/picks/daily", {
+          params: { day, sport },
+        });
+        pkJ = data;
       } catch {}
 
       setFixtures(fxJ.fixtures || []);
       setPicks(pkJ.picks || []);
     } catch (e) {
-      setErr(String(e.message || e));
+      setErr(String(e?.message || e));
       setFixtures([]);
       setPicks([]);
     } finally {
@@ -201,31 +150,28 @@ export default function PublicDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day, sport]);
 
-  // order by kickoff
   const fixturesSorted = useMemo(
-    () =>
-      [...fixtures].sort((a, b) =>
-        (a.kickoff_utc || "").localeCompare(b.kickoff_utc || "")
-      ),
+    () => [...fixtures].sort((a, b) => (a.kickoff_utc || "").localeCompare(b.kickoff_utc || "")),
     [fixtures]
   );
 
-  // normalize picks
-  const picksClean = useMemo(() => {
-    return (picks || []).map((p) => ({
-      id: p.fixture_id ?? p.id,
-      sport: p.sport || "football",
-      comp: p.comp || "",
-      home_team: p.home_team || p.home || "",
-      away_team: p.away_team || p.away || "",
-      kickoff_utc: p.kickoff_utc,
-      market: p.market || "",
-      price: p.price ?? p.odds ?? null,
-      bookmaker: p.bookmaker || p.book || "",
-      edge: p.edge ?? null,
-      note: p.note || p.ai_note || "",
-    }));
-  }, [picks]);
+  const picksClean = useMemo(
+    () =>
+      (picks || []).map((p) => ({
+        id: p.fixture_id ?? p.id,
+        sport: p.sport || "football",
+        comp: p.comp || "",
+        home_team: p.home_team || p.home || "",
+        away_team: p.away_team || p.away || "",
+        kickoff_utc: p.kickoff_utc,
+        market: p.market || "",
+        price: p.price ?? p.odds ?? null,
+        bookmaker: p.bookmaker || p.book || "",
+        edge: p.edge ?? null,
+        note: p.note || p.ai_note || "",
+      })),
+    [picks]
+  );
 
   return (
     <div style={S.page}>
@@ -235,20 +181,11 @@ export default function PublicDashboard() {
         <div style={{ marginLeft: "auto" }} />
         <label>
           Day:&nbsp;
-          <input
-            style={S.input}
-            type="date"
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-          />
+          <input style={S.input} type="date" value={day} onChange={(e) => setDay(e.target.value)} />
         </label>
         <label>
           &nbsp;Sport:&nbsp;
-          <select
-            style={S.select}
-            value={sport}
-            onChange={(e) => setSport(e.target.value)}
-          >
+          <select style={S.select} value={sport} onChange={(e) => setSport(e.target.value)}>
             <option value="all">All</option>
             <option value="football">Football</option>
             <option value="nba">NBA</option>
@@ -257,59 +194,32 @@ export default function PublicDashboard() {
             <option value="cfb">CFB</option>
           </select>
         </label>
-        <button style={S.btn} onClick={load}>
-          Refresh
-        </button>
+        <button style={S.btn} onClick={load}>Refresh</button>
       </div>
 
       {/* Featured Picks (big card) */}
       <div style={S.picksWrap}>
-        <div style={S.picksTitle}>
-          Featured Picks {picksClean.length ? `(${picksClean.length})` : ""}
-        </div>
-
+        <div style={S.picksTitle}>Featured Picks {picksClean.length ? `(${picksClean.length})` : ""}</div>
         {picksClean.length === 0 ? (
           <div style={{ background: "rgba(255,255,255,.08)", borderRadius: 12, padding: 12, color: "#d7e6db" }}>
             No featured picks yet.
           </div>
         ) : (
           picksClean.map((p, i) => (
-            <Link
-              key={`${p.id}-${i}`}
-              to={routeFor({ id: p.id, sport: p.sport })}
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
+            <Link key={`${p.id}-${i}`} to={routeFor({ id: p.id, sport: p.sport })} style={{ textDecoration: "none", color: "inherit" }}>
               <div style={S.pickRow}>
                 <div style={S.pickTeam}>
-                  <img
-                    src={logoUrl(p.home_team)}
-                    alt=""
-                    width={20}
-                    height={20}
-                    onError={(e) => (e.currentTarget.style.display = "none")}
-                  />
+                  <img src={logoUrl(p.home_team)} alt="" width={20} height={20} onError={(e) => (e.currentTarget.style.display = "none")} />
                   <span>{p.home_team}</span>
                 </div>
-
                 <div style={{ textAlign: "center" }}>
                   <div style={S.pickTime}>{toUK(p.kickoff_utc, { withZone: true })}</div>
-                  <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
-                    {prettyComp(p.comp || p.sport)}
-                  </div>
+                  <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>{prettyComp(p.comp || p.sport)}</div>
                 </div>
-
                 <div style={{ ...S.pickTeam, justifyContent: "flex-end" }}>
                   <span>{p.away_team}</span>
-                  <img
-                    src={logoUrl(p.away_team)}
-                    alt=""
-                    width={20}
-                    height={20}
-                    onError={(e) => (e.currentTarget.style.display = "none")}
-                  />
+                  <img src={logoUrl(p.away_team)} alt="" width={20} height={20} onError={(e) => (e.currentTarget.style.display = "none")} />
                 </div>
-
-                {/* subline across full width */}
                 <div style={{ gridColumn: "1 / -1", ...S.pickSub }}>
                   {p.market ? `Market: ${p.market}` : null}
                   {p.price ? ` • Odds: ${Number(p.price).toFixed(2)}` : null}
@@ -359,7 +269,7 @@ export default function PublicDashboard() {
       )}
 
       <div style={{ ...S.muted, fontSize: 12, marginTop: 10 }}>
-        Data updated live from Logie’s DB • No third-party calls from this page.
+        Data updated live from Logie’s DB • API: {API_BASE}
       </div>
     </div>
   );

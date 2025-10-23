@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import styles from "../styles/Fixtures.module.css";
+import { api } from "../api"; // ← env-based axios client
 
 const Fixtures = () => {
   const [fixtures, setFixtures] = useState([]);
@@ -17,16 +18,15 @@ const Fixtures = () => {
       month: withDate ? "short" : undefined,
       hour: "2-digit",
       minute: "2-digit",
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // user tz
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   };
 
   useEffect(() => {
     const fetchFixtures = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/fixtures/all");
-        const json = await res.json();
-        setFixtures(Array.isArray(json) ? json : []);
+        const { data } = await api.get("/api/fixtures/all");
+        setFixtures(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error fetching fixtures:", err);
         setFixtures([]);

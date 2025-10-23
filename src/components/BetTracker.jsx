@@ -3,6 +3,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import styles from "../styles/BetTracker.module.css";
 
+const API_BASE =
+  process.env.REACT_APP_API_BASE || "https://logies-edges-api.onrender.com";
+const apiUrl = (p) => `${API_BASE}${p}`;
+
 const fmt = (n, d = 2) => (n == null || Number.isNaN(+n) ? "—" : (+n).toFixed(d));
 const asNum = (v) => (Number.isFinite(+v) ? +v : 0);
 
@@ -20,8 +24,9 @@ export default function BetTracker() {
     stake: "",
     notes: "",
   });
+  const [apiError, setApiError] = useState("");
 
-  // 🔗 prefill from URL once (so FixturePage can deep-link to /bets?... )
+  // 🔗 prefill from URL once
   const location = useLocation();
   const navigate = useNavigate();
   const prefilledOnce = useRef(false);
@@ -29,7 +34,6 @@ export default function BetTracker() {
     if (prefilledOnce.current) return;
     const sp = new URLSearchParams(location.search);
     const patch = {};
-    // removed "comp" (server doesn't accept it)
     ["fixture_id","teams","market","bookmaker","price","stake","notes"].forEach((k) => {
       const v = sp.get(k);
       if (v != null && v !== "") patch[k] = v;
@@ -43,16 +47,24 @@ export default function BetTracker() {
 
   const loadBets = () => {
     setLoading(true);
-    fetch("http://127.0.0.1:8000/bets.json")
-      .then((r) => r.json())
-      .then((data) => {
-        setBets(Array.isArray(data) ? data : []);
-        setLoading(false);
+    setApiError("");
+    fetch(apiUrl("/bets.json"), { cache: "no-store" })
+      .then((r) => {
+        if (!r.ok) {
+          if (r.status === 401 || r.status === 403) {
+            throw new Error("Not authorized (auth coming soon)");
+          }
+          throw new Error(`HTTP ${r.status}`);
+        }
+        return r.json();
       })
+      .then((data) => setBets(Array.isArray(data) ? data : []))
       .catch((err) => {
         console.error("Error loading bets:", err);
-        setLoading(false);
-      });
+        setApiError(err.message || "Failed to load bets");
+        setBets([]);
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -67,6 +79,7 @@ export default function BetTracker() {
   const addBet = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setApiError("");
     try {
       const body = {
         fixture_id: form.fixture_id ? Number(form.fixture_id) : null,
@@ -77,11 +90,12 @@ export default function BetTracker() {
         stake: Number(form.stake),
         notes: form.notes || null,
       };
-      await fetch("http://127.0.0.1:8000/bets.json", {
+      const r = await fetch(apiUrl("/bets.json"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setForm({
         fixture_id: "",
         teams: "",
@@ -94,37 +108,49 @@ export default function BetTracker() {
       loadBets();
     } catch (err) {
       console.error("Error adding bet:", err);
+      setApiError(err.message || "Failed to add bet");
     } finally {
       setSaving(false);
     }
   };
 
   const settleBet = async (id, result) => {
-    await fetch(`http://127.0.0.1:8000/bets/${id}.json`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ result }),
-    });
-    loadBets();
+    try {
+      const r = await fetch(apiUrl(`/bets/${id}.json`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ result }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      loadBets();
+    } catch (e) {
+      setApiError(e.message || "Failed to settle bet");
+    }
   };
 
   const deleteBet = async (id) => {
     if (!window.confirm("Delete this bet?")) return;
-    await fetch(`http://127.0.0.1:8000/bets/${id}.json`, { method: "DELETE" });
-    loadBets();
+    try {
+      const r = await fetch(apiUrl(`/bets/${id}.json`), { method: "DELETE" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      loadBets();
+    } catch (e) {
+      setApiError(e.message || "Failed to delete bet");
+    }
   };
 
-  // 🧹 Cleanup buttons — use JSON body per backend (fixes 422)
   const cleanup = async (action, confirmText) => {
     if (!window.confirm(confirmText)) return;
     try {
-      await fetch(`http://127.0.0.1:8000/bets/cleanup`, {
+      const r = await fetch(apiUrl(`/bets/cleanup`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
     } catch (e) {
       console.error("Cleanup failed:", e);
+      setApiError(e.message || "Cleanup failed");
     } finally {
       loadBets();
     }
@@ -154,9 +180,7 @@ export default function BetTracker() {
     return { staked, returned, pnl, roi, won, lost, voided, pending };
   }, [bets]);
 
-  // Optional: export CSV of current filtered view
   const exportCSV = () => {
-    // removed "comp" from header and rows
     const header = ["id","teams","market","bookmaker","price","stake","result","notes"];
     const rows = filtered.map(b => [
       b.id, b.teams || "", b.market || "", b.bookmaker || "",
@@ -170,9 +194,19 @@ export default function BetTracker() {
     URL.revokeObjectURL(url);
   };
 
+  const isRemote = !API_BASE.includes("127.0.0.1") && !API_BASE.includes("localhost");
+
   return (
     <div className={styles.wrap}>
       <h2>📊 Bet Tracker</h2>
+
+      {/* WIP / Auth banner */}
+      <div className={styles.banner}>
+        <b>Work in progress:</b> personal accounts & sign-in coming soon.{" "}
+        {isRemote
+          ? "On the hosted site, add/edit may be disabled until auth is live."
+          : "In local dev, you can test create/update/delete freely."}
+      </div>
 
       {/* KPI Summary */}
       <div className={styles.kpis}>
@@ -231,6 +265,9 @@ export default function BetTracker() {
           <option value="void">Void</option>
         </select>
       </div>
+
+      {/* API error (non-blocking) */}
+      {apiError && <p style={{ color: "#c00", marginTop: 8 }}>{apiError}</p>}
 
       {/* Table */}
       {loading ? (

@@ -1,22 +1,12 @@
+// src/components/PlayerPropsSection.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { api } from "../api"; // ✅ env-based axios client
 import styles from "../styles/PlayerPropsSection.module.css";
 
-function fmtPct(p) {
-  if (p == null || Number.isNaN(p)) return "—";
-  return `${(p * 100).toFixed(1)}%`;
-}
-function fmtOdds(o) {
-  if (o == null || !Number.isFinite(o)) return "—";
-  return o >= 100 ? o.toFixed(0) : o.toFixed(2);
-}
-function fmtEdge(e) {
-  if (e == null || !Number.isFinite(e)) return "—";
-  return `${(e * 100).toFixed(1)}%`;
-}
-function fmtNum(x, d = 2) {
-  if (x == null || !Number.isFinite(x)) return "—";
-  return Number(x).toFixed(d);
-}
+function fmtPct(p) { if (p == null || Number.isNaN(p)) return "—"; return `${(p * 100).toFixed(1)}%`; }
+function fmtOdds(o) { if (o == null || !Number.isFinite(o)) return "—"; return o >= 100 ? o.toFixed(0) : o.toFixed(2); }
+function fmtEdge(e) { if (e == null || !Number.isFinite(e)) return "—"; return `${(e * 100).toFixed(1)}%`; }
+function fmtNum(x, d = 2) { if (x == null || !Number.isFinite(x)) return "—"; return Number(x).toFixed(d); }
 
 const MARKET_LABELS = {
   "shots_over_1.5": "Shots O 1.5",
@@ -32,25 +22,28 @@ export default function PlayerPropsSection({ fixtureId, homeTeam, awayTeam }) {
   const [marketFilter, setMarketFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(null);
+  const [err, setErr] = useState("");
 
   useEffect(() => {
-    let isMounted = true;
+    if (!fixtureId) return;
+    let alive = true;
     setLoading(true);
-    fetch(`http://127.0.0.1:8000/football/player-props/fair?fixture_id=${fixtureId}`)
-      .then((r) => r.json())
-      .then((json) => {
-        if (!isMounted) return;
-        const props = Array.isArray(json?.props) ? json.props : [];
-        setRaw(props);
+    setErr("");
+
+    api.get("/football/player-props/fair", { params: { fixture_id: fixtureId } })
+      .then(({ data }) => {
+        if (!alive) return;
+        setRaw(Array.isArray(data?.props) ? data.props : []);
       })
       .catch((e) => {
+        if (!alive) return;
         console.error("Failed to load player prop fairs:", e);
+        setErr("Failed to load player props.");
         setRaw([]);
       })
-      .finally(() => isMounted && setLoading(false));
-    return () => {
-      isMounted = false;
-    };
+      .finally(() => alive && setLoading(false));
+
+    return () => { alive = false; };
   }, [fixtureId]);
 
   // Add a nice display name for team
@@ -95,29 +88,18 @@ export default function PlayerPropsSection({ fixtureId, homeTeam, awayTeam }) {
     const p = r.prob ?? null;
     const fair = r.fair_odds ?? null;
 
-    // --- NEW: opponent + ref context (gracefully handles missing data)
+    // opponent + ref context (gracefully handles missing data)
     const opponentTeamName =
       r.team_side === "home" ? (awayTeam || "Away") : r.team_side === "away" ? (homeTeam || "Home") : "—";
 
-    // Back-end today exposes opp_fouls_drawn_per90 + ref_factor.
-    // Later you might add per-market opp_* fields; we’ll show anything we get.
     const oppFoulsDrawn90 = Number.isFinite(r.opp_fouls_drawn_per90) ? r.opp_fouls_drawn_per90 : null;
     const refFactor = Number.isFinite(r.ref_factor) ? r.ref_factor : null;
 
-    // Allow for future optional fields without breaking UI
     const maybeContextBits = [];
-    if (oppFoulsDrawn90 != null) {
-      maybeContextBits.push(`Opp fouls drawn/90: ${fmtNum(oppFoulsDrawn90)}`);
-    }
-    if (Number.isFinite(r.opponent_factor)) {
-      maybeContextBits.push(`Opponent adj: ×${fmtNum(r.opponent_factor, 3)}`);
-    }
-    if (refFactor != null) {
-      maybeContextBits.push(`Ref factor: ×${fmtNum(refFactor, 3)}`);
-    }
-    if (Number.isFinite(r.ref_cards_per_match)) {
-      maybeContextBits.push(`Ref cards/match: ${fmtNum(r.ref_cards_per_match, 2)}`);
-    }
+    if (oppFoulsDrawn90 != null) maybeContextBits.push(`Opp fouls drawn/90: ${fmtNum(oppFoulsDrawn90)}`);
+    if (Number.isFinite(r.opponent_factor)) maybeContextBits.push(`Opponent adj: ×${fmtNum(r.opponent_factor, 3)}`);
+    if (refFactor != null) maybeContextBits.push(`Ref factor: ×${fmtNum(refFactor, 3)}`);
+    if (Number.isFinite(r.ref_cards_per_match)) maybeContextBits.push(`Ref cards/match: ${fmtNum(r.ref_cards_per_match, 2)}`);
 
     const marketBlurb =
       ({
@@ -165,9 +147,7 @@ export default function PlayerPropsSection({ fixtureId, homeTeam, awayTeam }) {
             <span>Team</span>
             <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)}>
               {teamOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
+                <option key={t} value={t}>{t}</option>
               ))}
             </select>
           </label>
@@ -194,6 +174,8 @@ export default function PlayerPropsSection({ fixtureId, homeTeam, awayTeam }) {
 
       {loading ? (
         <p className={styles.loading}>Loading player props…</p>
+      ) : err ? (
+        <p className={styles.empty} style={{ color: "#c00" }}>{err}</p>
       ) : rows.length === 0 ? (
         <p className={styles.empty}>No props match your filters.</p>
       ) : (
@@ -242,9 +224,7 @@ export default function PlayerPropsSection({ fixtureId, homeTeam, awayTeam }) {
                       <td className={styles.num}>
                         {r.best_price ? `${r.bookmaker} @ ${fmtOdds(r.best_price)}` : "—"}
                       </td>
-                      <td className={`${styles.num} ${edgePos ? styles.edgePos : ""}`}>
-                        {fmtEdge(r.edge)}
-                      </td>
+                      <td className={`${styles.num} ${edgePos ? styles.edgePos : ""}`}>{fmtEdge(r.edge)}</td>
                       <td className={styles.action}>
                         <button
                           className={styles.whyBtn}
@@ -259,9 +239,7 @@ export default function PlayerPropsSection({ fixtureId, homeTeam, awayTeam }) {
                       <tr className={styles.explainRow}>
                         <td colSpan={9} className={styles.explainCell}>
                           {explain(r).map((line, i) => (
-                            <div key={i} className={styles.explainLine}>
-                              • {line}
-                            </div>
+                            <div key={i} className={styles.explainLine}>• {line}</div>
                           ))}
                         </td>
                       </tr>

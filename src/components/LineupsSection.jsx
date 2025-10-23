@@ -1,28 +1,39 @@
 // src/components/LineupsSection.jsx
 import React, { useEffect, useState } from "react";
+import { api } from "../api"; // ✅ env-based axios client
 import styles from "../styles/FixturePage.module.css";
 
 const LineupsSection = ({ fixtureId }) => {
   const [lineups, setLineups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!fixtureId) return;
+
     const fetchLineups = async () => {
+      setLoading(true);
+      setError("");
       try {
-        const res = await fetch(
-          `http://127.0.0.1:8000/football/lineups?fixture_id=${fixtureId}`
-        );
-        const json = await res.json();
-        setLineups(json?.response || []);
+        const res = await api.get("/football/lineups", {
+          params: { fixture_id: fixtureId },
+        });
+        setLineups(res.data?.response || []);
       } catch (err) {
         console.error("Error fetching lineups:", err);
+        setError("Failed to load lineups.");
+        setLineups([]);
+      } finally {
+        setLoading(false);
       }
     };
+
     fetchLineups();
   }, [fixtureId]);
 
-  if (!lineups.length) {
-    return <p>No lineup data available yet.</p>;
-  }
+  if (loading) return <p>Loading lineups...</p>;
+  if (error) return <p style={{ color: "#c00" }}>{error}</p>;
+  if (!lineups.length) return <p>No lineup data available yet.</p>;
 
   const renderPlayer = (p, isSub = false) => {
     const pos = p.player?.pos || "?";
@@ -36,6 +47,7 @@ const LineupsSection = ({ fixtureId }) => {
             src={p.player.photo}
             alt={p.player.name}
             className={styles.playerPhotoSmall}
+            onError={(e) => (e.currentTarget.style.display = "none")}
           />
         )}
         <div>
@@ -55,7 +67,7 @@ const LineupsSection = ({ fixtureId }) => {
             {team.team?.name} — Formation: {team.formation || "N/A"}
           </h4>
 
-          {/* Starting XI grouped by pos */}
+          {/* Starting XI grouped by position */}
           <div className={styles.formation}>
             {["G", "D", "M", "F"].map((pos) => {
               const starters = team.startXI?.filter(

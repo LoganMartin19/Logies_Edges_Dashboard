@@ -14,6 +14,7 @@ import OddsTable from "../components/OddsTable";
 import MatchPreview from "../components/MatchPreview";
 import styles from "../styles/FixturePage.module.css";
 import { slugifyTeamName } from "../utils/slugify";
+import { api } from "../api"; // ← env-based axios client
 
 const FixturePage = () => {
   const { id } = useParams();
@@ -62,7 +63,6 @@ const FixturePage = () => {
     return `/bets?${qs.toString()}`;
   };
 
-  // --- canonicalize markets for /explain/probability ---
   const normalizeExplainMarket = (raw) => {
     if (!raw) return "";
     let x = String(raw).toUpperCase().replace(/\s+/g, "");
@@ -97,24 +97,19 @@ const FixturePage = () => {
   useEffect(() => {
     const fetchFixture = async () => {
       try {
-        const res = await fetch(
-          `http://127.0.0.1:8000/api/fixtures/id/${id}/json`,
-          { cache: "no-store" }
-        );
-        const json = await res.json();
-        setData(json);
+        const { data: fixtureJson } = await api.get(`/api/fixtures/id/${id}/json`, {
+          params: {},
+        });
+        setData(fixtureJson);
 
-        const leagueRes = await fetch(
-          `http://127.0.0.1:8000/api/fixtures/round?fixture_id=${id}`,
-          { cache: "no-store" }
-        );
-        setLeagueFixtures(await leagueRes.json());
+        const { data: roundData } = await api.get(`/api/fixtures/round`, {
+          params: { fixture_id: id },
+        });
+        setLeagueFixtures(roundData);
 
-        const formRes = await fetch(
-          `http://127.0.0.1:8000/form/form/fixture?fixture_id=${id}&n=${formN}&all_comps=${formScopeAll}`,
-          { cache: "no-store" }
-        );
-        const fj = await formRes.json();
+        const { data: fj } = await api.get(`/form/form/fixture`, {
+          params: { fixture_id: id, n: formN, all_comps: formScopeAll },
+        });
         const normalized = {
           home: fj.home ?? { summary: fj.home_form ?? {}, recent: fj.home_recent ?? [] },
           away: fj.away ?? { summary: fj.away_form ?? {}, recent: fj.away_recent ?? [] },
@@ -132,15 +127,11 @@ const FixturePage = () => {
     if (!data?.fixture?.comp) return;
     const fetchTable = async () => {
       try {
-        const res = await fetch(
-          `http://127.0.0.1:8000/api/fixtures/league/table?league=${encodeURIComponent(
-            data.fixture.comp
-          )}`,
-          { cache: "no-store" }
-        );
-        const json = await res.json();
-        if (Array.isArray(json)) setLeagueTable(json);
-        else if (Array.isArray(json.table)) setLeagueTable(json.table);
+        const { data: tableJson } = await api.get(`/api/fixtures/league/table`, {
+          params: { league: data.fixture.comp },
+        });
+        if (Array.isArray(tableJson)) setLeagueTable(tableJson);
+        else if (Array.isArray(tableJson.table)) setLeagueTable(tableJson.table);
         else setLeagueTable([]);
       } catch (err) {
         console.error("Error fetching league table:", err);
@@ -153,12 +144,10 @@ const FixturePage = () => {
   useEffect(() => {
     const fetchEdges = async () => {
       try {
-        const res = await fetch(
-          `http://127.0.0.1:8000/shortlist/today?min_edge=0.00&send_alerts=0`,
-          { cache: "no-store" }
-        );
-        const json = await res.json();
-        setEdges(json.filter((e) => e.fixture_id === Number(id)));
+        const { data: json } = await api.get(`/shortlist/today`, {
+          params: { min_edge: 0.0, send_alerts: 0 },
+        });
+        setEdges((json || []).filter((e) => e.fixture_id === Number(id)));
       } catch (err) {
         console.error("Error fetching shortlist edges:", err);
       }
@@ -169,11 +158,9 @@ const FixturePage = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch(
-          `http://127.0.0.1:8000/football/team-stats?fixture_id=${id}`,
-          { cache: "no-store" }
-        );
-        const json = await res.json();
+        const { data: json } = await api.get(`/football/team-stats`, {
+          params: { fixture_id: id },
+        });
         setTeamStats(json);
       } catch (err) {
         console.error("Error fetching team stats:", err);
@@ -194,13 +181,10 @@ const FixturePage = () => {
     const ts = Date.now();
 
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/explain/probability?fixture_id=${id}&market=${encodeURIComponent(
-          market
-        )}&_ts=${ts}`,
-        { signal: controller.signal, cache: "no-store" }
-      );
-      const json = await res.json();
+      const { data: json } = await api.get(`/explain/probability`, {
+        params: { fixture_id: id, market, _ts: ts },
+        signal: controller.signal,
+      });
       setExplanations((prev) => ({ ...prev, [rawMarket]: json }));
       setExpandedWhy(index);
     } catch (err) {

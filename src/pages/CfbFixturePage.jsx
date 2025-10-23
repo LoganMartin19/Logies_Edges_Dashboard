@@ -1,5 +1,8 @@
+// src/pages/CfbFixturePage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+
+const API_BASE = process.env.REACT_APP_API_BASE || "https://logies-edges-api.onrender.com";
 
 export default function CfbFixturePage() {
   const { id } = useParams();
@@ -10,7 +13,7 @@ export default function CfbFixturePage() {
   useEffect(() => {
     setLoading(true);
     setError("");
-    fetch(`http://127.0.0.1:8000/api/fixtures/id/${id}/json`)
+    fetch(`${API_BASE}/api/fixtures/id/${id}/json`, { cache: "no-store" })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -63,10 +66,10 @@ export default function CfbFixturePage() {
       </div>
 
       {/* Best edges (model output) */}
-      {bestEdges.length > 0 && (
+      <h3>Best Edges</h3>
+      {bestEdges.length > 0 ? (
         <>
-          <h3>Best Edges</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 20 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 8 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #ccc" }}>
                 <th align="left">Market</th>
@@ -89,7 +92,13 @@ export default function CfbFixturePage() {
             </tbody>
           </table>
         </>
+      ) : (
+        <p>No edges yet.</p>
       )}
+      <p style={{ fontSize: 13, color: "#777", marginTop: 4, marginBottom: 20 }}>
+        🏈 In-depth analytics and AI explanations for College Football markets are still a{" "}
+        <strong>work in progress</strong>. Expect more advanced models and betting insights soon.
+      </p>
 
       {/* Odds grouped by bookmaker */}
       <h3>All Odds</h3>
@@ -120,6 +129,10 @@ export default function CfbFixturePage() {
           </div>
         ))
       )}
+      <p style={{ fontSize: 13, color: "#777", marginTop: 8 }}>
+        📊 Team form weighting, strength indices, and AI probability breakdowns for CFB are being
+        developed — this page will expand as our NCAA models evolve.
+      </p>
     </div>
   );
 }

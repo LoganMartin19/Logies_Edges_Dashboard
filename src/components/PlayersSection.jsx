@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom"; // optional (for player detail route)
 import styles from "../styles/FixturePage.module.css";
+import { api } from "../api"; // ✅ env-based axios client
 
 const fmtPct = (p) => (p == null ? "—" : `${(Number(p) * 100).toFixed(0)}%`);
 const fmtOdds = (o) =>
@@ -26,17 +27,23 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
     async function fetchAll() {
       try {
         // 1) Match-specific players
-        const matchRes = await fetch(`http://127.0.0.1:8000/football/players?fixture_id=${fixtureId}`);
-        const matchJson = await matchRes.json();
+        const matchRes = await api.get("/football/players", {
+          params: { fixture_id: fixtureId },
+        });
+        const matchJson = matchRes.data;
 
         // 2) Season totals (note: structure has players block)
-        const seasonRes = await fetch(`http://127.0.0.1:8000/football/season-players?fixture_id=${fixtureId}`);
-        const seasonJson = await seasonRes.json();
+        const seasonRes = await api.get("/football/season-players", {
+          params: { fixture_id: fixtureId },
+        });
+        const seasonJson = seasonRes.data;
         const seasonPlayers = seasonJson?.players || { home: [], away: [] };
 
         // 3) Lineups → only show players in squad (if available)
-        const lineRes = await fetch(`http://127.0.0.1:8000/football/lineups?fixture_id=${fixtureId}`);
-        const lineJson = await lineRes.json();
+        const lineRes = await api.get("/football/lineups", {
+          params: { fixture_id: fixtureId },
+        });
+        const lineJson = lineRes.data;
 
         if (!mounted) return;
         setMatchData({
@@ -68,10 +75,11 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
 
         // 4) Props (one call per side)
         const [homePropsRes, awayPropsRes] = await Promise.all([
-          fetch(`http://127.0.0.1:8000/football/player-props/fair?fixture_id=${fixtureId}&team=home`),
-          fetch(`http://127.0.0.1:8000/football/player-props/fair?fixture_id=${fixtureId}&team=away`),
+          api.get("/football/player-props/fair", { params: { fixture_id: fixtureId, team: "home" } }),
+          api.get("/football/player-props/fair", { params: { fixture_id: fixtureId, team: "away" } }),
         ]);
-        const [homeProps, awayProps] = await Promise.all([homePropsRes.json(), awayPropsRes.json()]);
+        const homeProps = homePropsRes.data;
+        const awayProps = awayPropsRes.data;
 
         const buildMap = (propsObj) => {
           const map = {};
@@ -191,9 +199,8 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
                 />
                 <div className={styles.playerMeta}>
                   <div className={styles.playerNameLine}>
-                    {/* Optional: deep link to player page */}
                     <strong>
-                    <Link to={`/player/${p.player?.id}?fixture_id=${fixtureId}`}>{p.player?.name}</Link>
+                      <Link to={`/player/${p.player?.id}?fixture_id=${fixtureId}`}>{p.player?.name}</Link>
                     </strong>
                     <span className={styles.playerPos}> ({pos})</span>
                   </div>

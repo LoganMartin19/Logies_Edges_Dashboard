@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = process.env.REACT_APP_API_BASE || "https://logies-edges-api.onrender.com";
+
 export default function Basketball() {
   const [games, setGames] = useState([]);
   const [daysAhead, setDaysAhead] = useState(7);
@@ -13,7 +15,7 @@ export default function Basketball() {
     setLoading(true);
     setError("");
 
-    fetch("http://127.0.0.1:8000/api/fixtures/all")
+    fetch(`${API_BASE}/api/fixtures/all`, { cache: "no-store" })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -24,14 +26,8 @@ export default function Basketball() {
 
         const isNBA = (f) => {
           const sport = (f.sport || "").toLowerCase();
-          const comp  = (f.comp || "").toLowerCase();
-          // sport may be "nba"; some rows may tag league as "NBA" or "standard"
-          return (
-            sport === "nba" ||
-            comp === "nba" ||
-            comp.includes("nba") ||
-            comp === "standard"
-          );
+          const comp = (f.comp || "").toLowerCase();
+          return sport === "nba" || comp === "nba" || comp.includes("nba") || comp === "standard";
         };
 
         const inWindow = (f) => {

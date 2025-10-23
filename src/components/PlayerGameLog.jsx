@@ -1,24 +1,41 @@
 // src/components/PlayerGameLog.jsx
 import React, { useEffect, useState } from "react";
+import { api } from "../api"; // ✅ env-based axios client
 
 const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "2-digit" }) : "-";
 
 export default function PlayerGameLog({ fixtureId, playerId, last = 10 }) {
   const [rows, setRows] = useState(null);
+  const [err, setErr] = useState("");
 
   useEffect(() => {
     if (!fixtureId || !playerId) return;
+    let alive = true;
+
     (async () => {
-      const r = await fetch(
-        `http://127.0.0.1:8000/football/player/game-log?fixture_id=${fixtureId}&player_id=${playerId}&last=${last}`
-      );
-      const j = await r.json();
-      setRows(j.games || []);
+      try {
+        const { data } = await api.get("/football/player/game-log", {
+          params: { fixture_id: fixtureId, player_id: playerId, last },
+        });
+        if (!alive) return;
+        setRows(data?.games || []);
+        setErr("");
+      } catch (e) {
+        if (!alive) return;
+        console.error("player game-log fetch failed:", e);
+        setErr("Failed to load recent matches.");
+        setRows([]);
+      }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, [fixtureId, playerId, last]);
 
-  if (!rows) return <div className="card">Loading match log…</div>;
+  if (rows === null) return <div className="card">Loading match log…</div>;
+  if (err) return <div className="card" style={{ color: "#c00" }}>{err}</div>;
   if (!rows.length) return <div className="card">No recent appearances.</div>;
 
   return (
