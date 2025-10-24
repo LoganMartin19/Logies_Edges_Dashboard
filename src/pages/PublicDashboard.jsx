@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, API_BASE } from "../api"; // ← env-driven base
-
+import FeaturedRecord from "../components/FeaturedRecord";
 // --- tiny utils -------------------------------------------------------------
 const todayISO = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
@@ -198,40 +198,66 @@ export default function PublicDashboard() {
       </div>
 
       {/* Featured Picks (big card) */}
-      <div style={S.picksWrap}>
-        <div style={S.picksTitle}>Featured Picks {picksClean.length ? `(${picksClean.length})` : ""}</div>
-        {picksClean.length === 0 ? (
-          <div style={{ background: "rgba(255,255,255,.08)", borderRadius: 12, padding: 12, color: "#d7e6db" }}>
-            No featured picks yet.
-          </div>
-        ) : (
-          picksClean.map((p, i) => (
-            <Link key={`${p.id}-${i}`} to={routeFor({ id: p.id, sport: p.sport })} style={{ textDecoration: "none", color: "inherit" }}>
-              <div style={S.pickRow}>
-                <div style={S.pickTeam}>
-                  <img src={logoUrl(p.home_team)} alt="" width={20} height={20} onError={(e) => (e.currentTarget.style.display = "none")} />
-                  <span>{p.home_team}</span>
-                </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={S.pickTime}>{toUK(p.kickoff_utc, { withZone: true })}</div>
-                  <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>{prettyComp(p.comp || p.sport)}</div>
-                </div>
-                <div style={{ ...S.pickTeam, justifyContent: "flex-end" }}>
-                  <span>{p.away_team}</span>
-                  <img src={logoUrl(p.away_team)} alt="" width={20} height={20} onError={(e) => (e.currentTarget.style.display = "none")} />
-                </div>
-                <div style={{ gridColumn: "1 / -1", ...S.pickSub }}>
-                  {p.market ? `Market: ${p.market}` : null}
-                  {p.price ? ` • Odds: ${Number(p.price).toFixed(2)}` : null}
-                  {p.bookmaker ? ` • Book: ${p.bookmaker}` : null}
-                  {p.edge != null ? ` • Edge: ${(Number(p.edge) * 100).toFixed(1)}%` : null}
-                  {p.note ? ` • ${p.note}` : null}
+    <div style={S.picksWrap}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={S.picksTitle}>
+          Featured Picks {picksClean.length ? `(${picksClean.length})` : ""}
+        </div>
+        <FeaturedRecord span="30d" />
+      </div>
+
+      {picksClean.length === 0 ? (
+        <div style={{ background: "rgba(255,255,255,.08)", borderRadius: 12, padding: 12, color: "#d7e6db" }}>
+          No featured picks yet.
+        </div>
+      ) : (
+        picksClean.map((p, i) => (
+          <Link
+            key={`${p.id}-${i}`}
+            to={routeFor({ id: p.id, sport: p.sport })}
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
+            <div style={S.pickRow}>
+              <div style={S.pickTeam}>
+                <img
+                  src={logoUrl(p.home_team)}
+                  alt=""
+                  width={20}
+                  height={20}
+                  onError={(e) => (e.currentTarget.style.display = "none")}
+                />
+                <span>{p.home_team}</span>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={S.pickTime}>{toUK(p.kickoff_utc, { withZone: true })}</div>
+                <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
+                  {prettyComp(p.comp || p.sport)}
                 </div>
               </div>
-            </Link>
-          ))
-        )}
-      </div>
+              <div style={{ ...S.pickTeam, justifyContent: "flex-end" }}>
+                <span>{p.away_team}</span>
+                <img
+                  src={logoUrl(p.away_team)}
+                  alt=""
+                  width={20}
+                  height={20}
+                  onError={(e) => (e.currentTarget.style.display = "none")}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1", ...S.pickSub }}>
+                {p.market ? `Market: ${p.market}` : null}
+                {p.price ? ` • Odds: ${Number(p.price).toFixed(2)}` : null}
+                {p.bookmaker ? ` • Book: ${p.bookmaker}` : null}
+                {p.edge != null ? ` • Edge: ${(Number(p.edge) * 100).toFixed(1)}%` : null}
+                {p.note ? ` • ${p.note}` : null}
+              </div>
+            </div>
+          </Link>
+        ))
+      )}
+    </div>
+
+    <AccaBlock day={day} />
 
       {/* Fixtures */}
       <div style={S.sectionTitle}>All Fixtures</div>
@@ -271,6 +297,50 @@ export default function PublicDashboard() {
       <div style={{ ...S.muted, fontSize: 12, marginTop: 10 }}>
         Data updated live from Logie’s DB • API: {API_BASE}
       </div>
+    </div>
+  );
+}
+
+function AccaBlock({ day }) {
+  const [accas, setAccas] = useState([]);
+  useEffect(() => {
+    api.get("/api/public/accas/daily", { params: { day } })
+      .then(({ data }) => setAccas(data.accas || []))
+      .catch(() => setAccas([]));
+  }, [day]);
+
+  if (!accas.length) return null;
+
+  return (
+    <div style={{ background: "#142a52", color: "#fff", borderRadius: 18, padding: 16, margin: "16px 0" }}>
+      <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Featured ACCAs</div>
+      {accas.map((t) => (
+        <div key={t.id} style={{ background: "rgba(255,255,255,.06)", borderRadius: 12, padding: 12, marginBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ fontWeight: 700 }}>
+              {t.title || "ACCA"} • {t.legs?.length || 0} legs
+            </div>
+            <div>
+              <b>Stake:</b> {t.stake_units}u • <b>Combined:</b> {t.combined_price?.toFixed(2)}
+            </div>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            {(t.legs || []).map((l, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{l.matchup}</div>
+                  <div style={{ fontSize: 12, opacity: 0.75 }}>
+                    {prettyComp(l.comp)} • {toUK(l.kickoff_utc, { withZone: true })}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>{l.market}</div>
+                <div style={{ textAlign: "right" }}>{l.price?.toFixed(2)} {l.bookmaker ? `(${l.bookmaker})` : ""}</div>
+              </div>
+            ))}
+          </div>
+          {t.note ? <div style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>• {t.note}</div> : null}
+        </div>
+      ))}
     </div>
   );
 }
