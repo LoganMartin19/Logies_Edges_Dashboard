@@ -1,8 +1,9 @@
 // src/pages/PublicDashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, API_BASE } from "../api"; // ← env-driven base
+import { api, API_BASE } from "../api";
 import FeaturedRecord from "../components/FeaturedRecord";
+
 // --- tiny utils -------------------------------------------------------------
 const todayISO = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
@@ -125,14 +126,21 @@ export default function PublicDashboard() {
         params: { day, sport },
       });
 
-      // picks (best-effort)
+      // FEATURED PICKS:
+      // 1) try new FeaturedPick snapshot route: /public/picks
+      // 2) fallback to legacy /api/public/picks/daily
       let pkJ = { picks: [] };
       try {
-        const { data } = await api.get("/api/public/picks/daily", {
-          params: { day, sport },
-        });
+        const { data } = await api.get("/public/picks", { params: { day } });
         pkJ = data;
-      } catch {}
+      } catch {
+        try {
+          const { data } = await api.get("/api/public/picks/daily", {
+            params: { day, sport },
+          });
+          pkJ = data;
+        } catch {}
+      }
 
       setFixtures(fxJ.fixtures || []);
       setPicks(pkJ.picks || []);
@@ -157,19 +165,22 @@ export default function PublicDashboard() {
 
   const picksClean = useMemo(
     () =>
-      (picks || []).map((p) => ({
-        id: p.fixture_id ?? p.id,
-        sport: p.sport || "football",
-        comp: p.comp || "",
-        home_team: p.home_team || p.home || "",
-        away_team: p.away_team || p.away || "",
-        kickoff_utc: p.kickoff_utc,
-        market: p.market || "",
-        price: p.price ?? p.odds ?? null,
-        bookmaker: p.bookmaker || p.book || "",
-        edge: p.edge ?? null,
-        note: p.note || p.ai_note || "",
-      })),
+      (picks || []).map((p) => {
+        const fx = p.fixture || {};
+        return {
+          id: p.fixture_id ?? p.id,
+          sport: p.sport || "football",
+          comp: p.comp || fx.comp || p.sport || "",
+          home_team: p.home_team || p.home || fx.home || fx.home_team || "",
+          away_team: p.away_team || p.away || fx.away || fx.away_team || "",
+          kickoff_utc: p.kickoff_utc || fx.ko || fx.kickoff_utc,
+          market: p.market || p.best_edge?.market || "",
+          price: p.price ?? p.odds ?? p.best_edge?.price ?? null,
+          bookmaker: p.bookmaker || p.book || p.best_edge?.bookmaker || "",
+          edge: p.edge ?? p.best_edge?.edge ?? null,
+          note: p.blurb || p.note || p.ai_note || "",
+        };
+      }),
     [picks]
   );
 
@@ -198,66 +209,67 @@ export default function PublicDashboard() {
       </div>
 
       {/* Featured Picks (big card) */}
-    <div style={S.picksWrap}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={S.picksTitle}>
-          Featured Picks {picksClean.length ? `(${picksClean.length})` : ""}
+      <div style={S.picksWrap}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={S.picksTitle}>
+            Featured Picks {picksClean.length ? `(${picksClean.length})` : ""}
+          </div>
+          <FeaturedRecord span="30d" />
         </div>
-        <FeaturedRecord span="30d" />
-      </div>
 
-      {picksClean.length === 0 ? (
-        <div style={{ background: "rgba(255,255,255,.08)", borderRadius: 12, padding: 12, color: "#d7e6db" }}>
-          No featured picks yet.
-        </div>
-      ) : (
-        picksClean.map((p, i) => (
-          <Link
-            key={`${p.id}-${i}`}
-            to={routeFor({ id: p.id, sport: p.sport })}
-            style={{ textDecoration: "none", color: "inherit" }}
-          >
-            <div style={S.pickRow}>
-              <div style={S.pickTeam}>
-                <img
-                  src={logoUrl(p.home_team)}
-                  alt=""
-                  width={20}
-                  height={20}
-                  onError={(e) => (e.currentTarget.style.display = "none")}
-                />
-                <span>{p.home_team}</span>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={S.pickTime}>{toUK(p.kickoff_utc, { withZone: true })}</div>
-                <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
-                  {prettyComp(p.comp || p.sport)}
+        {picksClean.length === 0 ? (
+          <div style={{ background: "rgba(255,255,255,.08)", borderRadius: 12, padding: 12, color: "#d7e6db" }}>
+            No featured picks yet.
+          </div>
+        ) : (
+          picksClean.map((p, i) => (
+            <Link
+              key={`${p.id}-${i}`}
+              to={routeFor({ id: p.id, sport: p.sport })}
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
+              <div style={S.pickRow}>
+                <div style={S.pickTeam}>
+                  <img
+                    src={logoUrl(p.home_team)}
+                    alt=""
+                    width={20}
+                    height={20}
+                    onError={(e) => (e.currentTarget.style.display = "none")}
+                  />
+                  <span>{p.home_team}</span>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={S.pickTime}>{toUK(p.kickoff_utc, { withZone: true })}</div>
+                  <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
+                    {prettyComp(p.comp || p.sport)}
+                  </div>
+                </div>
+                <div style={{ ...S.pickTeam, justifyContent: "flex-end" }}>
+                  <span>{p.away_team}</span>
+                  <img
+                    src={logoUrl(p.away_team)}
+                    alt=""
+                    width={20}
+                    height={20}
+                    onError={(e) => (e.currentTarget.style.display = "none")}
+                  />
+                </div>
+                <div style={{ gridColumn: "1 / -1", ...S.pickSub }}>
+                  {p.market ? `Market: ${p.market}` : null}
+                  {p.price ? ` • Odds: ${Number(p.price).toFixed(2)}` : null}
+                  {p.bookmaker ? ` • Book: ${p.bookmaker}` : null}
+                  {p.edge != null ? ` • Edge: ${(Number(p.edge) * 100).toFixed(1)}%` : null}
+                  {p.note ? ` • ${p.note}` : null}
                 </div>
               </div>
-              <div style={{ ...S.pickTeam, justifyContent: "flex-end" }}>
-                <span>{p.away_team}</span>
-                <img
-                  src={logoUrl(p.away_team)}
-                  alt=""
-                  width={20}
-                  height={20}
-                  onError={(e) => (e.currentTarget.style.display = "none")}
-                />
-              </div>
-              <div style={{ gridColumn: "1 / -1", ...S.pickSub }}>
-                {p.market ? `Market: ${p.market}` : null}
-                {p.price ? ` • Odds: ${Number(p.price).toFixed(2)}` : null}
-                {p.bookmaker ? ` • Book: ${p.bookmaker}` : null}
-                {p.edge != null ? ` • Edge: ${(Number(p.edge) * 100).toFixed(1)}%` : null}
-                {p.note ? ` • ${p.note}` : null}
-              </div>
-            </div>
-          </Link>
-        ))
-      )}
-    </div>
+            </Link>
+          ))
+        )}
+      </div>
 
-    <AccaBlock day={day} />
+      {/* ACCAs */}
+      <AccaBlock day={day} />
 
       {/* Fixtures */}
       <div style={S.sectionTitle}>All Fixtures</div>
@@ -301,10 +313,12 @@ export default function PublicDashboard() {
   );
 }
 
+// --- ACCA block (public) ----------------------------------------------------
 function AccaBlock({ day }) {
   const [accas, setAccas] = useState([]);
   useEffect(() => {
-    api.get("/api/public/accas/daily", { params: { day } })
+    api
+      .get("/api/public/accas/daily", { params: { day } })
       .then(({ data }) => setAccas(data.accas || []))
       .catch(() => setAccas([]));
   }, [day]);
@@ -326,7 +340,16 @@ function AccaBlock({ day }) {
           </div>
           <div style={{ marginTop: 8 }}>
             {(t.legs || []).map((l, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
+              <div
+                key={i}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto auto",
+                  gap: 8,
+                  padding: "6px 0",
+                  borderBottom: "1px solid rgba(255,255,255,.08)",
+                }}
+              >
                 <div>
                   <div style={{ fontWeight: 600 }}>{l.matchup}</div>
                   <div style={{ fontSize: 12, opacity: 0.75 }}>
@@ -334,7 +357,9 @@ function AccaBlock({ day }) {
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>{l.market}</div>
-                <div style={{ textAlign: "right" }}>{l.price?.toFixed(2)} {l.bookmaker ? `(${l.bookmaker})` : ""}</div>
+                <div style={{ textAlign: "right" }}>
+                  {l.price?.toFixed(2)} {l.bookmaker ? `(${l.bookmaker})` : ""}
+                </div>
               </div>
             ))}
           </div>
