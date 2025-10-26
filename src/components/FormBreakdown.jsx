@@ -8,38 +8,40 @@ const FormBreakdown = ({ home, away, homeName = "Home", awayName = "Away", n }) 
   const safeNum = (v, d = 0) => (typeof v === "number" && !Number.isNaN(v) ? v : d);
   const formatAvg = (v) => safeNum(v).toFixed(1);
 
-  // ---- helpers to parse goals from a row ----
   const num = (v) => {
     if (v == null) return null;
-    if (typeof v === "number") return v;
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
     const m = String(v).match(/-?\d+/);
     return m ? Number(m[0]) : null;
   };
 
+  // ✅ Correct: favor team-perspective fields; only flip if we must.
   const extractTeamPerspectiveGoals = (m) => {
-    // Prefer explicit home/away goal fields
+    // 1) Best: explicit team-perspective fields from the API/back-end
+    if (m && typeof m.goals_for !== "undefined" && typeof m.goals_against !== "undefined") {
+      const gf = num(m.goals_for);
+      const ga = num(m.goals_against);
+      if (gf != null && ga != null) return { gf, ga };
+    }
+
+    // 2) Next: raw home/away goals; flip using is_home when present
     let HG = num(m?.home_goals);
     let AG = num(m?.away_goals);
+    if (HG != null && AG != null) {
+      if (m?.is_home === true) return { gf: HG, ga: AG };
+      if (m?.is_home === false) return { gf: AG, ga: HG };
+      return { gf: HG, ga: AG }; // unknown → best effort
+    }
 
-    // Fallback to "2-1" or "2:1" score strings
-    if ((HG == null || AG == null) && m?.score) {
+    // 3) Fallback: parse score string.
+    // Our backend already formats score from the team’s perspective,
+    // so DO NOT flip here.
+    if (m?.score) {
       const mm = String(m.score).match(/(-?\d+)\s*[-:x]\s*(-?\d+)/i);
-      if (mm) {
-        HG = Number(mm[1]);
-        AG = Number(mm[2]);
-      }
+      if (mm) return { gf: Number(mm[1]), ga: Number(mm[2]) };
     }
 
-    if (HG == null || AG == null) return { gf: null, ga: null }; // cannot use row
-
-    // Orient to team perspective using is_home
-    if (m?.is_home === true) {
-      return { gf: HG, ga: AG };
-    } else if (m?.is_home === false) {
-      return { gf: AG, ga: HG };
-    }
-    // Unknown home/away → best effort (don’t flip)
-    return { gf: HG, ga: AG };
+    return { gf: null, ga: null };
   };
 
   const outcomeClass = (gf, ga) => {
@@ -49,7 +51,6 @@ const FormBreakdown = ({ home, away, homeName = "Home", awayName = "Away", n }) 
     return "draw";
   };
 
-  // --- NEW: recompute summary from recent, fall back to provided summary
   const computeSummary = (recent = [], fallbackSummary = {}) => {
     let w = 0, d = 0, l = 0, gfSum = 0, gaSum = 0, used = 0;
 
@@ -77,7 +78,6 @@ const FormBreakdown = ({ home, away, homeName = "Home", awayName = "Away", n }) 
       };
     }
 
-    // Fallback to whatever the API/UI gave us originally
     return {
       played: safeNum(fallbackSummary?.played),
       wins: safeNum(fallbackSummary?.wins),
@@ -122,7 +122,6 @@ const FormBreakdown = ({ home, away, homeName = "Home", awayName = "Away", n }) 
         const opponentDisplay = m?.opponent ? `${m?.is_home ? "vs" : "@"} ${m.opponent}` : "";
         const dateShort = m?.date ? m.date.slice(5, 10) : "";
         const comp = m?.comp || m?.league || m?.league_name || "";
-
         const shownScore = gf != null && ga != null ? `${gf}-${ga}` : (m?.score ?? "-");
         const scoreTitle =
           m?.score && (m?.home_goals == null || m?.away_goals == null)
@@ -148,7 +147,6 @@ const FormBreakdown = ({ home, away, homeName = "Home", awayName = "Away", n }) 
     </div>
   );
 
-  // Use recomputed summaries so W-D-L / GF-GA match the perspective-flipped rows
   const homeRecent = home.recent || [];
   const awayRecent = away.recent || [];
   const homeSummary = computeSummary(homeRecent, home.summary || home);
