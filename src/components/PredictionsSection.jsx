@@ -2,8 +2,15 @@
 import React, { useEffect, useState } from "react";
 import styles from "../styles/FixturePage.module.css";
 
-const pct = (v) =>
-  v == null || Number.isNaN(+v) ? "—" : `${Number(v).toFixed(1)}%`;
+const toPct = (v) => {
+  if (v == null) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  // Accept either 0..1 or 0..100
+  return n <= 1 ? n * 100 : n;
+};
+
+const fmtPct = (v) => (v == null ? "—" : `${Number(v).toFixed(1)}%`);
 
 export default function PredictionsSection({ fixtureId }) {
   const [data, setData] = useState(null);
@@ -15,18 +22,41 @@ export default function PredictionsSection({ fixtureId }) {
     setLoading(true);
     setErr("");
 
-    fetch(`https://logies-edges-api.onrender.com/api/ai/preview/expert?fixture_id=${fixtureId}`)
+    fetch(
+      `https://logies-edges-api.onrender.com/api/ai/preview/expert?fixture_id=${fixtureId}`
+    )
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
       .then((j) => {
-        if (alive) setData(j?.analysis || null);
+        if (!alive) return;
+        // API shape: { fixture_id, home, away, analysis: {...} }
+        const a = j?.analysis || null;
+
+        // Normalize probabilities in case backend returns 0..1
+        const p = a?.probabilities || {};
+        const probsNormalized = {
+          home: toPct(p.home),
+          draw: toPct(p.draw),
+          away: toPct(p.away),
+        };
+
+        setData({
+          ...a,
+          probabilities: probsNormalized,
+          best_bets: Array.isArray(a?.best_bets) ? a.best_bets : [],
+          confidence: a?.confidence || "Low",
+          disclaimer: a?.disclaimer || "Bet responsibly.",
+          paragraphs: Array.isArray(a?.paragraphs) ? a.paragraphs : [],
+        });
       })
       .catch((e) => alive && setErr(e.message))
       .finally(() => alive && setLoading(false));
 
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [fixtureId]);
 
   if (loading) return <p className={styles.loading}>Loading predictions…</p>;
@@ -44,9 +74,15 @@ export default function PredictionsSection({ fixtureId }) {
       <div className={styles.card}>
         <div className={styles.cardHeader}>Win Probabilities (model)</div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <div><b>Home:</b> {pct(probs.home)}</div>
-          <div><b>Draw:</b> {pct(probs.draw)}</div>
-          <div><b>Away:</b> {pct(probs.away)}</div>
+          <div>
+            <b>Home:</b> {fmtPct(probs.home)}
+          </div>
+          <div>
+            <b>Draw:</b> {fmtPct(probs.draw)}
+          </div>
+          <div>
+            <b>Away:</b> {fmtPct(probs.away)}
+          </div>
           <div style={{ marginLeft: "auto" }}>
             <b>Confidence:</b> {data.confidence || "—"}
           </div>
@@ -56,11 +92,11 @@ export default function PredictionsSection({ fixtureId }) {
       {/* Analyst paragraphs */}
       <div className={styles.card}>
         {(data.paragraphs || []).map((p, i) => (
-          <p key={i} style={{ marginTop: i ? 6 : 0 }}>{p}</p>
+          <p key={i} style={{ marginTop: i ? 6 : 0 }}>
+            {p}
+          </p>
         ))}
-        <small className={styles.disclaimer}>
-          {data.disclaimer || "Bet responsibly."}
-        </small>
+        <small className={styles.disclaimer}>{data.disclaimer}</small>
       </div>
 
       {/* Best Bets */}
@@ -83,12 +119,16 @@ export default function PredictionsSection({ fixtureId }) {
               {bets.map((b, i) => (
                 <tr key={i}>
                   <td>{b.market}</td>
-                  <td className={styles.num}>{b.price != null ? Number(b.price).toFixed(2) : "—"}</td>
+                  <td className={styles.num}>
+                    {b.price != null ? Number(b.price).toFixed(2) : "—"}
+                  </td>
                   <td>{b.bookmaker || "—"}</td>
                   <td className={styles.num}>
-                    {b.edge_pct != null ? `${Number(b.edge_pct).toFixed(1)}%` : "—"}
+                    {b.edge_pct != null
+                      ? `${Number(b.edge_pct).toFixed(1)}%`
+                      : "—"}
                   </td>
-                  <td>{b.why}</td>
+                  <td>{b.why || "—"}</td>
                 </tr>
               ))}
             </tbody>

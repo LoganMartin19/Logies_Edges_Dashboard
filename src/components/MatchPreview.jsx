@@ -1,16 +1,16 @@
 // src/components/MatchPreview.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { api } from "../api"; // ← env-based axios client
+import { api } from "../api"; // env-based axios client
 
 export default function MatchPreview({ fixtureId, isAdmin = false }) {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [meta, setMeta] = useState({ day: null, model: null, updated_at: null });
   const [error, setError] = useState("");
   const [thinking, setThinking] = useState(false);
   const abortRef = useRef(null);
 
   const fetchPreview = async () => {
-    // cancel any in-flight request
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -18,15 +18,23 @@ export default function MatchPreview({ fixtureId, isAdmin = false }) {
     setLoading(true);
     setError("");
     try {
+      // Public reader: returns { fixture_id, day, preview, model, updated_at }
       const r = await api.get("/api/public/ai/preview/by-fixture", {
         params: { fixture_id: fixtureId },
         signal: controller.signal,
       });
-      setPreview(r.data?.preview || null);
-      if (!r.data?.preview) setError("No preview yet — generate one!");
+      const j = r.data || {};
+      setPreview(j.preview || null);
+      setMeta({
+        day: j.day || null,
+        model: j.model || null,
+        updated_at: j.updated_at || null,
+      });
+      if (!j.preview) setError("No preview yet — generate one!");
     } catch (e) {
       if (e.name !== "CanceledError" && e.name !== "AbortError") {
         setPreview(null);
+        setMeta({ day: null, model: null, updated_at: null });
         setError(isAdmin ? "Failed to load preview." : "");
       }
     } finally {
@@ -39,13 +47,17 @@ export default function MatchPreview({ fixtureId, isAdmin = false }) {
     setThinking(true);
     setError("");
     try {
+      // Writer: returns { ok, fixture_id, preview, tokens }
       const r = await api.post("/api/ai/preview/generate", null, {
         params: { fixture_id: fixtureId, overwrite: 1, n: 5 },
       });
       const j = r.data || {};
-      setPreview(j.preview || null);
-      if (!j.preview) {
-        // fallback fetch in case writer saved but empty text
+      // Prefer what the writer returned; if empty, pull from reader for consistency
+      if (j.preview) {
+        setPreview(j.preview);
+        // refresh meta from the reader (day/model/updated_at)
+        await fetchPreview();
+      } else {
         await fetchPreview();
       }
     } catch (e) {
@@ -63,9 +75,27 @@ export default function MatchPreview({ fixtureId, isAdmin = false }) {
 
   const emptyPublicNote = !isAdmin && !preview && !loading && !error;
 
+  // small meta line formatter
+  const Meta = () => {
+    if (!meta.day && !meta.model && !meta.updated_at) return null;
+    const last = meta.updated_at
+      ? new Date(meta.updated_at).toLocaleString()
+      : null;
+    return (
+      <div style={{ fontSize: 12, color: "#666", margin: "4px 0 8px" }}>
+        {meta.day ? `Day: ${meta.day}` : null}
+        {meta.day && (meta.model || last) ? " • " : ""}
+        {meta.model ? `Model: ${meta.model}` : null}
+        {meta.model && last ? " • " : ""}
+        {last ? `Updated: ${last}` : ""}
+      </div>
+    );
+  };
+
   return (
     <div style={{ marginTop: 20, background: "#f9faf9", borderRadius: 12, padding: 16 }}>
-      <h3 style={{ marginBottom: 8 }}>Match Preview</h3>
+      <h3 style={{ marginBottom: 4 }}>Match Preview</h3>
+      <Meta />
 
       {loading && <p>Loading…</p>}
 
