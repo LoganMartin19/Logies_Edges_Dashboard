@@ -1,5 +1,5 @@
 // src/pages/PlayerPage.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import styles from "../styles/PlayerPage.module.css";
 import { api } from "../api"; // ✅ env-based axios client
@@ -7,6 +7,26 @@ import { api } from "../api"; // ✅ env-based axios client
 const safe = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
 const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "2-digit" }) : "—";
+
+// --- tiny responsive helper (no CSS change needed) -------------------------
+const useIsMobile = (bp = 780) => {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(`(max-width:${bp}px)`).matches : false
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia(`(max-width:${bp}px)`);
+    const fn = (e) => setIsMobile(e.matches);
+    mq.addEventListener?.("change", fn);
+    mq.removeEventListener && (() => mq.removeEventListener("change", fn));
+    mq.onchange = fn; // fallback for older Safari
+    return () => {
+      mq.removeEventListener?.("change", fn);
+      mq.onchange = null;
+    };
+  }, [bp]);
+  return isMobile;
+};
 
 /* ------------------------------ Small bits ------------------------------ */
 
@@ -184,27 +204,29 @@ function SupportingStats({ games }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardHeader}>Supporting Stats</div>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Stat</th>
-            <th className={styles.num}>Avg (last N)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {cols.map((c) => {
-            const values = (games || []).map((g) => +g[c.key] || 0);
-            const avg =
-              values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : "-";
-            return (
-              <tr key={c.key}>
-                <td>{c.label}</td>
-                <td className={styles.num}>{avg}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div style={{ overflowX: "auto" }}>
+        <table className={styles.table} style={{ minWidth: 420 }}>
+          <thead>
+            <tr>
+              <th>Stat</th>
+              <th className={styles.num}>Avg (last N)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cols.map((c) => {
+              const values = (games || []).map((g) => +g[c.key] || 0);
+              const avg =
+                values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : "-";
+              return (
+                <tr key={c.key}>
+                  <td>{c.label}</td>
+                  <td className={styles.num}>{avg}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -214,9 +236,9 @@ function SupportingStats({ games }) {
 function RecentMatches({ games, lastN, setLastN, comps, compFilter, setCompFilter }) {
   return (
     <div className={styles.card}>
-      <div className={styles.cardHeader} style={{ display: "flex", justifyContent: "space-between" }}>
+      <div className={styles.cardHeader} style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
         <span>Recent Matches</span>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <select
             value={compFilter}
             onChange={(e) => setCompFilter(e.target.value)}
@@ -242,44 +264,46 @@ function RecentMatches({ games, lastN, setLastN, comps, compFilter, setCompFilte
           </select>
         </div>
       </div>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Opponent</th>
-            <th>Comp</th>
-            <th>H/A</th>
-            <th className={styles.num}>Score</th>
-            <th className={styles.num}>Min</th>
-            <th className={styles.num}>G</th>
-            <th className={styles.num}>A</th>
-            <th className={styles.num}>Sh</th>
-            <th className={styles.num}>SoT</th>
-            <th className={styles.num}>YC</th>
-            <th className={styles.num}>RC</th>
-            <th className={styles.num}>Rating</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(games || []).map((g, i) => (
-            <tr key={i}>
-              <td>{fmtDate(g.date)}</td>
-              <td>{g.is_home ? `vs ${g.opponent}` : `@ ${g.opponent}`}</td>
-              <td>{g.competition || "—"}</td>
-              <td>{g.is_home ? "H" : "A"}</td>
-              <td className={styles.num}>{g.score || "—"}</td>
-              <td className={styles.num}>{g.minutes}</td>
-              <td className={styles.num}>{g.goals}</td>
-              <td className={styles.num}>{g.assists}</td>
-              <td className={styles.num}>{g.shots}</td>
-              <td className={styles.num}>{g.sot}</td>
-              <td className={styles.num}>{g.yellow}</td>
-              <td className={styles.num}>{g.red}</td>
-              <td className={styles.num}>{g.rating ?? "—"}</td>
+      <div style={{ overflowX: "auto" }}>
+        <table className={styles.table} style={{ minWidth: 780 }}>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Opponent</th>
+              <th>Comp</th>
+              <th>H/A</th>
+              <th className={styles.num}>Score</th>
+              <th className={styles.num}>Min</th>
+              <th className={styles.num}>G</th>
+              <th className={styles.num}>A</th>
+              <th className={styles.num}>Sh</th>
+              <th className={styles.num}>SoT</th>
+              <th className={styles.num}>YC</th>
+              <th className={styles.num}>RC</th>
+              <th className={styles.num}>Rating</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {(games || []).map((g, i) => (
+              <tr key={i}>
+                <td>{fmtDate(g.date)}</td>
+                <td>{g.is_home ? `vs ${g.opponent}` : `@ ${g.opponent}`}</td>
+                <td>{g.competition || "—"}</td>
+                <td>{g.is_home ? "H" : "A"}</td>
+                <td className={styles.num}>{g.score || "—"}</td>
+                <td className={styles.num}>{g.minutes}</td>
+                <td className={styles.num}>{g.goals}</td>
+                <td className={styles.num}>{g.assists}</td>
+                <td className={styles.num}>{g.shots}</td>
+                <td className={styles.num}>{g.sot}</td>
+                <td className={styles.num}>{g.yellow}</td>
+                <td className={styles.num}>{g.red}</td>
+                <td className={styles.num}>{g.rating ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -296,30 +320,32 @@ function FairPropsCard({ items }) {
     <div className={styles.card}>
       <div className={styles.cardHeader}>Fair Props (this fixture)</div>
       {hasRows ? (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Market</th>
-              <th className={styles.num}>Prob</th>
-              <th className={styles.num}>Fair</th>
-              <th className={styles.num}>Best</th>
-              <th className={styles.num}>Edge</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((r, i) => (
-              <tr key={i}>
-                <td>{r.market}</td>
-                <td className={styles.num}>{pct(r.prob)}</td>
-                <td className={styles.num}>{r.fair_odds?.toFixed(2) || "—"}</td>
-                <td className={styles.num}>
-                  {r.best_price ? `${r.bookmaker} ${price(r.best_price)}` : "—"}
-                </td>
-                <td className={styles.num}>{edge(r.edge)}</td>
+        <div style={{ overflowX: "auto" }}>
+          <table className={styles.table} style={{ minWidth: 520 }}>
+            <thead>
+              <tr>
+                <th>Market</th>
+                <th className={styles.num}>Prob</th>
+                <th className={styles.num}>Fair</th>
+                <th className={styles.num}>Best</th>
+                <th className={styles.num}>Edge</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.market}</td>
+                  <td className={styles.num}>{pct(r.prob)}</td>
+                  <td className={styles.num}>{r.fair_odds?.toFixed(2) || "—"}</td>
+                  <td className={styles.num}>
+                    {r.best_price ? `${r.bookmaker} ${price(r.best_price)}` : "—"}
+                  </td>
+                  <td className={styles.num}>{edge(r.edge)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className={styles.empty}>No priced props found for this player.</div>
       )}
@@ -339,12 +365,13 @@ function TabGroup({ gameLog }) {
 
   return (
     <div className={styles.tabsWrap}>
-      <div className={styles.tabs}>
+      <div className={styles.tabs} style={{ gap: 8, flexWrap: "wrap" }}>
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`${styles.tabBtn} ${tab === t.key ? styles.tabActive : ""}`}
+            style={{ padding: "8px 12px" }}
           >
             {t.label}
           </button>
@@ -360,6 +387,7 @@ function TabGroup({ gameLog }) {
 /* ------------------------------ Main Page ------------------------------- */
 
 export default function PlayerPage() {
+  const isMobile = useIsMobile();
   const { id } = useParams();
   const [sp] = useSearchParams();
   const fixtureId = sp.get("fixture_id");
@@ -440,7 +468,7 @@ export default function PlayerPage() {
   const teamName = sBlock?.team?.name || summary?.team?.name || "—";
 
   // filter fair props for this player (id, then name fallback)
-  const fairProps = (() => {
+  const fairProps = useMemo(() => {
     const pid = String(id);
     const pname = (pmeta?.name || "").toLowerCase().trim();
     if (!propsRaw?.length) return [];
@@ -449,7 +477,7 @@ export default function PlayerPage() {
       mine = propsRaw.filter((p) => (p.player || "").toLowerCase().trim() === pname);
     }
     return mine;
-  })();
+  }, [propsRaw, id, pmeta?.name]);
 
   // header quick stats (from match stats if present)
   const goals = sBlock?.goals || {};
@@ -470,13 +498,15 @@ export default function PlayerPage() {
   const filteredGames =
     compFilter === "__all__"
       ? gameLog
-      : (gameLog || []).filter((g) => (g.competition || "Unknown") === (compFilter === "__unknown__" ? "Unknown" : compFilter));
+      : (gameLog || []).filter(
+          (g) => (g.competition || "Unknown") === (compFilter === "__unknown__" ? "Unknown" : compFilter)
+        );
 
   return (
     <div className={styles.page}>
       {/* HERO */}
-      <div className={styles.hero}>
-        <div className={styles.heroLeft}>
+      <div className={styles.hero} style={{ gap: 12 }}>
+        <div className={styles.heroLeft} style={{ gap: 12 }}>
           {pmeta.photo ? (
             <img
               src={pmeta.photo}
@@ -486,65 +516,80 @@ export default function PlayerPage() {
             />
           ) : null}
           <div>
-            <div className={styles.nameRow}>
-              <h1 className={styles.name}>{pmeta.name || "—"}</h1>
+            <div className={styles.nameRow} style={{ flexWrap: "wrap", rowGap: 6 }}>
+              <h1 className={styles.name} style={{ marginRight: 8 }}>{pmeta.name || "—"}</h1>
               <span className={styles.club}>• {teamName}</span>
             </div>
-            <div className={styles.tags}>
+            <div className={styles.tags} style={{ flexWrap: "wrap", gap: 8 }}>
               <MiniKeyVal k="Pos" v={pmeta.position || "—"} />
               <MiniKeyVal k="Fixture" v={<Link to={`/fixture/${fixtureId}`}>Back</Link>} />
             </div>
           </div>
         </div>
 
-        <div className={styles.heroBadges}>
+        <div
+          className={styles.heroBadges}
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            justifyContent: isMobile ? "flex-start" : "flex-end",
+          }}
+        >
           <StatBadge title="This match" value={matchGoals} sub={matchSot} />
           <StatBadge title="Cards" value={matchCards} />
           <StatBadge
             title="Season"
             value={seasonLine}
-            sub={
-              seasonTotals ? `${safe(seasonTotals.apps)} apps / ${safe(seasonTotals.minutes)} min` : "—"
-            }
+            sub={seasonTotals ? `${safe(seasonTotals.apps)} apps / ${safe(seasonTotals.minutes)} min` : "—"}
           />
         </div>
       </div>
 
       {/* BODY GRID */}
-      <div className={styles.grid}>
+      <div
+        className={styles.grid}
+        style={
+          isMobile
+            ? { display: "block" } // collapse to single column on mobile
+            : undefined
+        }
+      >
         {/* LEFT: Competition + Season Totals + Fair Props */}
-        <div className={styles.leftCol}>
+        <div className={styles.leftCol} style={isMobile ? { width: "100%" } : undefined}>
           {/* Competition Breakdown */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>Competition Breakdown</div>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Competition</th>
-                  <th className={styles.num}>Apps</th>
-                  <th className={styles.num}>Minutes</th>
-                  <th className={styles.num}>Goals</th>
-                  <th className={styles.num}>Assists</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(competitions || []).map((c, i) => (
-                  <tr key={i}>
-                    <td>{c?.league || "—"}</td>
-                    <td className={styles.num}>{safe(c?.games?.appearences)}</td>
-                    <td className={styles.num}>{safe(c?.games?.minutes)}</td>
-                    <td className={styles.num}>{safe(c?.goals?.total)}</td>
-                    <td className={styles.num}>{safe(c?.assists)}</td>
+            <div style={{ overflowX: "auto" }}>
+              <table className={styles.table} style={{ minWidth: 520 }}>
+                <thead>
+                  <tr>
+                    <th>Competition</th>
+                    <th className={styles.num}>Apps</th>
+                    <th className={styles.num}>Minutes</th>
+                    <th className={styles.num}>Goals</th>
+                    <th className={styles.num}>Assists</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(competitions || []).map((c, i) => (
+                    <tr key={i}>
+                      <td>{c?.league || "—"}</td>
+                      <td className={styles.num}>{safe(c?.games?.appearences)}</td>
+                      <td className={styles.num}>{safe(c?.games?.minutes)}</td>
+                      <td className={styles.num}>{safe(c?.goals?.total)}</td>
+                      <td className={styles.num}>{safe(c?.assists)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Season Totals */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>Season Totals</div>
-            <div className={styles.infoGrid}>
+            <div className={styles.infoGrid} style={{ rowGap: 6 }}>
               <InfoRow label="Appearances" value={safe(seasonTotals?.apps)} />
               <InfoRow label="Minutes" value={safe(seasonTotals?.minutes)} />
               <InfoRow label="Goals" value={safe(seasonTotals?.goals)} />
@@ -565,7 +610,7 @@ export default function PlayerPage() {
         </div>
 
         {/* RIGHT: Tabs + Charts + Recent Matches */}
-        <div className={styles.rightCol}>
+        <div className={styles.rightCol} style={isMobile ? { width: "100%" } : undefined}>
           {(gameLog || []).length ? (
             <>
               <TabGroup gameLog={filteredGames} />
