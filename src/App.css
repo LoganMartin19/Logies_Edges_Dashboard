@@ -42,11 +42,33 @@
   text-align: left;
 }
 
-html, body, #root {
-  min-height: 100%;
-  background: #131a13;  /* match PlayerPage --bg to avoid white gutters */
+/* On small devices, use full width */
+@media (max-width: 900px) {
+  .container {
+    max-width: 100%;
+    padding: 8px;
+  }
 }
 
+/* ---------- Global reset & safe areas ---------- */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: #131a13; /* match PlayerPage theme */
+  overflow-x: hidden;  /* prevent horizontal scrolling */
+}
+
+/* Respect iPhone notch safe areas */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ---------- Grids ---------- */
 .grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -95,7 +117,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* ---------- Sticky subnav ---------- */
 .stickySubnav {
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top);
   z-index: 10;
   background: #fff;
   padding: 8px 0;
@@ -107,17 +129,34 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  table-layout: auto;
+  word-break: break-word;
 }
 .table th, .table td {
   padding: 8px 10px;
   border-bottom: 1px solid rgba(0,0,0,0.08);
   text-align: left;
+  white-space: nowrap;
 }
 @media (max-width: 520px) {
   .table th, .table td {
     padding: 6px 4px;
     font-size: 13px;
+    white-space: normal;
   }
+}
+
+/* ---------- Scroll wrappers ---------- */
+.scrollX {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.scrollX > table {
+  min-width: 560px;
+}
+.scrollX > svg {
+  min-width: 560px;
+  display: block;
 }
 
 /* ---------- Skeleton loaders ---------- */
@@ -140,31 +179,14 @@ a:hover {
   text-decoration: underline;
 }
 
-/* --- Mobile-safe globals --- */
-html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; }
-body { overflow-x: hidden; background: #f9f9fb; }
-
-/* Respect iPhone notch safe areas */
-body {
-  padding-top: env(safe-area-inset-top);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+/* ---------- Media elements ---------- */
+img, svg, canvas, video {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
-/* Media that might overflow */
-img, svg, canvas, video { max-width: 100%; height: auto; display: block; }
-
-/* Any wide content (tables, odds lists, charts) should live in this wrapper */
-.scrollX { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.scrollX > table { min-width: 560px; }           /* tables won’t crush; will scroll on phone */
-.scrollX > svg { min-width: 560px; display:block; }
-
-/* Optional: keep long words/markets from pushing width */
-.table { table-layout: auto; word-break: break-word; }
-.table th, .table td { white-space: nowrap; }
-@media (max-width: 520px) {
-  .table th, .table td { white-space: normal; }
+/* ---------- Keep top nav below notch ---------- */
+.topNav, .stickySubnav {
+  top: env(safe-area-inset-top);
 }
-
-/* If you have a sticky top nav, keep it below the notch */
-.topNav, .stickySubnav { top: env(safe-area-inset-top); }
