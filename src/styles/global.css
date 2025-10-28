@@ -54,3 +54,30 @@
   a:hover {
     text-decoration: underline;
   }
+
+  /* --- mobile overflow hardening --- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body, #root {
+  max-width: 100%;
+  width: 100%;
+  overflow-x: hidden;          /* kill page-level sideways scroll */
+}
+
+img, svg, canvas, iframe, video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.scrollX {
+  width: 100%;
+  overflow-x: auto;            /* scroll inside the block, not the page */
+  -webkit-overflow-scrolling: touch;
+}
+
+.nowrap {
+  white-space: nowrap;         /* for tiny chips/labels */
+}

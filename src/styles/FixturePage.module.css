@@ -431,3 +431,22 @@
   display: flex;
   flex-direction: column;
 }
+
+/* prevent header/body from creating overflow */
+.page { overflow-x: hidden; }
+
+/* tabs can wrap on small screens */
+.tabs { flex-wrap: wrap; row-gap: 6px; }
+
+/* mobile: single column, no fixed widths leaking */
+@media (max-width: 900px) {
+  .body { display: block; }          /* if it's grid/flex, stack */
+  .main, .side { width: 100%; }
+  .headerInner { max-width: 100%; overflow: hidden; }
+}
+
+/* any big tables should not expand page width */
+.oddsTable, .table {
+  width: 100%;
+  max-width: 100%;
+}
