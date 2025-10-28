@@ -1,5 +1,5 @@
 // File: FixturePage.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import LeagueFixtures from "../components/LeagueFixtures";
 import Poll from "../components/Poll";
@@ -14,28 +14,13 @@ import OddsTable from "../components/OddsTable";
 import MatchPreview from "../components/MatchPreview";
 import styles from "../styles/FixturePage.module.css";
 import { slugifyTeamName } from "../utils/slugify";
-import { api } from "../api"; // env-based axios client
-
-// --- tiny responsive helper (no CSS changes required) -----------------------
-const useIsMobile = (bp = 780) => {
-  const [m, setM] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth < bp : false
-  );
-  useEffect(() => {
-    const onR = () => setM(window.innerWidth < bp);
-    window.addEventListener("resize", onR);
-    return () => window.removeEventListener("resize", onR);
-  }, [bp]);
-  return m;
-};
+import { api } from "../api"; // ← env-based axios client
 
 const FixturePage = () => {
   const { id } = useParams();
   const fixtureIdNum = Number(id);
   const isAdminView =
     typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
-
-  const isMobile = useIsMobile();
 
   const [data, setData] = useState(null);
   const [leagueFixtures, setLeagueFixtures] = useState([]);
@@ -49,7 +34,7 @@ const FixturePage = () => {
   const [edges, setEdges] = useState([]);
   const [explanations, setExplanations] = useState({});
   const [expandedWhy, setExpandedWhy] = useState(null);
-  const [teamStats, setTeamStats] = useState(null); // kept (future use)
+  const [teamStats, setTeamStats] = useState(null);
 
   const formatKickoff = (utcString) => {
     if (!utcString) return "";
@@ -112,7 +97,7 @@ const FixturePage = () => {
   useEffect(() => {
     const fetchFixture = async () => {
       try {
-        const { data: fixtureJson } = await api.get(`/api/fixtures/id/${id}/json`);
+        const { data: fixtureJson } = await api.get(`/api/fixtures/id/${id}/json`, { params: {} });
         setData(fixtureJson);
 
         const { data: roundData } = await api.get(`/api/fixtures/round`, {
@@ -120,7 +105,6 @@ const FixturePage = () => {
         });
         setLeagueFixtures(roundData);
 
-        // new form endpoint (your hybrid supports both shapes)
         const { data: fj } = await api.get(`/form/form/fixture`, {
           params: { fixture_id: id, n: formN, all_comps: formScopeAll },
         });
@@ -209,23 +193,21 @@ const FixturePage = () => {
     return () => controller.abort();
   };
 
-  // ------- guards -------
+  // ------- Render guards (after all hooks) -------
   if (!data) return <p className={styles.loading}>Loading...</p>;
   if (!data.fixture) return <p className={styles.error}>Fixture not found.</p>;
 
   const fixture = data.fixture;
   const odds = data.odds ?? [];
 
-  const grouped = useMemo(
-    () =>
-      Array.isArray(odds)
-        ? odds.reduce((acc, o) => {
-            (acc[o.market] ||= []).push(o);
-            return acc;
-          }, {})
-        : {},
-    [odds]
-  );
+  // Non-hook computations (avoid useMemo to satisfy linter)
+  const grouped =
+    Array.isArray(odds)
+      ? odds.reduce((acc, o) => {
+          (acc[o.market] ||= []).push(o);
+          return acc;
+        }, {})
+      : {};
 
   const uniqueBookmakers = [...new Set(edges.map((e) => e.bookmaker))];
   const filteredEdges = (selectedBookmaker === "All"
@@ -237,78 +219,39 @@ const FixturePage = () => {
 
   return (
     <div className={styles.page}>
-      {/* Sticky header bar (works with/without CSS) */}
-      <div
-        className={styles.headerBar}
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 5,
-          background: "#fff",
-          borderBottom: "1px solid rgba(0,0,0,.06)",
-        }}
-      >
-        <div className={styles.headerInner} style={{ padding: isMobile ? "10px 12px" : "14px 16px" }}>
-          <div
-            className={styles.headerTeams}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-            }}
-          >
-            <div className={styles.teamWithLogo} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className={styles.headerBar}>
+        <div className={styles.headerInner}>
+          <div className={styles.headerTeams}>
+            <div className={styles.teamWithLogo}>
               <img
-                loading="lazy"
                 src={`/logos/${slugifyTeamName(fixture.home_team)}.png`}
                 alt={fixture.home_team}
                 className={styles.teamLogo}
-                style={{ width: 28, height: 28, objectFit: "contain" }}
                 onError={(e) => (e.currentTarget.style.display = "none")}
               />
-              <b>{fixture.home_team}</b>
+              {fixture.home_team}
             </div>
-            <span style={{ opacity: 0.6 }}>vs</span>
-            <div className={styles.teamWithLogo} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>vs</span>
+            <div className={styles.teamWithLogo}>
               <img
-                loading="lazy"
                 src={`/logos/${slugifyTeamName(fixture.away_team)}.png`}
                 alt={fixture.away_team}
                 className={styles.teamLogo}
-                style={{ width: 28, height: 28, objectFit: "contain" }}
                 onError={(e) => (e.currentTarget.style.display = "none")}
               />
-              <b>{fixture.away_team}</b>
+              {fixture.away_team}
             </div>
           </div>
-
-          <p className={styles.metaLine} style={{ margin: "6px 0 10px 0", color: "#555" }}>
+          <p className={styles.metaLine}>
             {fixture.comp} • {formatKickoff(fixture.kickoff_utc)}
           </p>
 
-          <div
-            className={styles.tabs}
-            style={{
-              display: "flex",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className={styles.tabs}>
             {["preview", "table", "predictions", "lineups", "events"].map((tab) => (
               <button
                 key={tab}
                 className={activeTab === tab ? styles.activeTab : ""}
                 onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #ddd",
-                  background: activeTab === tab ? "#111" : "#fff",
-                  color: activeTab === tab ? "#fff" : "#111",
-                  fontSize: 13,
-                }}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
@@ -317,66 +260,34 @@ const FixturePage = () => {
         </div>
       </div>
 
-      {/* Body: on mobile we stack; on desktop we keep 2-column */}
-      <div
-        className={styles.body}
-        style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) 320px",
-          gap: 16,
-          padding: isMobile ? 12 : 16,
-        }}
-      >
-        {/* MAIN */}
+      <div className={styles.body}>
         <div className={styles.main}>
           {activeTab === "preview" && (
             <>
-              <div className={styles.tabContent} style={{ marginBottom: 14 }}>
+              <div className={styles.tabContent}>
                 <MatchPreview fixtureId={fixtureIdNum} isAdmin={isAdminView} />
               </div>
 
-              {/* Best Edges */}
-              <div
-                className={styles.bestEdges}
-                style={{
-                  background: "#fff",
-                  border: "1px solid #eee",
-                  borderRadius: 12,
-                  padding: 12,
-                  marginBottom: 16,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    justifyContent: "space-between",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <h3 style={{ margin: 0 }}>Best Edges</h3>
-                  {uniqueBookmakers.length > 1 && (
-                    <div className={styles.bookmakerFilter} style={{ fontSize: 13 }}>
-                      <label htmlFor="bookmaker-select">Book: </label>
-                      <select
-                        id="bookmaker-select"
-                        value={selectedBookmaker}
-                        onChange={(e) => setSelectedBookmaker(e.target.value)}
-                        style={{ padding: "4px 8px", borderRadius: 8, border: "1px solid #ddd" }}
-                      >
-                        <option value="All">All</option>
-                        {uniqueBookmakers.map((bm) => (
-                          <option key={bm} value={bm}>
-                            {bm}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                <ul style={{ paddingLeft: 16, marginTop: 10 }}>
+              <div className={styles.bestEdges}>
+                <h3>Best Edges</h3>
+                {uniqueBookmakers.length > 1 && (
+                  <div className={styles.bookmakerFilter}>
+                    <label htmlFor="bookmaker-select">Filter by bookmaker: </label>
+                    <select
+                      id="bookmaker-select"
+                      value={selectedBookmaker}
+                      onChange={(e) => setSelectedBookmaker(e.target.value)}
+                    >
+                      <option value="All">All</option>
+                      {uniqueBookmakers.map((bm) => (
+                        <option key={bm} value={bm}>
+                          {bm}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <ul>
                   {filteredEdges.map((e, i) => {
                     const addBetHref = buildBetPrefill({
                       teams: matchLabel,
@@ -384,6 +295,7 @@ const FixturePage = () => {
                       market: e.market,
                       bookmaker: e.bookmaker,
                       price: e.price,
+                      stake: "",
                     });
                     const exp = explanations[e.market];
                     const eg = exp?.form?.expected_goals;
@@ -393,59 +305,34 @@ const FixturePage = () => {
                         : null;
 
                     return (
-                      <li key={`${e.market}-${e.bookmaker}-${i}`} style={{ marginBottom: 10 }}>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                          <b style={{ whiteSpace: "nowrap" }}>{e.market}</b>
-                          <span style={{ opacity: 0.8 }}>
-                            — {e.bookmaker} @ {Number(e.price).toFixed(2)} (
-                            {(e.edge * 100).toFixed(1)}% edge, p {(e.prob * 100).toFixed(1)}%)
-                          </span>
-                          <button
-                            className={styles.whyButton}
-                            onClick={() => fetchExplanation(e.market, i)}
-                            title="Explain this market"
-                            style={{
-                              marginLeft: "auto",
-                              padding: "4px 8px",
-                              borderRadius: 8,
-                              border: "1px solid #ddd",
-                              background: "#fafafa",
-                              cursor: "pointer",
-                              fontSize: 12,
-                            }}
-                          >
-                            Why?
-                          </button>
-                          <Link
-                            to={addBetHref}
-                            className={styles.addBetLink}
-                            title="Prefill this bet"
-                            style={{ fontSize: 12, textDecoration: "none" }}
-                          >
-                            ➕ Add Bet
-                          </Link>
-                        </div>
+                      <li key={`${e.market}-${e.bookmaker}-${i}`}>
+                        <b>{e.market}</b> — {e.bookmaker} @ {e.price} (
+                        {(e.edge * 100).toFixed(1)}% edge, model p {(e.prob * 100).toFixed(1)}%)
+                        <button
+                          className={styles.whyButton}
+                          onClick={() => fetchExplanation(e.market, i)}
+                          title="Explain this market (O/U, BTTS, Moneyline, 1X2, DC)"
+                          style={{ marginLeft: 8 }}
+                        >
+                          Why?
+                        </button>
+                        <Link
+                          to={addBetHref}
+                          className={styles.addBetLink}
+                          title="Prefill this bet in the Bet Tracker"
+                          style={{ marginLeft: 8 }}
+                        >
+                          ➕ Add Bet
+                        </Link>
 
                         {expandedWhy === i && exp && (
-                          <div
-                            className={styles.whyBox}
-                            style={{
-                              background: "#f7f9fb",
-                              border: "1px solid #e6eef6",
-                              borderRadius: 10,
-                              padding: 10,
-                              marginTop: 8,
-                              fontSize: 13,
-                            }}
-                          >
-                            {egLine && <p style={{ margin: "4px 0" }}>{egLine}</p>}
+                          <div className={styles.whyBox}>
+                            {egLine && <p>{egLine}</p>}
                             {(exp.notes || []).map((n, j) => (
-                              <p key={j} style={{ margin: "4px 0" }}>
-                                • {n}
-                              </p>
+                              <p key={j}>• {n}</p>
                             ))}
                             {exp.recommendation && (
-                              <p style={{ margin: "6px 0 0 0" }}>
+                              <p>
                                 <b>Recommendation:</b> {exp.recommendation}
                               </p>
                             )}
@@ -457,10 +344,7 @@ const FixturePage = () => {
                 </ul>
               </div>
 
-              {/* Odds */}
-              <div style={{ marginBottom: 18 }}>
-                <OddsTable grouped={grouped} />
-              </div>
+              <OddsTable grouped={grouped} />
             </>
           )}
 
@@ -468,69 +352,67 @@ const FixturePage = () => {
             <div className={styles.tabContent}>
               <h3>League Table</h3>
               {leagueTable.length ? (
-                <div style={{ overflowX: "auto" }}>
-                  <table className={styles.oddsTable} style={{ minWidth: 680 }}>
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Team</th>
-                        <th>P</th>
-                        <th>W</th>
-                        <th>D</th>
-                        <th>L</th>
-                        <th>GF</th>
-                        <th>GA</th>
-                        <th>GD</th>
-                        <th>Pts</th>
-                        <th>Form</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leagueTable.map((row, i) => {
-                        const normalize = (name) =>
-                          name
-                            ?.toLowerCase()
-                            .normalize("NFD")
-                            .replace(/[\u0300-\u036f]/g, "")
-                            .replace(/[^a-z0-9]/gi, "")
-                            .replace(
-                              /\b(fc|sc|cf|afc|cfr|calcio|club|de|atletico|internazionale|sporting|munchen|glimt|bodø)\b/g,
-                              ""
-                            )
-                            .replace(/\s+/g, "")
-                            .trim();
+                <table className={styles.oddsTable}>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Team</th>
+                      <th>P</th>
+                      <th>W</th>
+                      <th>D</th>
+                      <th>L</th>
+                      <th>GF</th>
+                      <th>GA</th>
+                      <th>GD</th>
+                      <th>Pts</th>
+                      <th>Form</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leagueTable.map((row, i) => {
+                      const normalize = (name) =>
+                        name
+                          ?.toLowerCase()
+                          .normalize("NFD")
+                          .replace(/[\u0300-\u036f]/g, "")
+                          .replace(/[^a-z0-9]/gi, "")
+                          .replace(
+                            /\b(fc|sc|cf|afc|cfr|calcio|club|de|atletico|internazionale|sporting|munchen|glimt|bodø)\b/g,
+                            ""
+                          )
+                          .replace(/\s+/g, "")
+                          .trim();
 
-                        const normRow = normalize(row.team);
-                        const normHome = normalize(fixture.home_team);
-                        const normAway = normalize(fixture.away_team);
+                      const normRow = normalize(row.team);
+                      const normHome = normalize(fixture.home_team);
+                      const normAway = normalize(fixture.away_team);
 
-                        const isHome = normRow === normHome;
-                        const isAway = normRow === normAway;
-                        const rowClass = isHome || isAway ? styles.highlightRow : "";
+                      const isHome = normRow === normHome;
+                      const isAway = normRow === normAway;
+                      const rowClass = isHome || isAway ? styles.highlightRow : "";
 
-                        return (
-                          <tr key={i} className={rowClass}>
-                            <td>{row.position}</td>
-                            <td className={styles.teamName}>
-                              {row.team}
-                              {isHome && <span title="Home Team"> 🏠</span>}
-                              {isAway && <span title="Away Team"> 🛫</span>}
-                            </td>
-                            <td>{row.played}</td>
-                            <td>{row.win}</td>
-                            <td>{row.draw}</td>
-                            <td>{row.lose}</td>
-                            <td>{row.gf}</td>
-                            <td>{row.ga}</td>
-                            <td>{row.gf - row.ga}</td>
-                            <td>{row.points}</td>
-                            <td>{row.form || "-"}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                      return (
+                        <tr key={i} className={rowClass}>
+                          <td>{row.position}</td>
+                          <td className={styles.teamName}>
+                            {row.team}
+                            {isHome && <span title="Home Team"> 🏠</span>}
+                            {isAway && <span title="Away Team"> 🛫</span>}
+                          </td>
+                          <td>{row.played}</td>
+                          <td>{row.win}</td>
+                          <td>{row.draw}</td>
+                          <td>{row.lose}</td>
+                          <td>{row.gf}</td>
+                          <td>{row.ga}</td>
+                          <td>{row.gf - row.ga}</td>
+                          <td>{row.points}</td>
+                          <td>{row.form || "-"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               ) : (
                 <p>No table available.</p>
               )}
@@ -541,23 +423,12 @@ const FixturePage = () => {
 
           {activeTab === "lineups" && (
             <div className={styles.tabContent}>
-              <div
-                className={styles.subTabs}
-                style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}
-              >
+              <div className={styles.subTabs}>
                 {["lineup", "players", "injuries", "props"].map((sub) => (
                   <button
                     key={sub}
                     className={lineupTab === sub ? styles.activeTab : ""}
                     onClick={() => setLineupTab(sub)}
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 8,
-                      border: "1px solid #ddd",
-                      background: lineupTab === sub ? "#111" : "#fff",
-                      color: lineupTab === sub ? "#fff" : "#111",
-                      fontSize: 13,
-                    }}
                   >
                     {sub.charAt(0).toUpperCase() + sub.slice(1)}
                   </button>
@@ -586,20 +457,16 @@ const FixturePage = () => {
           {activeTab === "events" && <EventsSection fixtureId={id} />}
         </div>
 
-        {/* SIDE — on mobile this naturally stacks below */}
         <div className={styles.side}>
-          <div style={{ marginBottom: 16 }}>
-            <Poll fixtureId={id} homeTeam={fixture.home_team} awayTeam={fixture.away_team} />
-          </div>
-
+          <Poll fixtureId={id} homeTeam={fixture.home_team} awayTeam={fixture.away_team} />
           {formData && (
-            <div className={`${styles.formSection} ${styles.staticForm}`} style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
+            <div className={`${styles.formSection} ${styles.staticForm}`}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
                 <label style={{ fontSize: 12, color: "#666" }}>Form:</label>
                 <select
                   value={formN}
                   onChange={(e) => setFormN(Number(e.target.value))}
-                  style={{ fontSize: 12, padding: "4px 8px", borderRadius: 8, border: "1px solid #ddd" }}
+                  style={{ fontSize: 12 }}
                 >
                   {[3, 5, 7, 10].map((v) => (
                     <option key={v} value={v}>
@@ -611,7 +478,7 @@ const FixturePage = () => {
                 <select
                   value={formScopeAll}
                   onChange={(e) => setFormScopeAll(Number(e.target.value))}
-                  style={{ fontSize: 12, padding: "4px 8px", borderRadius: 8, border: "1px solid #ddd" }}
+                  style={{ fontSize: 12 }}
                 >
                   <option value={0}>This competition</option>
                   <option value={1}>All competitions</option>
@@ -624,10 +491,7 @@ const FixturePage = () => {
               />
             </div>
           )}
-
-          <div>
-            <LeagueFixtures fixtures={leagueFixtures} />
-          </div>
+          <LeagueFixtures fixtures={leagueFixtures} />
         </div>
       </div>
     </div>
