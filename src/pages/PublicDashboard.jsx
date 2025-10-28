@@ -29,34 +29,94 @@ const slug = (s = "") =>
 
 // Human-readable competition names (expandable)
 const COMP_NAMES = {
+  // 🌍 Europe – Continental
   UCL: "UEFA Champions League",
   UEL: "UEFA Europa League",
   UECL: "UEFA Europa Conference League",
   UWCL: "UEFA Women’s Champions League",
+
+  // 🏆 Internationals
   WCQ_EUR: "World Cup Qualifying (Europe)",
+
+  // 🇬🇧 England
   EPL: "Premier League",
   CHAMP: "EFL Championship",
   LG1: "EFL League One",
   LG2: "EFL League Two",
+  ENG_FA: "FA Cup",
+  EFL_CUP: "EFL Cup",
   EFL_TROPHY: "EFL Trophy",
-  FA_CUP: "FA Cup",
-  CARABAO: "EFL Cup",
+
+  // 🏴 Scotland
   SCO_PREM: "Scottish Premiership",
   SCO_CHAMP: "Scottish Championship",
   SCO1: "Scottish League One",
   SCO2: "Scottish League Two",
-  SCO_CUP: "Scottish Cup",
+  SCO_SC: "Scottish Cup",
+  SCO_LC: "Scottish League Cup",
+
+  // 🇪🇸 Spain
   LA_LIGA: "La Liga",
+  LA_LIGA2: "La Liga 2",
+  ESP_CDR: "Copa del Rey",
+
+  // 🇩🇪 Germany
   BUNDES: "Bundesliga",
   BUNDES2: "2. Bundesliga",
+  GER_POKAL: "DFB-Pokal",
+
+  // 🇮🇹 Italy
   SERIE_A: "Serie A",
   SERIE_B: "Serie B",
+  ITA_COPPA: "Coppa Italia",
+
+  // 🇫🇷 France
   LIGUE1: "Ligue 1",
-  MLS: "Major League Soccer",
+  LIGUE2: "Ligue 2",
+  FRA_CDF: "Coupe de France",
+
+  // 🇵🇹 Portugal
+  POR_LIGA: "Primeira Liga",
+  POR_TACA: "Taça de Portugal",
+
+  // 🇳🇱 Netherlands
+  NED_ERED: "Eredivisie",
+  NED_EERST: "Eerste Divisie",
+  NED_KNVB: "KNVB Beker",
+
+  // 🇧🇪 Belgium
+  BEL_PRO: "Pro League",
+  BEL_CUP: "Belgian Cup",
+
+  // 🇳🇴 Norway
+  NOR_ELI: "Eliteserien",
+  NOR_CUP: "Norwegian Cup",
+
+  // 🇩🇰 Denmark
+  DEN_SL: "Superliga",
+  DEN_CUP: "DBU Pokalen",
+
+  // 🇸🇪 Sweden
+  SWE_ALLS: "Allsvenskan",
+  SWE_SUPER: "Superettan",
+  SWE_CUP: "Svenska Cupen",
+
+  // 🇦🇷 Argentina
+  ARG_LP: "Liga Profesional",
+  ARG_CDL: "Copa de la Liga Profesional",
+  ARG_CUP: "Copa Argentina",
+
+  // 🇧🇷 Brazil
   BR_SERIE_A: "Brasileirão Série A",
+  BR_SERIE_B: "Brasileirão Série B",
+
+  // 🇺🇸 USA
+  MLS: "Major League Soccer",
+
+  // 🏈 North America – Other Sports
   NFL: "NFL",
-  CFB: "College Football",
   NCAA: "College Football",
+  CFB: "College Football",
   NBA: "NBA",
   NHL: "NHL",
 };
