@@ -13,7 +13,43 @@
     --warn-2: #a57f00;       /* deeper gold */
     --shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
   }
-  
+  /* --- Add near top (helpers) --- */
+.scrollX {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ensure wide tables inside scroll containers have room */
+.scrollX > table {
+  min-width: 560px;
+}
+
+/* prevent tiny Safari gutters on zoomed mobile */
+.page {
+  overflow-x: hidden;            /* add this */
+}
+
+/* make hero badges wrap nicely on narrow screens */
+@media (max-width: 1100px) {
+  .heroBadges {
+    flex-wrap: wrap;             /* add */
+    gap: 8px;                    /* add */
+  }
+}
+
+/* keep avatar from shrinking in flex */
+.avatar {
+  flex: 0 0 auto;                /* add */
+}
+
+/* reduce side padding on very small screens */
+@media (max-width: 420px) {
+  .page {
+    padding-left: 12px;          /* add */
+    padding-right: 12px;         /* add */
+  }
+}
   /* ------------------------------- PAGE ----------------------------------- */
   .page {
     color: var(--text);

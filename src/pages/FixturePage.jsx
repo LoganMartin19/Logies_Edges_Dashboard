@@ -14,7 +14,7 @@ import OddsTable from "../components/OddsTable";
 import MatchPreview from "../components/MatchPreview";
 import styles from "../styles/FixturePage.module.css";
 import { slugifyTeamName } from "../utils/slugify";
-import { api } from "../api"; // ← env-based axios client
+import { api } from "../api";
 
 const FixturePage = () => {
   const { id } = useParams();
@@ -87,17 +87,15 @@ const FixturePage = () => {
     return x;
   };
 
-  // Reset explanations when fixture changes
   useEffect(() => {
     setExplanations({});
     setExpandedWhy(null);
   }, [id]);
 
-  // ------- Effects -------
   useEffect(() => {
     const fetchFixture = async () => {
       try {
-        const { data: fixtureJson } = await api.get(`/api/fixtures/id/${id}/json`, { params: {} });
+        const { data: fixtureJson } = await api.get(`/api/fixtures/id/${id}/json`);
         setData(fixtureJson);
 
         const { data: roundData } = await api.get(`/api/fixtures/round`, {
@@ -167,7 +165,6 @@ const FixturePage = () => {
     fetchStats();
   }, [id]);
 
-  // ------- “Why?” fetcher -------
   const fetchExplanation = async (rawMarket, index) => {
     if (explanations[rawMarket]) {
       setExpandedWhy(expandedWhy === index ? null : index);
@@ -193,21 +190,18 @@ const FixturePage = () => {
     return () => controller.abort();
   };
 
-  // ------- Render guards (after all hooks) -------
   if (!data) return <p className={styles.loading}>Loading...</p>;
   if (!data.fixture) return <p className={styles.error}>Fixture not found.</p>;
 
   const fixture = data.fixture;
   const odds = data.odds ?? [];
 
-  // Non-hook computations (avoid useMemo to satisfy linter)
-  const grouped =
-    Array.isArray(odds)
-      ? odds.reduce((acc, o) => {
-          (acc[o.market] ||= []).push(o);
-          return acc;
-        }, {})
-      : {};
+  const grouped = Array.isArray(odds)
+    ? odds.reduce((acc, o) => {
+        (acc[o.market] ||= []).push(o);
+        return acc;
+      }, {})
+    : {};
 
   const uniqueBookmakers = [...new Set(edges.map((e) => e.bookmaker))];
   const filteredEdges = (selectedBookmaker === "All"
@@ -218,7 +212,7 @@ const FixturePage = () => {
   const matchLabel = `${fixture.home_team} v ${fixture.away_team}`;
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} scrollX`}>
       <div className={styles.headerBar}>
         <div className={styles.headerInner}>
           <div className={styles.headerTeams}>
@@ -311,7 +305,7 @@ const FixturePage = () => {
                         <button
                           className={styles.whyButton}
                           onClick={() => fetchExplanation(e.market, i)}
-                          title="Explain this market (O/U, BTTS, Moneyline, 1X2, DC)"
+                          title="Explain this market"
                           style={{ marginLeft: 8 }}
                         >
                           Why?
@@ -319,7 +313,6 @@ const FixturePage = () => {
                         <Link
                           to={addBetHref}
                           className={styles.addBetLink}
-                          title="Prefill this bet in the Bet Tracker"
                           style={{ marginLeft: 8 }}
                         >
                           ➕ Add Bet
@@ -344,78 +337,65 @@ const FixturePage = () => {
                 </ul>
               </div>
 
-              <OddsTable grouped={grouped} />
+              {/* scrollable wrapper for mobile odds table */}
+              <div className="scrollX">
+                <OddsTable grouped={grouped} />
+              </div>
             </>
           )}
 
           {activeTab === "table" && (
-            <div className={styles.tabContent}>
-              <h3>League Table</h3>
-              {leagueTable.length ? (
-                <table className={styles.oddsTable}>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Team</th>
-                      <th>P</th>
-                      <th>W</th>
-                      <th>D</th>
-                      <th>L</th>
-                      <th>GF</th>
-                      <th>GA</th>
-                      <th>GD</th>
-                      <th>Pts</th>
-                      <th>Form</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leagueTable.map((row, i) => {
-                      const normalize = (name) =>
-                        name
-                          ?.toLowerCase()
-                          .normalize("NFD")
-                          .replace(/[\u0300-\u036f]/g, "")
-                          .replace(/[^a-z0-9]/gi, "")
-                          .replace(
-                            /\b(fc|sc|cf|afc|cfr|calcio|club|de|atletico|internazionale|sporting|munchen|glimt|bodø)\b/g,
-                            ""
-                          )
-                          .replace(/\s+/g, "")
-                          .trim();
-
-                      const normRow = normalize(row.team);
-                      const normHome = normalize(fixture.home_team);
-                      const normAway = normalize(fixture.away_team);
-
-                      const isHome = normRow === normHome;
-                      const isAway = normRow === normAway;
-                      const rowClass = isHome || isAway ? styles.highlightRow : "";
-
-                      return (
-                        <tr key={i} className={rowClass}>
-                          <td>{row.position}</td>
-                          <td className={styles.teamName}>
-                            {row.team}
-                            {isHome && <span title="Home Team"> 🏠</span>}
-                            {isAway && <span title="Away Team"> 🛫</span>}
-                          </td>
-                          <td>{row.played}</td>
-                          <td>{row.win}</td>
-                          <td>{row.draw}</td>
-                          <td>{row.lose}</td>
-                          <td>{row.gf}</td>
-                          <td>{row.ga}</td>
-                          <td>{row.gf - row.ga}</td>
-                          <td>{row.points}</td>
-                          <td>{row.form || "-"}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              ) : (
-                <p>No table available.</p>
-              )}
+            <div className="scrollX">
+              <table className={styles.oddsTable}>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Team</th>
+                    <th>P</th>
+                    <th>W</th>
+                    <th>D</th>
+                    <th>L</th>
+                    <th>GF</th>
+                    <th>GA</th>
+                    <th>GD</th>
+                    <th>Pts</th>
+                    <th>Form</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leagueTable.map((row, i) => {
+                    const normalize = (name) =>
+                      name
+                        ?.toLowerCase()
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "")
+                        .replace(/[^a-z0-9]/gi, "")
+                        .trim();
+                    const isHome = normalize(row.team) === normalize(fixture.home_team);
+                    const isAway = normalize(row.team) === normalize(fixture.away_team);
+                    const rowClass = isHome || isAway ? styles.highlightRow : "";
+                    return (
+                      <tr key={i} className={rowClass}>
+                        <td>{row.position}</td>
+                        <td className={styles.teamName}>
+                          {row.team}
+                          {isHome && <span> 🏠</span>}
+                          {isAway && <span> 🛫</span>}
+                        </td>
+                        <td>{row.played}</td>
+                        <td>{row.win}</td>
+                        <td>{row.draw}</td>
+                        <td>{row.lose}</td>
+                        <td>{row.gf}</td>
+                        <td>{row.ga}</td>
+                        <td>{row.gf - row.ga}</td>
+                        <td>{row.points}</td>
+                        <td>{row.form || "-"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
 
