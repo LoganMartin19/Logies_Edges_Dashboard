@@ -1,0 +1,56 @@
+/* src/styles/global.css */
+
+/* ---------- Root Theme Vars ---------- */
+:root {
+    --bg: #131a13;
+    --panel: #1a231a;
+    --panel-2: #141c14;
+    --text: #f3f5ec;
+    --muted: #b5c1b0;
+    --border: #2a352a;
+    --accent: #00b562;
+    --accent-2: #00e084;
+    --warn: #dcb43a;
+    --warn-2: #a57f00;
+    --shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  }
+  
+  /* ---------- Base App Background + Font ---------- */
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  
+  /* ---------- Utilities ---------- */
+  .scrollX {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .scrollX > table {
+    min-width: 560px;
+  }
+  
+  .tight {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  
+  /* ---------- Reset margins on headings ---------- */
+  h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+  }
+  
+  /* ---------- Links ---------- */
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
