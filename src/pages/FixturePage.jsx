@@ -140,12 +140,15 @@ const FixturePage = () => {
   useEffect(() => {
     const fetchEdges = async () => {
       try {
-        const { data: json } = await api.get(`/shortlist/today`, {
-          params: { min_edge: 0.0, send_alerts: 0 },
+        // Direct, per-fixture endpoint you tested with curl
+        const { data: json } = await api.get(`/api/ai/preview/edges`, {
+          params: { fixture_id: id, source: "team_form" },
         });
-        setEdges((json || []).filter((e) => e.fixture_id === Number(id)));
+        // json is an array of edges for THIS fixture already
+        setEdges(Array.isArray(json) ? json : []);
       } catch (err) {
-        console.error("Error fetching shortlist edges:", err);
+        console.error("Error fetching best edges:", err);
+        setEdges([]);
       }
     };
     fetchEdges();
