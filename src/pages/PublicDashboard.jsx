@@ -192,7 +192,7 @@ export default function PublicDashboard() {
     setErr("");
     try {
       const { data: fxJ } = await api.get("/api/public/fixtures/daily", { params: { day, sport } });
-      const { data: pkJ } = await api.get("/public/picks", { params: { day } });
+      const { data: pkJ } = await api.get("api/public/picks", { params: { day } });
       setFixtures(fxJ.fixtures || []);
       setPicks(pkJ.picks || []);
     } catch (e) {
