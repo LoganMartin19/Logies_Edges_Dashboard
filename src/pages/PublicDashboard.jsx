@@ -162,7 +162,7 @@ function AccaBlock({ day }) {
   const [accas, setAccas] = useState([]);
   useEffect(() => {
     api
-      .get("/api/public/accas/daily", { params: { day } })
+      .get("api/api/public/accas/daily", { params: { day } })
       .then(({ data }) => setAccas(data.accas || []))
       .catch(() => setAccas([]));
   }, [day]);
