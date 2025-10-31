@@ -182,14 +182,19 @@ const mobile = {
     padding: 12,
     marginBottom: 10,
     boxShadow: "0 1px 3px rgba(0,0,0,.06)",
+    color: "#0f1f14",            // <- force dark text
   },
   row: {
     display: "grid",
-    gridTemplateColumns: "1fr auto 1fr",
+    gridTemplateColumns: "1fr auto",
     alignItems: "center",
     gap: 6,
   },
-  comp: { fontSize: 12, color: "#666", marginTop: 4 },
+  comp: {
+    fontSize: 12,
+    color: "#5f6b66",            // <- not inherited white
+    marginTop: 4,
+  },
 };
 
 // --- Sub components ----------------------------------------------------
@@ -202,18 +207,26 @@ const TeamChip = ({ name, align = "left" }) => (
 );
 
 const FixtureCard = ({ f }) => (
-  <Link to={routeFor(f)} style={{ textDecoration: "none", color: "inherit" }}>
+  <Link to={routeFor(f)} style={{ textDecoration: "none" }}>
     <div style={mobile.card}>
       <div style={mobile.row}>
         <div>
-          <div style={{ fontSize: 16, lineHeight: 1.25 }}>
-            <TeamChip name={f.home_team} /> <span style={{ opacity: 0.6 }}>vs</span> <TeamChip name={f.away_team} align="right" />
+          <div style={{ fontSize: 16, lineHeight: 1.25, color: "#0f1f14" }}>
+            <TeamChip name={f.home_team} />{" "}
+            <span style={{ opacity: 0.6, color: "#444" }}>vs</span>{" "}
+            <TeamChip name={f.away_team} align="right" />
           </div>
-          <div style={mobile.comp}>{prettyComp(f.comp)} • {(f.sport || "").toUpperCase()}</div>
+          <div style={mobile.comp}>
+            {prettyComp(f.comp)} • {(f.sport || "").toUpperCase()}
+          </div>
         </div>
-        <div style={{ textAlign: "right", minWidth: 70 }}>
-          <div style={{ fontWeight: 800 }}>{toUK(f.kickoff_utc)}</div>
-          <div style={{ fontSize: 12, color: "#777" }}>{toUK(f.kickoff_utc, { withZone: true }).split(" ").slice(-1)[0]}</div>
+        <div style={{ textAlign: "right", minWidth: 62 }}>
+          <div style={{ fontWeight: 700, color: "#0f1f14" }}>
+            {toUK(f.kickoff_utc)}
+          </div>
+          <div style={{ fontSize: 11, color: "#7a847f" }}>
+            {toUK(f.kickoff_utc, { withZone: true }).split(" ").slice(-1)[0]}
+          </div>
         </div>
       </div>
     </div>
