@@ -42,14 +42,20 @@ const COMP_NAMES = {
   // Scotland
   SCO_PREM: "Scottish Premiership",
   SCO_CHAMP: "Scottish Championship",
+  SCO_1: "Scottish League One",
+  SCO_2: "Scottish League Two",
+  SCO_SC: "Scottish Cup",
+  SCO_LC: "Scottish League Cup",
 
   // France
   LIGUE1: "Ligue 1",
   LIGUE2: "Ligue 2",
+  FRA_CDF: "Coupe de France",
 
   // Germany
   BUNDES: "Bundesliga",
   BUNDES2: "2. Bundesliga",
+  GER_POKAL: "DFB-Pokal",
 
   // Spain
   LA_LIGA: "La Liga",
@@ -58,13 +64,33 @@ const COMP_NAMES = {
   // Italy
   SERIE_A: "Serie A",
   SERIE_B: "Serie B",
+  ITA_COPPA: "Coppa Italia",
 
   // Portugal
   POR_LIGA: "Primeira Liga",
+  POR_TACA: "Taça de Portugal",
 
+  //Denmark
+  DEN_SL: "Danish Superliga",
+  DEN_CUP: "Danish Cup",
+
+  //Netherlands
+  NER_ERED: "Eredivisie",
+  NED_EERST: "Eerste Divisie",
+  NED_KNVB: "KNVB Cup",
+  
   // Belgium
   BEL_PRO: "Belgian Pro League",
   BEL_CUP: "Belgian Cup",
+
+  //Norway
+  NOR_ELI: "Eliteserien",
+  NOR_CUP: "Norwegian Cup",
+
+  //Sweden
+  SWE_ALLSV: "Allsvenskan",
+  SWE_SUPER: "Superettan",
+  SWE_CUP: "Swedish Cup",
 
   // Brazil / South America
   BR_SERIE_A: "Brazil Serie A",
