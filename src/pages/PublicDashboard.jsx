@@ -26,24 +26,61 @@ const slug = (s = "") =>
   s.normalize("NFKD").replace(/[^\w\s.-]/g, "").trim().replace(/\s+/g, "_").toLowerCase();
 
 const COMP_NAMES = {
+  // Major European competitions
   UCL: "UEFA Champions League",
   UEL: "UEFA Europa League",
   UECL: "UEFA Europa Conference League",
+
+  // England
   EPL: "Premier League",
   CHAMP: "EFL Championship",
   LG1: "EFL League One",
   LG2: "EFL League Two",
+  ENG_FA: "FA Cup",
+  ENG_EFL: "EFL Cup",
+
+  // Scotland
   SCO_PREM: "Scottish Premiership",
-  LA_LIGA: "La Liga",
-  BUNDES: "Bundesliga",
-  SERIE_A: "Serie A",
+  SCO_CHAMP: "Scottish Championship",
+
+  // France
   LIGUE1: "Ligue 1",
+  LIGUE2: "Ligue 2",
+
+  // Germany
+  BUNDES: "Bundesliga",
+  BUNDES2: "2. Bundesliga",
+
+  // Spain
+  LA_LIGA: "La Liga",
+  LA_LIGA2: "La Liga 2",
+
+  // Italy
+  SERIE_A: "Serie A",
+  SERIE_B: "Serie B",
+
+  // Portugal
+  POR_LIGA: "Primeira Liga",
+
+  // Belgium
+  BEL_PRO: "Belgian Pro League",
+  BEL_CUP: "Belgian Cup",
+
+  // Brazil / South America
+  BR_SERIE_A: "Brazil Serie A",
+  BR_SERIE_B: "Brazil Serie B",
+  ARG_LP: "Argentina Primera División",
+
+  // USA
   MLS: "Major League Soccer",
-  NFL: "NFL",
+  NFL: "NFL (American Football)",
+  NBA: "NBA (Basketball)",
+  NHL: "NHL (Hockey)",
   NCAA: "College Football",
   CFB: "College Football",
-  NBA: "NBA",
-  NHL: "NHL",
+
+  // Others / fallback
+  DEFAULT: "Football",
 };
 
 const prettyComp = (code) => COMP_NAMES[code] || code || "—";
