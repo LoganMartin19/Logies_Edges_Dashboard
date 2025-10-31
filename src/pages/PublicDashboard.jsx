@@ -75,7 +75,7 @@ const COMP_NAMES = {
   DEN_CUP: "Danish Cup",
 
   //Netherlands
-  NER_ERED: "Eredivisie",
+  NED_ERED: "Eredivisie",
   NED_EERST: "Eerste Divisie",
   NED_KNVB: "KNVB Cup",
   
