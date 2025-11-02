@@ -1,100 +1,92 @@
 import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
-import styles from "../styles/NavBar.module.css";
+import { Link, NavLink } from "react-router-dom";
+import "./Navbar.css";
 
-const NavBar = () => {
-  const [open, setOpen] = useState(false);
+export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const close = () => setOpen(false);
+  const toggleMenu = () => setMenuOpen((prev) => !prev);
+  const closeMenu = () => setMenuOpen(false);
 
   return (
-    <nav className={styles.navbar}>
-      {/* Logo → Dashboard */}
-      <NavLink to="/" className={styles.logo} onClick={close}>
-        <img src="/logo.png" alt="Logie's Edges Logo" />
-      </NavLink>
+    <nav className="navbar">
+      <div className="navbar-container">
+        <Link to="/" className="navbar-logo" onClick={closeMenu}>
+          <img src="/logo192.png" alt="Logo" className="logo" />
+          Logie’s Edges
+        </Link>
 
-      <div className={styles.links}>
-        <NavLink
-          to="/"
-          className={({ isActive }) => (isActive ? styles.activeLink : undefined)}
-          onClick={close}
-        >
-          Dashboard
-        </NavLink>
-
-        <NavLink
-          to="/fixtures"
-          className={({ isActive }) => (isActive ? styles.activeLink : undefined)}
-          onClick={close}
-        >
-          Fixtures
-        </NavLink>
-
-        {/* SPORTS DROPDOWN */}
-        <div
-          className={styles.dropdown}
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
-        >
-          <button
-            type="button"
-            className={styles.dropdownToggle}
-            aria-haspopup="menu"
-            aria-expanded={open ? "true" : "false"}
-          >
-            Sports ▾
-          </button>
-
-          {open && (
-            <div className={styles.dropdownMenu} role="menu">
-              <NavLink to="/football" className={styles.dropdownItem} onClick={close}>
-                Football (Soccer)
-              </NavLink>
-              <NavLink to="/cfb" className={styles.dropdownItem} onClick={close}>
-                College Football
-              </NavLink>
-              <NavLink to="/nhl" className={styles.dropdownItem} onClick={close}>
-                NHL
-              </NavLink>
-              <NavLink to="/nfl" className={styles.dropdownItem} onClick={close}>
-                NFL
-              </NavLink>
-              {/* Hide Tennis if not implemented to avoid errors */}
-              {/* <NavLink to="/tennis" className={styles.dropdownItem} onClick={close}>Tennis</NavLink> */}
-              <NavLink to="/basketball" className={styles.dropdownItem} onClick={close}>
-                Basketball
-              </NavLink>
-            </div>
-          )}
+        {/* Hamburger menu icon */}
+        <div className="menu-icon" onClick={toggleMenu}>
+          <div className={`bar ${menuOpen ? "open" : ""}`}></div>
+          <div className={`bar ${menuOpen ? "open" : ""}`}></div>
+          <div className={`bar ${menuOpen ? "open" : ""}`}></div>
         </div>
 
-        <NavLink
-          to="/bets"
-          className={({ isActive }) => (isActive ? styles.activeLink : undefined)}
-          onClick={close}
-        >
-          Bets
-        </NavLink>
-
-        <NavLink
-          to="/about"
-          className={({ isActive }) => (isActive ? styles.activeLink : undefined)}
-          onClick={close}
-        >
-          About Us
-        </NavLink>
-
-        <NavLink
-          to="/contact"
-          className={({ isActive }) => (isActive ? styles.activeLink : undefined)}
-          onClick={close}
-        >
-          Contact Us
-        </NavLink>
+        {/* Main nav links */}
+        <ul className={`nav-menu ${menuOpen ? "active" : ""}`}>
+          <li>
+            <NavLink to="/" onClick={closeMenu}>
+              Dashboard
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/fixtures" onClick={closeMenu}>
+              Fixtures
+            </NavLink>
+          </li>
+          <li className="dropdown">
+            <span>Sports ▾</span>
+            <ul className="dropdown-content">
+              <li>
+                <NavLink to="/football" onClick={closeMenu}>
+                  Football
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/nba" onClick={closeMenu}>
+                  NBA
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/nhl" onClick={closeMenu}>
+                  NHL
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/nfl" onClick={closeMenu}>
+                  NFL
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/cfb" onClick={closeMenu}>
+                  CFB
+                </NavLink>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <NavLink to="/performance" onClick={closeMenu}>
+              Performance
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/bets" onClick={closeMenu}>
+              Bets
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/about" onClick={closeMenu}>
+              About
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/contact" onClick={closeMenu}>
+              Contact Us
+            </NavLink>
+          </li>
+        </ul>
       </div>
     </nav>
   );
-};
-
-export default NavBar;
+}

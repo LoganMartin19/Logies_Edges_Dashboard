@@ -1,89 +1,179 @@
 .navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 20px;
-  background: var(--brand-green);
-  color: white;
+  background-color: #003314;
+  color: #fff;
   position: sticky;
   top: 0;
-  z-index: 1000;
+  width: 100%;
+  z-index: 999;
+  padding: 6px 0;               /* was 8px -> a bit slimmer */
 }
 
-.logo img {
-  height: 40px;
-  width: auto;
+.navbar-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 0 16px;
+  gap: 10px;
 }
 
-.links a {
-  color: white;
-  margin-left: 20px;
+.navbar-logo {
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.logo {
+  height: 26px;                 /* was 28px */
+  margin-right: 8px;
+}
+
+/* --- Nav menu --- */
+.nav-menu {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  gap: 14px;                    /* was 16px */
+  transition: all 0.3s ease-in-out;
+}
+
+.nav-menu li a {
+  color: #fff;
   text-decoration: none;
   font-weight: 500;
+  font-size: 0.93rem;           /* just a touch smaller */
+  padding: 5px 10px;            /* was 6px */
+  border-radius: 6px;
+  transition: 0.2s;
+  white-space: nowrap;
 }
 
-.links a:hover {
-  color: var(--brand-gold);
-}
-
-.link {
-  color: white;
-  margin-left: 20px;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s, border-bottom 0.2s;
-}
-
-.link:hover {
-  color: var(--brand-gold);
-}
-
-/* ✅ Active tab (current page) */
-.active {
-  color: var(--brand-gold);
-  border-bottom: 2px solid var(--brand-gold);
-  padding-bottom: 2px;
+.nav-menu li a:hover,
+.nav-menu li a.active {
+  background-color: #0f5828;
 }
 
 /* --- Dropdown --- */
 .dropdown {
   position: relative;
-  display: inline-block;
-}
-
-.dropdownToggle {
-  background: transparent;
-  border: none;
-  color: white;
-  font-size: 1rem;
   cursor: pointer;
-  padding: 0.5rem 0.75rem;
 }
 
-.dropdownToggle:hover {
-  color: #00c896;
+.dropdown > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.93rem;
+  padding: 5px 10px;
+  border-radius: 6px;
 }
 
-.dropdownMenu {
+.dropdown:hover > span {
+  background-color: #0f5828;
+}
+
+.dropdown-content {
+  display: none;
   position: absolute;
-  top: 2rem;
+  background-color: #00260f;
+  min-width: 150px;
+  border-radius: 6px;
+  top: 32px;
   left: 0;
-  background: #1b1b1b;
-  border: 1px solid #333;
-  border-radius: 4px;
-  min-width: 180px;
-  z-index: 100;
+  z-index: 1000;
+  padding: 6px 0;
+  box-shadow: 0 10px 25px rgba(0,0,0,.25);
 }
 
-.dropdownItem {
+.dropdown-content li {
+  padding: 0;
+}
+
+.dropdown-content li a {
   display: block;
-  padding: 8px 12px;
-  color: white;
-  text-decoration: none;
-  transition: background 0.2s ease;
+  color: #fff;
+  font-size: 0.9rem;
+  padding: 7px 12px;
 }
 
-.dropdownItem:hover {
-  background: #00c896;
-  color: black;
+.dropdown-content li a:hover {
+  background: rgba(255,255,255,.08);
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
+/* --- Mobile Menu --- */
+.menu-icon {
+  display: none;
+  flex-direction: column;
+  cursor: pointer;
+  gap: 4px;
+}
+
+.bar {
+  width: 24px;
+  height: 3px;
+  background-color: #fff;
+  transition: 0.3s;
+}
+
+.nav-menu.active {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 54px;                    /* slightly higher, so it hugs navbar */
+  left: 0;
+  width: 100%;
+  background-color: #00260f;
+  padding: 12px 0;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+/* mobile tweaks */
+@media (max-width: 768px) {
+  .menu-icon {
+    display: flex;
+  }
+
+  .nav-menu {
+    display: none;
+  }
+
+  .nav-menu li {
+    text-align: center;
+  }
+
+  .navbar {
+    padding: 5px 0;
+  }
+
+  .navbar-container {
+    padding: 0 10px;
+  }
+
+  .navbar-logo {
+    font-size: 0.95rem;
+  }
+
+  /* dropdown behaves like normal links in mobile */
+  .dropdown:hover .dropdown-content {
+    display: none;
+  }
+  .dropdown-content {
+    position: static;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+  .dropdown-content li a {
+    padding: 6px 0;
+  }
 }

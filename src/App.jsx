@@ -20,6 +20,7 @@ import Basketball from "./pages/Basketball";
 import BasketballFixture from "./pages/BasketballFixture";
 import AdminPicks from "./pages/AdminPicks";
 import PublicDashboard from "./pages/PublicDashboard";
+import Performance from "./pages/Performance";
 import NavBar from "./components/NavBar";
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
           <Route path="/basketball/game/:id" element={<BasketballFixture />} />
           <Route path="/admin/picks" element={<AdminPicks />} />
           <Route path="/" element={<PublicDashboard />} />
+          <Route path="/performance" element={<Performance />} />
         </Routes>
       </main>
     </Router>
