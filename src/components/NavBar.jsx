@@ -13,7 +13,7 @@ export default function Navbar() {
       <div className={styles.navbarContainer}>
         {/* Logo */}
         <Link to="/" className={styles.navbarLogo} onClick={closeMenu}>
-          <img src="/logo192.png" alt="Logo" className={styles.logo} />
+          <img src="/logo.png" alt="Logo" className={styles.logo} />
           Logie’s Edges
         </Link>
 
