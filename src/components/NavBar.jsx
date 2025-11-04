@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import styles from "../styles/NavBar.module.css";
+import { useAuth } from "./AuthGate"; // <-- make sure AuthGate is set up & wrapped at App root
 
-export default function Navbar() {
+export default function NavBar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const toggleMenu = () => setMenuOpen((prev) => !prev);
   const closeMenu = () => setMenuOpen(false);
@@ -17,86 +19,66 @@ export default function Navbar() {
           Logie’s Edges
         </Link>
 
-        {/* Hamburger Menu Icon */}
-        <div className={styles.menuIcon} onClick={toggleMenu}>
-          <div className={styles.bar}></div>
-          <div className={styles.bar}></div>
-          <div className={styles.bar}></div>
-        </div>
-
-        {/* Main Nav Links */}
-        <ul
-          className={`${styles.navMenu} ${
-            menuOpen ? styles.navMenuActive : ""
-          }`}
+        {/* Hamburger */}
+        <button
+          className={styles.menuIcon}
+          onClick={toggleMenu}
+          aria-label="Toggle navigation"
+          aria-expanded={menuOpen}
         >
+          <span className={styles.bar}></span>
+          <span className={styles.bar}></span>
+          <span className={styles.bar}></span>
+        </button>
+
+        {/* Links */}
+        <ul className={`${styles.navMenu} ${menuOpen ? styles.navMenuActive : ""}`}>
           <li>
-            <NavLink
-              to="/"
-              onClick={closeMenu}
-              className={({ isActive }) => (isActive ? styles.active : "")}
-            >
+            <NavLink to="/" onClick={closeMenu}
+              className={({ isActive }) => (isActive ? styles.active : "")}>
               Dashboard
             </NavLink>
           </li>
 
           <li>
-            <NavLink
-              to="/fixtures"
-              onClick={closeMenu}
-              className={({ isActive }) => (isActive ? styles.active : "")}
-            >
+            <NavLink to="/fixtures" onClick={closeMenu}
+              className={({ isActive }) => (isActive ? styles.active : "")}>
               Fixtures
             </NavLink>
           </li>
 
-          {/* Dropdown */}
+          {/* Sports dropdown */}
           <li className={styles.dropdown}>
             <span>Sports ▾</span>
-            <ul className={styles.dropdownContent}>
+            <ul className={styles.dropdownContent} onClick={closeMenu}>
               <li>
-                <NavLink
-                  to="/football"
-                  onClick={closeMenu}
-                  className={({ isActive }) => (isActive ? styles.active : "")}
-                >
+                <NavLink to="/football"
+                  className={({ isActive }) => (isActive ? styles.active : "")}>
                   Football
                 </NavLink>
               </li>
               <li>
-                {/* Fix: route should be /basketball not /nba */}
-                <NavLink
-                  to="/basketball"
-                  onClick={closeMenu}
-                  className={({ isActive }) => (isActive ? styles.active : "")}
-                >
+                {/* Route is /basketball in your App.jsx */}
+                <NavLink to="/basketball"
+                  className={({ isActive }) => (isActive ? styles.active : "")}>
                   NBA
                 </NavLink>
               </li>
               <li>
-                <NavLink
-                  to="/nhl"
-                  onClick={closeMenu}
-                  className={({ isActive }) => (isActive ? styles.active : "")}
-                >
+                <NavLink to="/nhl"
+                  className={({ isActive }) => (isActive ? styles.active : "")}>
                   NHL
                 </NavLink>
               </li>
               <li>
-                <NavLink
-                  to="/nfl"
-                  onClick={closeMenu}
-                  className={({ isActive }) => (isActive ? styles.active : "")}
-                >
+                <NavLink to="/nfl"
+                  className={({ isActive }) => (isActive ? styles.active : "")}>
                   NFL
                 </NavLink>
               </li>
               <li>
-                <NavLink
-                  to="/cfb"
-                  onClick={closeMenu}
-                  className={({ isActive }) => (isActive ? styles.active : "")}
-                >
+                <NavLink to="/cfb"
+                  className={({ isActive }) => (isActive ? styles.active : "")}>
                   CFB
                 </NavLink>
               </li>
@@ -104,52 +86,70 @@ export default function Navbar() {
           </li>
 
           <li>
-            <NavLink
-              to="/performance"
-              onClick={closeMenu}
-              className={({ isActive }) => (isActive ? styles.active : "")}
-            >
+            <NavLink to="/performance" onClick={closeMenu}
+              className={({ isActive }) => (isActive ? styles.active : "")}>
               Performance
             </NavLink>
           </li>
 
           <li>
-            <NavLink
-              to="/bets"
-              onClick={closeMenu}
-              className={({ isActive }) => (isActive ? styles.active : "")}
-            >
+            <NavLink to="/bets" onClick={closeMenu}
+              className={({ isActive }) => (isActive ? styles.active : "")}>
               Bets
             </NavLink>
           </li>
 
-          {/* ✅ New Tipsters Link */}
+          {/* Tipsters directory */}
           <li>
-            <NavLink
-              to="/tipsters"
-              onClick={closeMenu}
-              className={({ isActive }) => (isActive ? styles.active : "")}
-            >
+            <NavLink to="/tipsters" onClick={closeMenu}
+              className={({ isActive }) => (isActive ? styles.active : "")}>
               Tipsters <span className={styles.newBadge}>NEW</span>
             </NavLink>
           </li>
 
+          {/* Right-side auth / CTA */}
+          {user ? (
+            <>
+              <li>
+                <NavLink to="/tipsters/apply" onClick={closeMenu}
+                  className={({ isActive }) => (isActive ? styles.active : "")}>
+                  Become a Tipster
+                </NavLink>
+              </li>
+              <li>
+                <button onClick={() => { logout(); closeMenu(); }}
+                        className={styles.linkButton}>
+                  Logout
+                </button>
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                <NavLink to="/login" onClick={closeMenu}
+                  className={({ isActive }) => (isActive ? styles.active : "")}>
+                  Login
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/signup" onClick={closeMenu}
+                  className={({ isActive }) => (isActive ? styles.active : "")}>
+                  Sign Up
+                </NavLink>
+              </li>
+            </>
+          )}
+
           <li>
-            <NavLink
-              to="/about"
-              onClick={closeMenu}
-              className={({ isActive }) => (isActive ? styles.active : "")}
-            >
+            <NavLink to="/about" onClick={closeMenu}
+              className={({ isActive }) => (isActive ? styles.active : "")}>
               About
             </NavLink>
           </li>
 
           <li>
-            <NavLink
-              to="/contact"
-              onClick={closeMenu}
-              className={({ isActive }) => (isActive ? styles.active : "")}
-            >
+            <NavLink to="/contact" onClick={closeMenu}
+              className={({ isActive }) => (isActive ? styles.active : "")}>
               Contact Us
             </NavLink>
           </li>
