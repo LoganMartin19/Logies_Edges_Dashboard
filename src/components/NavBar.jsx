@@ -64,8 +64,9 @@ export default function Navbar() {
                 </NavLink>
               </li>
               <li>
+                {/* Fix: route should be /basketball not /nba */}
                 <NavLink
-                  to="/nba"
+                  to="/basketball"
                   onClick={closeMenu}
                   className={({ isActive }) => (isActive ? styles.active : "")}
                 >
@@ -119,6 +120,17 @@ export default function Navbar() {
               className={({ isActive }) => (isActive ? styles.active : "")}
             >
               Bets
+            </NavLink>
+          </li>
+
+          {/* ✅ New Creators Link */}
+          <li>
+            <NavLink
+              to="/creators"
+              onClick={closeMenu}
+              className={({ isActive }) => (isActive ? styles.active : "")}
+            >
+              Creators <span className={styles.newBadge}>NEW</span>
             </NavLink>
           </li>
 
