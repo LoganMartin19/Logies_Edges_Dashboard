@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import styles from "../styles/NavBar.module.css";
-import { useAuth } from "./AuthGate"; // <-- make sure AuthGate is set up & wrapped at App root
+import { useAuth } from "../components/AuthGate"; // <-- make sure AuthGate is set up & wrapped at App root
 
 export default function NavBar() {
   const [menuOpen, setMenuOpen] = useState(false);
