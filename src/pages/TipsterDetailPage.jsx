@@ -1,36 +1,36 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { fetchCreator, fetchCreatorPicks } from "../api";
+import { fetchTipster, fetchTipsterPicks } from "../api";
 
-const CreatorDetailPage = () => {
+const TipsterDetailPage = () => {
   const { username } = useParams();
-  const [creator, setCreator] = useState(null);
+  const [tipster, setTipster] = useState(null);
   const [picks, setPicks] = useState([]);
 
   useEffect(() => {
-    fetchCreator(username).then(setCreator).catch(console.error);
-    fetchCreatorPicks(username).then(setPicks).catch(console.error);
+    fetchTipster(username).then(setTipster).catch(console.error);
+    fetchTipsterPicks(username).then(setPicks).catch(console.error);
   }, [username]);
 
-  if (!creator) return <div>Loading...</div>;
+  if (!tipster) return <div>Loading...</div>;
 
   return (
     <div className="page">
-      <Link to="/creators">← Back</Link>
+      <Link to="/tipsters">← Back</Link>
       <div className="profile">
         <img
-          src={creator.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(creator.name)}`}
-          alt={creator.name}
+          src={tipster.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(tipster.name)}`}
+          alt={tipster.name}
           className="avatar"
         />
         <div>
-          <h2>{creator.name} {creator.is_verified && "✅"}</h2>
-          <p>@{creator.username}</p>
-          <p>{creator.bio}</p>
+          <h2>{tipster.name} {tipster.is_verified && "✅"}</h2>
+          <p>@{tipster.username}</p>
+          <p>{tipster.bio}</p>
           <div className="metrics">
-            <span>ROI: {creator.roi_30d?.toFixed(2)}%</span>
-            <span>Profit: {creator.profit_30d?.toFixed(2)}</span>
-            <span>Winrate: {creator.winrate_30d?.toFixed(2)}%</span>
+            <span>ROI: {tipster.roi_30d?.toFixed(2)}%</span>
+            <span>Profit: {tipster.profit_30d?.toFixed(2)}</span>
+            <span>Winrate: {tipster.winrate_30d?.toFixed(2)}%</span>
           </div>
         </div>
       </div>
@@ -68,4 +68,4 @@ const CreatorDetailPage = () => {
   );
 };
 
-export default CreatorDetailPage;
+export default TipsterDetailPage;

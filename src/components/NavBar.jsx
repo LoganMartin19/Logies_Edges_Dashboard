@@ -123,14 +123,14 @@ export default function Navbar() {
             </NavLink>
           </li>
 
-          {/* ✅ New Creators Link */}
+          {/* ✅ New Tipsters Link */}
           <li>
             <NavLink
-              to="/creators"
+              to="/tipsters"
               onClick={closeMenu}
               className={({ isActive }) => (isActive ? styles.active : "")}
             >
-              Creators <span className={styles.newBadge}>NEW</span>
+              Tipsters <span className={styles.newBadge}>NEW</span>
             </NavLink>
           </li>
 

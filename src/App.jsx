@@ -21,8 +21,8 @@ import BasketballFixture from "./pages/BasketballFixture";
 import AdminPicks from "./pages/AdminPicks";
 import PublicDashboard from "./pages/PublicDashboard";
 import Performance from "./pages/Performance";
-import CreatorsPage from "./pages/CreatorsPage";
-import CreatorDetailPage from "./pages/CreatorDetailPage";
+import TipstersPage from "./pages/TipstersPage";
+import TipsterDetailPage from "./pages/TipsterDetailPage";
 import NavBar from "./components/NavBar";
 
 function App() {
@@ -53,8 +53,8 @@ function App() {
           <Route path="/admin/picks" element={<AdminPicks />} />
           <Route path="/" element={<PublicDashboard />} />
           <Route path="/performance" element={<Performance />} />
-          <Route path="/creators" element={<CreatorsPage />} />
-          <Route path="/creator/:username" element={<CreatorDetailPage />} />
+          <Route path="/tipsters" element={<TipstersPage />} />
+          <Route path="/tipster/:username" element={<TipsterDetailPage />} />
         </Routes>
       </main>
     </Router>

@@ -1,28 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchCreators } from "../api";
+import { fetchTipsters } from "../api";
 
-const CreatorsPage = () => {
-  const [creators, setCreators] = useState([]);
+const TipstersPage = () => {
+  const [Tipsters, setTipsters] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCreators()
-      .then(setCreators)
+    fetchTipsters()
+      .then(setTipsters)
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div>Loading creators...</div>;
+  if (loading) return <div>Loading Tipsters...</div>;
 
   return (
     <div className="page">
-      <h1>Top Creators</h1>
+      <h1>Top Tipsters</h1>
       <p className="sub">Independent tipsters ranked by ROI (30d).</p>
 
-      <div className="creator-grid">
-        {creators.map((c) => (
-          <Link to={`/creator/${c.username}`} key={c.id} className="creator-card">
+      <div className="tipster-grid">
+        {Tipsters.map((c) => (
+          <Link to={`/tipster/${c.username}`} key={c.id} className="tipster-card">
             <img
               src={c.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(c.name)}`}
               alt={c.name}
@@ -44,13 +44,13 @@ const CreatorsPage = () => {
       </div>
 
       <style jsx="true">{`
-        .creator-grid {
+        .tipster-grid {
           display: grid;
           gap: 16px;
           grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
           margin-top: 16px;
         }
-        .creator-card {
+        .tipster-card {
           border: 1px solid #eee;
           border-radius: 10px;
           padding: 16px;
@@ -81,4 +81,4 @@ const CreatorsPage = () => {
   );
 };
 
-export default CreatorsPage;
+export default TipstersPage;
