@@ -52,3 +52,7 @@ export const fetchTipsterLeaderboard = ({ window = "30d", sport } = {}) =>
   api
     .get("/api/tipsters/leaderboard", { params: { window, sport } })
     .then(r => r.data);
+
+  // Create a new tipster (used on Tipster Sign Up page)
+export const tipstersCreate = (payload) =>
+  api.post("/api/tipsters", payload).then((r) => r.data);
