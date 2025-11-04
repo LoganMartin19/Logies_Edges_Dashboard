@@ -1,37 +1,106 @@
+// src/pages/LoginPage.jsx
 import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import styles from "../styles/Auth.module.css";
 import { auth, googleProvider } from "../firebase";
-import { signInWithPopup, signInWithEmailAndPassword } from "firebase/auth";
-import { useNavigate, Link } from "react-router-dom";
+import {
+  signInWithPopup,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 
 export default function LoginPage() {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
+  const [pw, setPw] = useState("");
+  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
   const onGoogle = async () => {
-    try { await signInWithPopup(auth, googleProvider); nav("/"); }
-    catch (e) { setErr(e.message); }
+    try {
+      setErr("");
+      setLoading(true);
+      await signInWithPopup(auth, googleProvider);
+      nav("/");
+    } catch (e) {
+      setErr(e.message || "Google sign-in failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onEmail = async (e) => {
     e.preventDefault();
-    try { await signInWithEmailAndPassword(auth, email, pass); nav("/"); }
-    catch (e) { setErr(e.message); }
+    try {
+      setErr("");
+      setLoading(true);
+      await signInWithEmailAndPassword(auth, email.trim(), pw);
+      nav("/");
+    } catch (e) {
+      setErr(e.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div style={{ maxWidth: 420 }}>
-      <h2>Log in</h2>
-      {err && <p style={{ color: "salmon" }}>{err}</p>}
-      <button onClick={onGoogle}>Continue with Google</button>
-      <hr />
-      <form onSubmit={onEmail}>
-        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" />
-        <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="Password" />
-        <button type="submit">Log in</button>
-      </form>
-      <p>New here? <Link to="/signup">Create an account</Link></p>
+    <div className={styles.wrapper}>
+      <div className={styles.card}>
+        <header className={styles.header}>
+          <div className={styles.title}>Log in</div>
+          <div className={styles.subtitle}>
+            Welcome back — let’s find some edges.
+          </div>
+        </header>
+
+        <div className={styles.oauth}>
+          <button onClick={onGoogle} className={styles.oauthBtn} disabled={loading}>
+            <span className={styles.googleLogo}>G</span>
+            <span>Continue with Google</span>
+          </button>
+        </div>
+
+        <form className={styles.form} onSubmit={onEmail}>
+          <div className={styles.row}>
+            <label className={styles.label}>Email</label>
+            <input
+              className={styles.input}
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e)=>setEmail(e.target.value)}
+              placeholder="you@email.com"
+              required
+            />
+          </div>
+          <div className={styles.row}>
+            <label className={styles.label}>Password</label>
+            <input
+              className={styles.input}
+              type="password"
+              autoComplete="current-password"
+              value={pw}
+              onChange={(e)=>setPw(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
+          {err && <div className={styles.error}>{err}</div>}
+
+          <div className={styles.actions}>
+            <button className={styles.btn} type="submit" disabled={loading}>
+              {loading ? "Logging in…" : "Log in"}
+            </button>
+            <Link to="/signup" className={`${styles.btn} ${styles.btnGhost}`}>
+              Create account
+            </Link>
+          </div>
+        </form>
+
+        <p className={styles.note}>
+          By continuing you agree to our Terms and acknowledge our Privacy Policy.
+        </p>
+      </div>
     </div>
   );
 }
