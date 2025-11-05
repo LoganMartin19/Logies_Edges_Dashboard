@@ -83,3 +83,6 @@ export const fetchTipsterLeaderboard = ({ window = "30d", sport } = {}) =>
   api
     .get("/api/tipsters/leaderboard/top", { params: { window, sport } })
     .then((r) => r.data);
+
+export const fetchMyTipster = () =>
+  api.get("/api/tipsters/me", { withCredentials: false }).then(r => r.data);
