@@ -26,6 +26,7 @@ import TipsterDetailPage from "./pages/TipsterDetailPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import TipsterApply from "./pages/TipsterApply";
+import TipsterAddPick from "./pages/TipsterAddPick";
 
 import NavBar from "./components/NavBar";
 
@@ -62,6 +63,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/tipsters/become" element={<TipsterApply />} />
+          <Route path="/tipsters/:username/new-pick" element={<TipsterAddPick />} />
         </Routes>
       </main>
     </Router>
