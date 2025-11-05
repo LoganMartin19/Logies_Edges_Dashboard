@@ -89,3 +89,17 @@ export const fetchMyTipster = () =>
 
 export const settleTipsterPick = (pickId, result) =>
   api.post(`/api/tipsters/picks/${pickId}/settle`, { result }).then(r => r.data);
+
+// --- Fixtures (single) ---
+export const fetchFixture = (id) =>
+  api.get(`/api/fixtures/${id}`).then(r => r.data);
+
+// --- Tipster Accas ---
+export const createTipsterAcca = (username, payload) =>
+  api.post(`/api/tipsters/${encodeURIComponent(username)}/accas`, payload).then(r => r.data);
+
+export const fetchTipsterAccas = (username) =>
+  api.get(`/api/tipsters/${encodeURIComponent(username)}/accas`).then(r => r.data);
+
+export const settleTipsterAcca = (accaId, result) =>
+  api.post(`/api/tipsters/accas/${accaId}/settle`, { result }).then(r => r.data);
