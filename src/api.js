@@ -86,3 +86,6 @@ export const fetchTipsterLeaderboard = ({ window = "30d", sport } = {}) =>
 
 export const fetchMyTipster = () =>
   api.get("/api/tipsters/me", { withCredentials: false }).then(r => r.data);
+
+export const settleTipsterPick = (pickId, result) =>
+  api.post(`/api/tipsters/picks/${pickId}/settle`, { result }).then(r => r.data);
