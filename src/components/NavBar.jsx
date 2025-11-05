@@ -145,9 +145,9 @@ export default function NavBar() {
           {user ? (
             <>
               <li>
-                {/* 🔧 Route fix: singular to match App.jsx (/tipster/become) */}
+                {/* 🔧 Route fix: singular to match App.jsx (/tipsters/become) */}
                 <NavLink
-                  to="/tipster/become"
+                  to="/tipsters/become"
                   onClick={closeMenu}
                   className={({ isActive }) => (isActive ? styles.active : "")}
                 >
