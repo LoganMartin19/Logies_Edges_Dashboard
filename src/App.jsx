@@ -58,10 +58,10 @@ function App() {
           <Route path="/" element={<PublicDashboard />} />
           <Route path="/performance" element={<Performance />} />
           <Route path="/tipsters" element={<TipstersPage />} />
-          <Route path="/tipster/:username" element={<TipsterDetailPage />} />
+          <Route path="/tipsters/:username" element={<TipsterDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/tipster/apply" element={<TipsterApply />} />
+          <Route path="/tipsters/become" element={<TipsterApply />} />
         </Routes>
       </main>
     </Router>

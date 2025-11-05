@@ -111,7 +111,7 @@ export default function NavBar() {
           {user ? (
             <>
               <li>
-                <NavLink to="/tipsters/apply" onClick={closeMenu}
+                <NavLink to="/tipsters/become" onClick={closeMenu}
                   className={({ isActive }) => (isActive ? styles.active : "")}>
                   Become a Tipster
                 </NavLink>
