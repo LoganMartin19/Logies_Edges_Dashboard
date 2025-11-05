@@ -162,6 +162,11 @@
     display: none;
   }
 
+  /* ✅ ensure active menu displays on mobile */
+  .navMenu.navMenuActive {
+    display: flex;
+  }
+
   .navMenu li {
     text-align: center;
   }
@@ -184,7 +189,7 @@
   }
 
   .navMenuActive .dropdownContent {
-    display: block;
+    display: flex;
     position: static;
     background: transparent;
     box-shadow: none;
