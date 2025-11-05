@@ -299,7 +299,7 @@ export default function PublicDashboard() {
       const { data: fxJ } = await api.get("/api/public/fixtures/daily", { params: { day, sport } });
       let pkJ = { picks: [] };
       try {
-        const { data } = await api.get("/public/picks", { params: { day } });
+        const { data } = await api.get("api/public/picks", { params: { day } });
         pkJ = data;
       } catch {
         try {
