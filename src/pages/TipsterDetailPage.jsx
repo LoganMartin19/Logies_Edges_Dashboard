@@ -40,7 +40,7 @@ const TipsterDetailPage = () => {
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
           {isOwner && (
             <button
-              onClick={() => nav(`/tipster/${encodeURIComponent(username)}/new-pick`)}
+              onClick={() => nav(`/tipsters/${encodeURIComponent(username)}/new-pick`)}
               style={{
                 padding: "8px 12px",
                 background: "#0f5828",
