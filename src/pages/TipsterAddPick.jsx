@@ -139,7 +139,7 @@ export default function TipsterAddPick() {
         price: Number(price),
         stake: Number(stake) || 1.0,
       });
-      nav(`/tipster/${encodeURIComponent(username)}`);
+      nav(`/tipsters/${encodeURIComponent(username)}`);
     } catch (e) {
       setErr(e?.response?.data?.detail || e.message || "Failed to add pick");
     } finally {
@@ -273,7 +273,7 @@ export default function TipsterAddPick() {
           <button type="submit" disabled={saving || !fixtureId}>
             {saving ? "Saving…" : "Post Pick"}
           </button>
-          <Link to={`/tipster/${encodeURIComponent(username)}`}>Cancel</Link>
+          <Link to={`/tipsters/${encodeURIComponent(username)}`}>Cancel</Link>
         </div>
       </form>
     </div>
