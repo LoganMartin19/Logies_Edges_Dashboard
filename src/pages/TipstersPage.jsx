@@ -22,7 +22,7 @@ const TipstersPage = () => {
 
       <div className="tipster-grid">
         {Tipsters.map((c) => (
-          <Link to={`/tipster/${c.username}`} key={c.id} className="tipster-card">
+          <Link to={`/tipsters/${c.username}`} key={c.id} className="tipster-card">
             <img
               src={c.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(c.name)}`}
               alt={c.name}
