@@ -1,6 +1,6 @@
 // src/components/AuthGate.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { onAuthStateChanged, onIdTokenChanged, signInWithPopup, signOut } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import { api } from "../api"; // 👈 use the shared axios instance
 
@@ -12,18 +12,26 @@ export default function AuthGate({ children }) {
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      // attach (or clear) token on axios instance
+    const applyHeader = async (u) => {
       if (u) {
-        const token = await u.getIdToken();
-        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        const t = await u.getIdToken();
+        api.defaults.headers.common.Authorization = `Bearer ${t}`;
       } else {
-        delete api.defaults.headers.common["Authorization"];
+        delete api.defaults.headers.common.Authorization;
       }
+    };
+  
+    const unsubAuth = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      await applyHeader(u);
       setInitializing(false);
     });
-    return () => unsub();
+  
+    const unsubToken = onIdTokenChanged(auth, async (u) => {
+      await applyHeader(u);   // refresh on rotation
+    });
+  
+    return () => { unsubAuth(); unsubToken(); };
   }, []);
 
   const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
