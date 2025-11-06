@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import styles from "../styles/NavBar.module.css";
 import { useAuth } from "../components/AuthGate";
-import { fetchMyTipster } from "../api";
+import { FetchTipster } from "../api";
 
 export default function NavBar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -12,7 +12,7 @@ export default function NavBar() {
 
   useEffect(() => {
     if (!user) { setMyTipster(null); return; }
-    fetchMyTipster()
+    FetchTipster()
       .then(setMyTipster)
       .catch(() => setMyTipster(null));
   }, [user]);
