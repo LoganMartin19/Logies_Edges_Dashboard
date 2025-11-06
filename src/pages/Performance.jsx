@@ -135,7 +135,7 @@ export default function Performance() {
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: 16, color: COL.text }}>
-      <h1 style={{ marginBottom: 8 }}>Performance</h1>
+      <h1 style={{ marginBottom: 8, color: COL.text }}>Performance</h1>
       <p style={{ marginTop: 0, color: COL.muted }}>
         Live performance of <b>featured</b> picks coming from the API.
       </p>
@@ -336,6 +336,7 @@ function Th({ children, align = "left" }) {
         fontSize: 13,
         whiteSpace: "nowrap",
         color: COL.text,
+        background: "transparent",                // ← force no white bg
         borderBottom: `1px solid ${COL.cardBorder}`,
       }}
     >
