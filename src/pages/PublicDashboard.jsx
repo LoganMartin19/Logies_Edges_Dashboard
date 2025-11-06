@@ -104,6 +104,8 @@ const S = {
     cursor: "pointer",
     fontSize: 13,
   }),
+  // new: subtle action row for the toggle
+  picksActions: { textAlign: "center", marginTop: 8 },
 };
 
 const mobile = {
@@ -196,6 +198,7 @@ export default function PublicDashboard() {
   const [fixtures, setFixtures] = useState([]);
   const [picks, setPicks] = useState([]);
   const [err, setErr] = useState("");
+  const [showAll, setShowAll] = useState(false); // <-- NEW
   const isMobile = useIsMobile(700);
 
   const load = async () => {
@@ -226,11 +229,9 @@ export default function PublicDashboard() {
     [fixtures]
   );
 
-  /* ---------- critical: hydrate pick teams from fixtures --------- */
+  // hydrate pick teams from fixtures (fallback to matchup if needed)
   const fixturesById = useMemo(() => {
-    const m = {};
-    for (const f of fixtures) m[Number(f.id)] = f;
-    return m;
+    const m = {}; for (const f of fixtures) m[Number(f.id)] = f; return m;
   }, [fixtures]);
 
   const splitMatchup = (s = "") => {
@@ -240,29 +241,13 @@ export default function PublicDashboard() {
 
   const resolvePick = (p) => {
     const fx = fixturesById[Number(p.fixture_id ?? p.id)];
-    if (fx) {
-      return {
-        fixture_id: fx.id,
-        home: fx.home_team,
-        away: fx.away_team,
-        comp: fx.comp,
-        ko: fx.kickoff_utc,
-        sport: fx.sport || p.sport,
-      };
-    }
-    // fallback to payload fields or parse "A v B"
+    if (fx) return { fixture_id: fx.id, home: fx.home_team, away: fx.away_team, comp: fx.comp, ko: fx.kickoff_utc, sport: fx.sport || p.sport };
     const parsed = splitMatchup(p.matchup || "");
-    return {
-      fixture_id: p.fixture_id ?? p.id,
-      home: p.home_team || parsed.home || "—",
-      away: p.away_team || parsed.away || "—",
-      comp: p.comp || "Football",
-      ko: p.kickoff_utc,
-      sport: p.sport,
-    };
+    return { fixture_id: p.fixture_id ?? p.id, home: p.home_team || parsed.home || "—", away: p.away_team || parsed.away || "—", comp: p.comp || "Football", ko: p.kickoff_utc, sport: p.sport };
   };
 
   const sportOptions = ["all", "football", "nba", "nhl", "nfl", "cfb"];
+  const shown = showAll ? picks : picks.slice(0, 3); // <-- NEW
 
   return (
     <div style={S.page}>
@@ -298,33 +283,43 @@ export default function PublicDashboard() {
           <div style={S.picksTitle}>Featured Picks</div>
           <FeaturedRecord span="30d" />
         </div>
+
         {picks.length === 0 ? (
           <div style={{ background: "rgba(255,255,255,.08)", borderRadius: 12, padding: 12, color: "#d7e6db" }}>
             No featured picks yet.
           </div>
         ) : (
-          picks.map((p, i) => {
-            const d = resolvePick(p);
-            return (
-              <Link key={i} to={routeFor({ id: d.fixture_id, sport: d.sport })} style={{ textDecoration: "none", color: "inherit" }}>
-                <div style={S.pickRow}>
-                  <div style={S.pickTeam}>
-                    <img src={logoUrl(d.home)} width={20} alt="" onError={(e)=>e.currentTarget.style.display="none"}/> {d.home}
+          <>
+            {shown.map((p, i) => {
+              const d = resolvePick(p);
+              return (
+                <Link key={i} to={routeFor({ id: d.fixture_id, sport: d.sport })} style={{ textDecoration: "none", color: "inherit" }}>
+                  <div style={S.pickRow}>
+                    <div style={S.pickTeam}>
+                      <img src={logoUrl(d.home)} width={20} alt="" onError={(e)=>e.currentTarget.style.display="none"}/> {d.home}
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div>{toUK(d.ko, { withZone: true })}</div>
+                      <div style={{ fontSize: 11, opacity: 0.75 }}>{prettyComp(d.comp)}</div>
+                    </div>
+                    <div style={{ ...S.pickTeam, justifyContent: "flex-end" }}>
+                      {d.away} <img src={logoUrl(d.away)} width={20} alt="" onError={(e)=>e.currentTarget.style.display="none"}/>
+                    </div>
+                    <div style={{ gridColumn: "1 / -1", ...S.pickSub }}>
+                      {p.market} • {p.bookmaker} • {p.edge && `${(p.edge*100).toFixed(1)}%`}
+                    </div>
                   </div>
-                  <div style={{ textAlign: "center" }}>
-                    <div>{toUK(d.ko, { withZone: true })}</div>
-                    <div style={{ fontSize: 11, opacity: 0.75 }}>{prettyComp(d.comp)}</div>
-                  </div>
-                  <div style={{ ...S.pickTeam, justifyContent: "flex-end" }}>
-                    {d.away} <img src={logoUrl(d.away)} width={20} alt="" onError={(e)=>e.currentTarget.style.display="none"}/>
-                  </div>
-                  <div style={{ gridColumn: "1 / -1", ...S.pickSub }}>
-                    {p.market} • {p.bookmaker} • {p.edge && `${(p.edge*100).toFixed(1)}%`}
-                  </div>
-                </div>
-              </Link>
-            );
-          })
+                </Link>
+              );
+            })}
+            {picks.length > 3 && (
+              <div style={S.picksActions}>
+                <button style={S.btn} onClick={() => setShowAll((s) => !s)}>
+                  {showAll ? "Show less" : `Show all (${picks.length})`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
