@@ -1,3 +1,4 @@
+// src/pages/TipsterAddAcca.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { fetchDailyFixtures, createTipsterAcca } from "../api";
@@ -16,11 +17,12 @@ export default function TipsterAddAcca() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // normalize API shape safely -> always []
+  // Always return an array of fixtures
   const normalizeFixtures = (data) => {
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.fixtures)) return data.fixtures; // from /public/fixtures/daily
-    if (data && Array.isArray(data.rows)) return data.rows;
+    if (!data) return [];
+    if (Array.isArray(data)) return data;                  // just-in-case
+    if (Array.isArray(data.fixtures)) return data.fixtures; // our /public/fixtures/daily shape
+    if (Array.isArray(data.rows)) return data.rows;
     return [];
   };
 
@@ -28,11 +30,13 @@ export default function TipsterAddAcca() {
     let mounted = true;
     (async () => {
       try {
-        setErr("");
-        setLoading(true);
-        const res = await fetchDailyFixtures(day, sport); // hits /api/public/fixtures/daily
+        setErr(""); setLoading(true);
+        const res = await fetchDailyFixtures(day, sport);   // GET /api/public/fixtures/daily
         if (!mounted) return;
-        setFixtures(normalizeFixtures(res));
+        const list = normalizeFixtures(res);
+        setFixtures(list);
+        // Debug breadcrumb so we KNOW what came back
+        console.log("[AddAcca] fixtures", { day, sport, count: list.length, sample: list[0] });
       } catch (e) {
         if (!mounted) return;
         setErr(e?.response?.data?.detail || e.message || "Failed to load fixtures");
@@ -46,14 +50,9 @@ export default function TipsterAddAcca() {
 
   const markets = ["HOME_WIN", "AWAY_WIN", "DRAW", "BTTS_Y", "BTTS_N", "O2.5", "U2.5"];
 
-  // best-effort label (works for both public + internal shapes)
-  const teamName = (obj, fallbackHomeAway) =>
-    obj?.home_team ?? obj?.home ?? obj?.home_name ??
-    (fallbackHomeAway === "home" ? "Home" : "Away");
-
   const label = (fx) => {
-    const h = teamName(fx, "home");
-    const a = teamName(fx, "away");
+    const h = fx.home_team ?? fx.home_name ?? fx.home ?? "Home";
+    const a = fx.away_team ?? fx.away_name ?? fx.away ?? "Away";
     const ko = fx.kickoff_utc
       ? new Date(fx.kickoff_utc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       : "";
@@ -61,6 +60,8 @@ export default function TipsterAddAcca() {
   };
 
   const addLeg = (fx) => {
+    const h = fx.home_team ?? fx.home_name ?? fx.home ?? "Home";
+    const a = fx.away_team ?? fx.away_name ?? fx.away ?? "Away";
     setLegs((prev) => [
       ...prev,
       {
@@ -68,8 +69,8 @@ export default function TipsterAddAcca() {
         market: "HOME_WIN",
         price: 2.0,
         bookmaker: "bet365",
-        home_name: teamName(fx, "home"),
-        away_name: teamName(fx, "away"),
+        home_name: h,
+        away_name: a,
       },
     ]);
   };
@@ -110,11 +111,7 @@ export default function TipsterAddAcca() {
       <div style={{ display: "flex", gap: 8, margin: "8px 0 16px" }}>
         <label>
           Day:&nbsp;
-          <input
-            type="date"
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-          />
+          <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
         </label>
         <label>
           Sport:&nbsp;
@@ -133,6 +130,10 @@ export default function TipsterAddAcca() {
         <div>Loading fixtures…</div>
       ) : (
         <>
+          <div style={{ marginBottom: 8, opacity: 0.8 }}>
+            Fixtures found: <strong>{fixtures.length}</strong>
+          </div>
+
           <div style={{ display: "grid", gap: 8 }}>
             {fixtures.map((fx) => (
               <div
@@ -146,9 +147,13 @@ export default function TipsterAddAcca() {
                   borderRadius: 8,
                 }}
               >
-                <div style={{ fontWeight: 600 }}>{teamName(fx, "home")}</div>
+                <div style={{ fontWeight: 600 }}>
+                  {fx.home_team ?? fx.home_name ?? fx.home ?? "Home"}
+                </div>
                 <div style={{ opacity: 0.7 }}>vs</div>
-                <div style={{ fontWeight: 600 }}>{teamName(fx, "away")}</div>
+                <div style={{ fontWeight: 600 }}>
+                  {fx.away_team ?? fx.away_name ?? fx.away ?? "Away"}
+                </div>
                 <button onClick={() => addLeg(fx)} style={{ marginLeft: "auto" }}>
                   Add leg
                 </button>
@@ -186,9 +191,7 @@ export default function TipsterAddAcca() {
                   }}
                 >
                   {markets.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
+                    <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
                 <input
@@ -212,9 +215,7 @@ export default function TipsterAddAcca() {
                     setLegs(v);
                   }}
                 />
-                <button type="button" onClick={() => rmLeg(i)}>
-                  ✕
-                </button>
+                <button type="button" onClick={() => rmLeg(i)}>✕</button>
               </div>
             ))}
 
@@ -229,16 +230,9 @@ export default function TipsterAddAcca() {
                   onChange={(e) => setStake(e.target.value)}
                 />
               </label>
-              <div>
-                Combined: <strong>{combined.toFixed(2)}</strong>
-              </div>
-              <div>
-                Potential Profit:{" "}
-                <strong>{(parseFloat(stake || 0) * (combined - 1)).toFixed(2)}</strong>
-              </div>
-              <button type="submit" className="btnPrimary" style={{ marginLeft: "auto" }}>
-                Create Acca
-              </button>
+              <div>Combined: <strong>{combined.toFixed(2)}</strong></div>
+              <div>Potential Profit: <strong>{(parseFloat(stake || 0) * (combined - 1)).toFixed(2)}</strong></div>
+              <button type="submit" className="btnPrimary" style={{ marginLeft: "auto" }}>Create Acca</button>
             </div>
             {err && <div style={{ color: "salmon", marginTop: 8 }}>{err}</div>}
           </form>
