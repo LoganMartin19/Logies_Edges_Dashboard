@@ -2,7 +2,6 @@
 import axios from "axios";
 import { auth } from "./firebase"; // <-- to read current user token
 
-// CRA envs:
 export const API_BASE =
   process.env.REACT_APP_API_BASE || "https://logies-edges-api.onrender.com";
 
@@ -38,7 +37,7 @@ api.interceptors.response.use(
 );
 
 // -----------------------------
-// Public site helpers (existing)
+// Public site helpers
 // -----------------------------
 export const fetchShortlist = () =>
   api.get("/shortlist").then((r) => r.data);
@@ -49,18 +48,14 @@ export const fetchDailyFixtures = (day, sport = "all") =>
     .then((r) => r.data);
 
 // -----------------------------
-// Tipsters Platform v0
+// Tipsters Platform
 // -----------------------------
-
-// List Tipsters (for /Tipsters page). Supports optional sort & sport filter.
 export const fetchTipsters = ({ sort = "roi_30d_desc", sport } = {}) =>
   api.get("/api/tipsters", { params: { sort, sport } }).then((r) => r.data);
 
-// Read one tipster profile by username
 export const fetchTipster = (username) =>
   api.get(`/api/tipsters/${encodeURIComponent(username)}`).then((r) => r.data);
 
-// Recent picks for a tipster (optional params: limit, since, settled)
 export const fetchTipsterPicks = (username, { limit = 50, settled } = {}) =>
   api
     .get(`/api/tipsters/${encodeURIComponent(username)}/picks`, {
@@ -68,38 +63,44 @@ export const fetchTipsterPicks = (username, { limit = 50, settled } = {}) =>
     })
     .then((r) => r.data);
 
-// Create a new tipster (used on Tipster Sign Up page)
 export const tipstersCreate = (payload) =>
   api.post("/api/tipsters", payload).then((r) => r.data);
 
-// Create a pick for a tipster
+// ----- Picks -----
 export const createTipsterPick = (username, payload) =>
   api
     .post(`/api/tipsters/${encodeURIComponent(username)}/picks`, payload)
     .then((r) => r.data);
 
-// Leaderboard (match backend route: /leaderboard/top)
-export const fetchTipsterLeaderboard = ({ window = "30d", sport } = {}) =>
+export const settleTipsterPick = (pickId, result) =>
   api
-    .get("/api/tipsters/leaderboard/top", { params: { window, sport } })
+    .post(`/api/tipsters/picks/${pickId}/settle`, { result })
     .then((r) => r.data);
 
-export const fetchMyTipster = () =>
-  api.get("/api/tipsters/me", { withCredentials: false }).then(r => r.data);
+// ✅ NEW: delete a pick (only before kickoff / if not settled)
+export const deleteTipsterPick = (pickId) =>
+  api.delete(`/api/tipsters/picks/${pickId}`).then((r) => r.data);
 
-export const settleTipsterPick = (pickId, result) =>
-  api.post(`/api/tipsters/picks/${pickId}/settle`, { result }).then(r => r.data);
-
-// --- Fixtures (single) ---
+// ----- Fixtures (single) -----
 export const fetchFixture = (id) =>
-  api.get(`/api/fixtures/${id}`).then(r => r.data);
+  api.get(`/api/fixtures/${id}`).then((r) => r.data);
 
-// --- Tipster Accas ---
+// ----- Tipster ACCAs -----
 export const createTipsterAcca = (username, payload) =>
-  api.post(`/api/tipsters/${encodeURIComponent(username)}/accas`, payload).then(r => r.data);
+  api
+    .post(`/api/tipsters/${encodeURIComponent(username)}/accas`, payload)
+    .then((r) => r.data);
 
 export const fetchTipsterAccas = (username) =>
-  api.get(`/api/tipsters/${encodeURIComponent(username)}/accas`).then(r => r.data);
+  api
+    .get(`/api/tipsters/${encodeURIComponent(username)}/accas`)
+    .then((r) => r.data);
 
 export const settleTipsterAcca = (accaId, result) =>
-  api.post(`/api/tipsters/accas/${accaId}/settle`, { result }).then(r => r.data);
+  api
+    .post(`/api/tipsters/accas/${accaId}/settle`, { result })
+    .then((r) => r.data);
+
+// ✅ NEW: delete an acca (only before earliest leg kicks off / if not settled)
+export const deleteTipsterAcca = (accaId) =>
+  api.delete(`/api/tipsters/accas/${accaId}`).then((r) => r.data);
