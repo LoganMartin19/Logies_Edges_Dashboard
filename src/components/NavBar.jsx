@@ -109,6 +109,15 @@ export default function NavBar() {
                           Add pick
                         </NavLink>
                       </li>
+                      <li>
+                        <NavLink
+                          to={`/tipsters/${myTipster.username}/new-acca`}
+                          className={({ isActive }) => (isActive ? styles.active : "")}
+                          onClick={closeMenu}
+                        >
+                          New Acca
+                        </NavLink>
+                      </li>
                     </>
                   ) : (
                     <li>
