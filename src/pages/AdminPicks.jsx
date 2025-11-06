@@ -38,6 +38,44 @@ const fmtUK = (iso) => {
   return iso;
 };
 
+// -------- logos / helpers (same slug strategy as PublicDashboard) ----------
+const slug = (s = "") =>
+  s.normalize("NFKD").replace(/[^\w\s.-]/g, "").trim().replace(/\s+/g, "_").toLowerCase();
+
+const logoUrl = (teamName) => `/logos/${slug(teamName)}.png`;
+
+const TeamChip = ({ name, align = "left" }) => (
+  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    {align === "left" && (
+      <img
+        loading="lazy"
+        src={logoUrl(name)}
+        alt=""
+        width={18}
+        height={18}
+        onError={(e) => (e.currentTarget.style.display = "none")}
+      />
+    )}
+    <b style={{ fontWeight: 700 }}>{name}</b>
+    {align === "right" && (
+      <img
+        loading="lazy"
+        src={logoUrl(name)}
+        alt=""
+        width={18}
+        height={18}
+        onError={(e) => (e.currentTarget.style.display = "none")}
+      />
+    )}
+  </span>
+);
+
+// parse "A v B" or "A vs B"
+const splitMatchup = (s = "") => {
+  const m = s.split(/\s+v(?:s\.)?\s+/i);
+  return m.length === 2 ? { home: m[0].trim(), away: m[1].trim() } : {};
+};
+
 export default function AdminPicks() {
   // default to today + all so the API 422 never happens
   const [day, setDay] = useState(todayISO());
@@ -145,6 +183,39 @@ export default function AdminPicks() {
     if (next) await ensureDetail(next);
   };
 
+  // -------- fixture lookup + robust resolver for pick display ------------
+  const fixturesById = useMemo(() => {
+    const m = {};
+    for (const f of fixtures || []) m[Number(f.id)] = f;
+    return m;
+  }, [fixtures]);
+
+  const resolvePickDisplay = (p) => {
+    const fx = fixturesById[Number(p.fixture_id)];
+    const fromPick = {
+      home: p.home_team,
+      away: p.away_team,
+      comp: p.comp,
+      ko: p.kickoff_utc,
+    };
+    if (fromPick.home && fromPick.away) return fromPick;
+    if (fx) {
+      return {
+        home: fx.home_team,
+        away: fx.away_team,
+        comp: fx.comp || fromPick.comp,
+        ko: fx.kickoff_utc || fromPick.ko,
+      };
+    }
+    const s = splitMatchup(p.matchup || "");
+    return {
+      home: s.home || fromPick.home,
+      away: s.away || fromPick.away,
+      comp: fromPick.comp || "Football",
+      ko: fromPick.ko,
+    };
+  };
+
   const PrefillBtn = ({ f, mkt, book, price }) => (
     <button
       style={{ fontSize: 12, padding: "2px 6px" }}
@@ -193,26 +264,32 @@ export default function AdminPicks() {
         <p style={{ color: "#666" }}>No picks yet.</p>
       ) : (
         <div style={{ display: "grid", gap: 10, marginBottom: 18 }}>
-          {picks.map((p) => (
-            <div key={p.pick_id} style={{ border: "1px solid #eee", padding: 10, borderRadius: 8 }}>
-              <div style={{ fontWeight: 700 }}>
-                {p.matchup} <span style={{ color: "#666" }}>({p.comp})</span>
+          {picks.map((p) => {
+            const d = resolvePickDisplay(p);
+            return (
+              <div key={p.pick_id} style={{ border: "1px solid #eee", padding: 10, borderRadius: 8 }}>
+                <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <TeamChip name={d.home || "—"} />{" "}
+                  <span style={{ color: "#666" }}>vs</span>{" "}
+                  <TeamChip name={d.away || "—"} align="right" />
+                  <span style={{ color: "#666" }}>({p.comp || d.comp || "—"})</span>
+                </div>
+                <div style={{ color: "#666" }}>
+                  {fmtUK(d.ko || p.kickoff_utc)} • {p.sport?.toUpperCase()}
+                </div>
+                <div>
+                  Pick: <strong>{p.market}</strong> @ {p.bookmaker} —{" "}
+                  <strong>{Number(p.price).toFixed(2)}</strong>
+                </div>
+                {p.note && <div style={{ marginTop: 4 }}>{p.note}</div>}
+                <div style={{ marginTop: 6 }}>
+                  <button disabled={busyPickId === p.pick_id} onClick={() => removePick(p.pick_id)}>
+                    {busyPickId === p.pick_id ? "Removing…" : "Remove"}
+                  </button>
+                </div>
               </div>
-              <div style={{ color: "#666" }}>
-                {fmtUK(p.kickoff_utc)} • {p.sport?.toUpperCase()}
-              </div>
-              <div>
-                Pick: <strong>{p.market}</strong> @ {p.bookmaker} —{" "}
-                <strong>{Number(p.price).toFixed(2)}</strong>
-              </div>
-              {p.note && <div style={{ marginTop: 4 }}>{p.note}</div>}
-              <div style={{ marginTop: 6 }}>
-                <button disabled={busyPickId === p.pick_id} onClick={() => removePick(p.pick_id)}>
-                  {busyPickId === p.pick_id ? "Removing…" : "Remove"}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -248,7 +325,9 @@ export default function AdminPicks() {
                   <td>{fmtUK(f.kickoff_utc)}</td>
                   <td>
                     <div style={{ fontWeight: 600 }}>
-                      {f.home_team} vs {f.away_team}
+                      <TeamChip name={f.home_team} />{" "}
+                      <span style={{ color: "#666" }}>vs</span>{" "}
+                      <TeamChip name={f.away_team} align="right" />
                     </div>
                     <div style={{ color: "#666", fontSize: 12 }}>{attached.length} pick(s)</div>
                   </td>
