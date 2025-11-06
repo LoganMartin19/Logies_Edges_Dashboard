@@ -91,7 +91,7 @@ const S = {
   sectionTitle: { fontSize: 18, fontWeight: 700, marginTop: 18, marginBottom: 8 },
   tbl: { width: "100%", borderCollapse: "collapse" },
   th: { textAlign: "left", padding: "8px 6px", borderBottom: "1px solid #eee", fontSize: 14 },
-  td: { padding: "10px 6px", borderBottom: "1px solid #f1f1f1", fontSize: 14 },
+  td: { padding: "10px 6px", borderBottom: "1px solidrgb(15, 15, 15)", fontSize: 14 },
   muted: { color: "#777" },
   pillRow: { display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 },
   pill: (active) => ({

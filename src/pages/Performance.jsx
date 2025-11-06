@@ -302,12 +302,19 @@ function Kpi({ title, value, tone = "neutral" }) {
 function Section({ title, children }) {
   return (
     <div style={{ marginTop: 24 }}>
-      <h3 style={{ marginBottom: 10 }}>{title}</h3>
+      <h3 style={{ 
+        marginBottom: 10, 
+        color: "#eaf4ed",          // ✅ make section headers readable on dark
+        borderBottom: "1px solid rgba(255,255,255,0.1)", 
+        paddingBottom: 4 
+      }}>
+        {title}
+      </h3>
       <div
         style={{
-          background: COL.cardBg,
-          color: COL.text,
-          border: `1px solid ${COL.cardBorder}`,
+          background: "#111",
+          color: "#eaf4ed",
+          border: "1px solid rgba(255,255,255,.12)",
           borderRadius: 12,
           boxShadow: "0 4px 20px rgba(0,0,0,.12)",
           padding: 12,
