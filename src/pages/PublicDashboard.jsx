@@ -202,24 +202,24 @@ export default function PublicDashboard() {
   const isMobile = useIsMobile(700);
 
   const load = async () => {
-    setLoading(true); setErr("");
+    setLoading(true);
+    setErr("");
     try {
-      const { data: fxJ } = await api.get("/api/public/fixtures/daily", { params: { day, sport } });
-      let pkJ = { picks: [] };
-      try {
-        const { data } = await api.get("api/public/picks", { params: { day } });
-        pkJ = data;
-      } catch {
-        try {
-          const { data } = await api.get("/api/public/picks/daily", { params: { day, sport } });
-          pkJ = data;
-        } catch {}
-      }
-      setFixtures(fxJ.fixtures || []);
-      setPicks(pkJ.picks || []);
+      const [{ data: fxJ }, { data: pkJ }] = await Promise.all([
+        api.get("/api/public/fixtures/daily", { params: { day, sport } }),
+        // force full list (not legacy top-3)
+        api.get("/api/public/picks/daily", { params: { day, sport, limit: 50 } }),
+      ]);
+  
+      setFixtures(fxJ?.fixtures || []);
+      setPicks(pkJ?.picks || []);
     } catch (e) {
-      setErr(String(e?.message || e)); setFixtures([]); setPicks([]);
-    } finally { setLoading(false); }
+      setErr(String(e?.response?.data?.detail || e.message || e));
+      setFixtures([]);
+      setPicks([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, [day, sport]);
