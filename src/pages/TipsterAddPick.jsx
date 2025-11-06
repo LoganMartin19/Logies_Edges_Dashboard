@@ -1,30 +1,25 @@
-// src/pages/TipsterAddPick.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { fetchDailyFixtures, createTipsterPick, fetchTipster } from "../api";
-import { useAuth } from "../components/AuthGate";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { fetchDailyFixtures, createTipsterAcca } from "../api";
 
-export default function TipsterAddPick() {
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+export default function TipsterAddAcca() {
   const { username } = useParams();
   const nav = useNavigate();
-  const { user } = useAuth();
 
-  const [tipster, setTipster] = useState(null);
-  const [fixtures, setFixtures] = useState([]);       // always an array
-  const [loading, setLoading] = useState(true);
+  const [day, setDay] = useState(todayStr());
+  const [sport, setSport] = useState("football");
+  const [fixtures, setFixtures] = useState([]);
+  const [legs, setLegs] = useState([]);
+  const [stake, setStake] = useState(1.0);
   const [err, setErr] = useState("");
-
-  // form state
-  const [fixtureId, setFixtureId] = useState("");
-  const [market, setMarket] = useState("HOME_WIN");
-  const [bookmaker, setBookmaker] = useState("bet365");
-  const [price, setPrice] = useState("");
-  const [stake, setStake] = useState("1.0");
+  const [loading, setLoading] = useState(true);
 
   // normalize API shape safely -> always []
   const normalizeFixtures = (data) => {
     if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.fixtures)) return data.fixtures;
+    if (data && Array.isArray(data.fixtures)) return data.fixtures; // from /public/fixtures/daily
     if (data && Array.isArray(data.rows)) return data.rows;
     return [];
   };
@@ -35,145 +30,220 @@ export default function TipsterAddPick() {
       try {
         setErr("");
         setLoading(true);
-
-        // 1) load tipster (also used to show name and to 404 if not found)
-        const t = await fetchTipster(username);
+        const res = await fetchDailyFixtures(day, sport); // hits /api/public/fixtures/daily
         if (!mounted) return;
-        setTipster(t);
-
-        // 2) load today's fixtures
-        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-        const res = await fetchDailyFixtures(today, "all");
-        if (!mounted) return;
-
-        const rows = normalizeFixtures(res);
-        setFixtures(rows);
+        setFixtures(normalizeFixtures(res));
       } catch (e) {
         if (!mounted) return;
-        setErr(e?.response?.data?.detail || e.message || "Failed to load");
+        setErr(e?.response?.data?.detail || e.message || "Failed to load fixtures");
+        setFixtures([]);
       } finally {
         if (mounted) setLoading(false);
       }
     })();
     return () => { mounted = false; };
-  }, [username]);
+  }, [day, sport]);
 
-  // selected fixture object (guarded)
-  const selectedFixture = useMemo(() => {
-    if (!Array.isArray(fixtures)) return null;
-    return fixtures.find(f => String(f.id) === String(fixtureId)) || null;
-  }, [fixtures, fixtureId]);
+  const markets = ["HOME_WIN", "AWAY_WIN", "DRAW", "BTTS_Y", "BTTS_N", "O2.5", "U2.5"];
 
-  const onSubmit = async (e) => {
+  // best-effort label (works for both public + internal shapes)
+  const teamName = (obj, fallbackHomeAway) =>
+    obj?.home_team ?? obj?.home ?? obj?.home_name ??
+    (fallbackHomeAway === "home" ? "Home" : "Away");
+
+  const label = (fx) => {
+    const h = teamName(fx, "home");
+    const a = teamName(fx, "away");
+    const ko = fx.kickoff_utc
+      ? new Date(fx.kickoff_utc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "";
+    return `${h} vs ${a}${ko ? ` — ${ko}` : ""}`;
+  };
+
+  const addLeg = (fx) => {
+    setLegs((prev) => [
+      ...prev,
+      {
+        fixture_id: fx.id,
+        market: "HOME_WIN",
+        price: 2.0,
+        bookmaker: "bet365",
+        home_name: teamName(fx, "home"),
+        away_name: teamName(fx, "away"),
+      },
+    ]);
+  };
+
+  const rmLeg = (i) => setLegs((prev) => prev.filter((_, idx) => idx !== i));
+
+  const combined = useMemo(
+    () => legs.reduce((acc, l) => acc * (parseFloat(l.price) || 1), 1),
+    [legs]
+  );
+
+  const submit = async (e) => {
     e.preventDefault();
     try {
       setErr("");
-      if (!fixtureId) throw new Error("Pick a fixture");
-      if (!price || Number(price) <= 1.0) throw new Error("Enter a valid decimal price (>1.00)");
-
-      await createTipsterPick(username, {
-        fixture_id: Number(fixtureId),
-        market,
-        bookmaker: bookmaker || null,
-        price: Number(price),
-        stake: Number(stake) || 1.0,
+      if (legs.length < 2) throw new Error("Acca needs at least 2 legs");
+      await createTipsterAcca(username, {
+        stake: parseFloat(stake) || 1,
+        legs: legs.map((l) => ({
+          fixture_id: Number(l.fixture_id),
+          market: l.market,
+          price: Number(l.price),
+          bookmaker: l.bookmaker || null,
+          note: null,
+        })),
       });
-
-      // go back to the tipster page
       nav(`/tipsters/${username}`);
-    } catch (e) {
-      setErr(e?.response?.data?.detail || e.message || "Failed to create pick");
+    } catch (e2) {
+      setErr(e2?.response?.data?.detail || e2.message || "Failed to create acca");
     }
   };
 
-  if (loading) return <div>Loading…</div>;
-  if (err) return <div style={{ color: "salmon" }}>{err}</div>;
-  if (!tipster) return <div>Tipster not found</div>;
-
-  // simple market options (expand later)
-  const MARKET_OPTIONS = [
-    "HOME_WIN", "DRAW", "AWAY_WIN",
-    "O2.5", "U2.5", "BTTS_Y", "BTTS_N"
-  ];
-
-  // best-effort label for fixtures
-  const fixtureLabel = (f) => {
-    const ko = f.kickoff_utc ? new Date(f.kickoff_utc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-    return `${f.home_team ?? f.home ?? "Home"} vs ${f.away_team ?? f.away ?? "Away"} — ${ko}`;
-    // (supports different API shapes)
-  };
-
   return (
-    <div style={{ maxWidth: 680 }}>
+    <div style={{ maxWidth: 820 }}>
       <Link to={`/tipsters/${username}`}>← Back</Link>
-      <h2>Add Pick for @{username}</h2>
+      <h2>New Acca for @{username}</h2>
 
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", gap: 8, margin: "8px 0 16px" }}>
         <label>
-          Fixture
-          <select
-            value={fixtureId}
-            onChange={(e) => setFixtureId(e.target.value)}
-            required
-          >
-            <option value="">Select a fixture…</option>
-            {fixtures.map((f) => (
-              <option key={f.id} value={f.id}>
-                {fixtureLabel(f)}
-              </option>
-            ))}
+          Day:&nbsp;
+          <input
+            type="date"
+            value={day}
+            onChange={(e) => setDay(e.target.value)}
+          />
+        </label>
+        <label>
+          Sport:&nbsp;
+          <select value={sport} onChange={(e) => setSport(e.target.value)}>
+            <option value="football">Football</option>
+            <option value="nba">NBA</option>
+            <option value="nhl">NHL</option>
+            <option value="nfl">NFL</option>
+            <option value="cfb">CFB</option>
+            <option value="all">All</option>
           </select>
         </label>
+      </div>
 
-        <label>
-          Market
-          <select value={market} onChange={(e) => setMarket(e.target.value)}>
-            {MARKET_OPTIONS.map(m => (
-              <option key={m} value={m}>{m}</option>
+      {loading ? (
+        <div>Loading fixtures…</div>
+      ) : (
+        <>
+          <div style={{ display: "grid", gap: 8 }}>
+            {fixtures.map((fx) => (
+              <div
+                key={fx.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "#0c331f",
+                  padding: 8,
+                  borderRadius: 8,
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>{teamName(fx, "home")}</div>
+                <div style={{ opacity: 0.7 }}>vs</div>
+                <div style={{ fontWeight: 600 }}>{teamName(fx, "away")}</div>
+                <button onClick={() => addLeg(fx)} style={{ marginLeft: "auto" }}>
+                  Add leg
+                </button>
+              </div>
             ))}
-          </select>
-        </label>
-
-        <label>
-          Bookmaker (optional)
-          <input
-            value={bookmaker}
-            onChange={(e) => setBookmaker(e.target.value)}
-            placeholder="bet365"
-          />
-        </label>
-
-        <label>
-          Price (decimal)
-          <input
-            type="number"
-            step="0.01"
-            min="1.01"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            required
-          />
-        </label>
-
-        <label>
-          Stake (units)
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            value={stake}
-            onChange={(e) => setStake(e.target.value)}
-          />
-        </label>
-
-        {selectedFixture && (
-          <div style={{ fontSize: 12, opacity: 0.8 }}>
-            <strong>Preview:</strong> {fixtureLabel(selectedFixture)} — {market} @ {price || "—"} ({bookmaker || "—"})
+            {!fixtures.length && (
+              <div style={{ opacity: 0.7 }}>
+                No fixtures for {day} {sport !== "all" ? `(${sport})` : ""}.
+              </div>
+            )}
           </div>
-        )}
 
-        <button type="submit">Create Pick</button>
-      </form>
+          <h3 style={{ marginTop: 20 }}>Legs ({legs.length})</h3>
+          <form onSubmit={submit}>
+            {legs.map((l, i) => (
+              <div
+                key={`${l.fixture_id}-${i}`}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 140px 110px 110px 28px",
+                  gap: 8,
+                  alignItems: "center",
+                  marginBottom: 8,
+                }}
+              >
+                <div>
+                  <strong>{l.home_name}</strong> vs <strong>{l.away_name}</strong>
+                </div>
+                <select
+                  value={l.market}
+                  onChange={(e) => {
+                    const v = [...legs];
+                    v[i] = { ...v[i], market: e.target.value };
+                    setLegs(v);
+                  }}
+                >
+                  {markets.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={l.bookmaker}
+                  onChange={(e) => {
+                    const v = [...legs];
+                    v[i] = { ...v[i], bookmaker: e.target.value };
+                    setLegs(v);
+                  }}
+                  placeholder="bet365"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={l.price}
+                  onChange={(e) => {
+                    const v = [...legs];
+                    v[i] = { ...v[i], price: e.target.value };
+                    setLegs(v);
+                  }}
+                />
+                <button type="button" onClick={() => rmLeg(i)}>
+                  ✕
+                </button>
+              </div>
+            ))}
+
+            <div style={{ display: "flex", gap: 16, marginTop: 12, alignItems: "center" }}>
+              <label>
+                Stake:&nbsp;
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={stake}
+                  onChange={(e) => setStake(e.target.value)}
+                />
+              </label>
+              <div>
+                Combined: <strong>{combined.toFixed(2)}</strong>
+              </div>
+              <div>
+                Potential Profit:{" "}
+                <strong>{(parseFloat(stake || 0) * (combined - 1)).toFixed(2)}</strong>
+              </div>
+              <button type="submit" className="btnPrimary" style={{ marginLeft: "auto" }}>
+                Create Acca
+              </button>
+            </div>
+            {err && <div style={{ color: "salmon", marginTop: 8 }}>{err}</div>}
+          </form>
+        </>
+      )}
     </div>
   );
 }
