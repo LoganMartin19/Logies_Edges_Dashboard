@@ -39,7 +39,7 @@ export default function FeaturedRecord({ span = "30d" }) {
     return () => { alive = false; };
   }, [span]);
 
-  // lock page scroll while drawer open (iOS-friendly)
+  // lock page scroll while drawer open (iOS/desktop-safe)
   useEffect(() => {
     if (!open) return;
     const prevHtml = document.documentElement.style.overflow;
@@ -72,6 +72,10 @@ export default function FeaturedRecord({ span = "30d" }) {
       {/* DRAWER */}
       {open && (
         <div className="rec-overlay" role="dialog" aria-modal="true">
+          {/* backdrop under the panel (click to close) */}
+          <div className="rec-backdrop" onClick={() => setOpen(false)} />
+
+          {/* panel above the backdrop */}
           <div className="rec-panel" onClick={(e) => e.stopPropagation()}>
             <div className="rec-head">
               <div style={{ fontWeight: 800, fontSize: 18, color: "#eaf4ed" }}>
@@ -80,82 +84,82 @@ export default function FeaturedRecord({ span = "30d" }) {
               <button className="rec-close" onClick={() => setOpen(false)}>Close</button>
             </div>
 
-            {/* KPIs */}
-            <div className="rec-kpis">
-              <div><b>Staked:</b> £{(s.staked || 0).toFixed(2)}</div>
-              <div><b>Returned:</b> £{(s.returned || 0).toFixed(2)}</div>
-              <div><b>P/L:</b> £{(s.pnl || 0).toFixed(2)}</div>
-              <div><b>ROI:</b> {roi}%</div>
-              <div><b>Record:</b> {rec}</div>
+            {/* scrollable body */}
+            <div className="rec-body">
+              {/* KPIs */}
+              <div className="rec-kpis">
+                <div><b>Staked:</b> £{(s.staked || 0).toFixed(2)}</div>
+                <div><b>Returned:</b> £{(s.returned || 0).toFixed(2)}</div>
+                <div><b>P/L:</b> £{(s.pnl || 0).toFixed(2)}</div>
+                <div><b>ROI:</b> {roi}%</div>
+                <div><b>Record:</b> {rec}</div>
+              </div>
+
+              {/* TABLE */}
+              <div className="rec-scroll">
+                <table className="rec-table">
+                  <thead>
+                    <tr>
+                      <th className="fixture">Fixture</th>
+                      <th>Comp</th>
+                      <th>Market</th>
+                      <th className="col-book">Book</th>
+                      <th className="col-num" style={{ textAlign: "right" }}>Odds</th>
+                      <th className="col-num" style={{ textAlign: "right" }}>Stake</th>
+                      <th className="col-num" style={{ textAlign: "right" }}>Result</th>
+                      <th className="col-num" style={{ textAlign: "right" }}>Units</th>
+                      <th>Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.picks || []).map((p) => {
+                      const match = getMatch(p);
+                      const comp = p.league || p.comp || "—";
+                      const stake = +p.stake || 0;
+                      const price = +p.price || 0;
+                      const res = (p.result || "").toLowerCase();
+                      let units = 0;
+                      if (res === "won") units = stake * (price - 1);
+                      else if (res === "lost") units = -stake;
+
+                      return (
+                        <tr key={p.pick_id} style={{ borderTop: "1px solid rgba(255,255,255,.08)" }}>
+                          <td className="fixture">{match}</td>
+                          <td>{comp}</td>
+                          <td>{p.market || "—"}</td>
+                          <td className="col-book">{p.bookmaker || "—"}</td>
+                          <td className="col-num">{price ? price.toFixed(2) : "—"}</td>
+                          <td className="col-num">{stake ? stake.toFixed(2) : "—"}</td>
+                          <td
+                            className="col-num"
+                            style={{ color: res === "won" ? "#5efc82" : res === "lost" ? "#ff6b6b" : "#bbb" }}
+                          >
+                            {res || "—"}
+                          </td>
+                          <td
+                            className="col-num"
+                            style={{ color: units > 0 ? "#5efc82" : units < 0 ? "#ff6b6b" : "#bbb" }}
+                          >
+                            {units ? units.toFixed(2) : "0.00"}
+                          </td>
+                          <td>{p.note || ""}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* KELLY */}
+              <div className="rec-card" style={{ marginTop: 16 }}>
+                <div className="rec-subtitle">Kelly Stake Calculator</div>
+                <KellyWidget />
+              </div>
+
+              {/* spacer to clear iOS toolbar on mobile */}
+              <div className="rec-spacer" />
             </div>
-
-            {/* TABLE */}
-            <div className="rec-scroll">
-              <table className="rec-table">
-                <thead>
-                  <tr>
-                    <th className="fixture">Fixture</th>
-                    <th>Comp</th>
-                    <th>Market</th>
-                    <th className="col-book">Book</th>
-                    <th className="col-num" style={{ textAlign: "right" }}>Odds</th>
-                    <th className="col-num" style={{ textAlign: "right" }}>Stake</th>
-                    <th className="col-num" style={{ textAlign: "right" }}>Result</th>
-                    <th className="col-num" style={{ textAlign: "right" }}>Units</th>
-                    <th>Note</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(data.picks || []).map((p) => {
-                    const match = getMatch(p);
-                    const comp = p.league || p.comp || "—";
-                    const stake = +p.stake || 0;
-                    const price = +p.price || 0;
-                    const res = (p.result || "").toLowerCase();
-                    let units = 0;
-                    if (res === "won") units = stake * (price - 1);
-                    else if (res === "lost") units = -stake;
-
-                    return (
-                      <tr key={p.pick_id} style={{ borderTop: "1px solid rgba(255,255,255,.08)" }}>
-                        <td className="fixture">{match}</td>
-                        <td>{comp}</td>
-                        <td>{p.market || "—"}</td>
-                        <td className="col-book">{p.bookmaker || "—"}</td>
-                        <td className="col-num">{price ? price.toFixed(2) : "—"}</td>
-                        <td className="col-num">{stake ? stake.toFixed(2) : "—"}</td>
-                        <td
-                          className="col-num"
-                          style={{ color: res === "won" ? "#5efc82" : res === "lost" ? "#ff6b6b" : "#bbb" }}
-                        >
-                          {res || "—"}
-                        </td>
-                        <td
-                          className="col-num"
-                          style={{ color: units > 0 ? "#5efc82" : units < 0 ? "#ff6b6b" : "#bbb" }}
-                        >
-                          {units ? units.toFixed(2) : "0.00"}
-                        </td>
-                        <td>{p.note || ""}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* KELLY */}
-            <div className="rec-card" style={{ marginTop: 16 }}>
-              <div className="rec-subtitle">Kelly Stake Calculator</div>
-              <KellyWidget />
-            </div>
-
-            {/* mobile bottom spacer to clear iOS toolbar */}
-            <div className="rec-spacer" />
           </div>
-
-          {/* click outside to close */}
-          <div className="rec-backdrop" onClick={() => setOpen(false)} />
         </div>
       )}
 
@@ -164,16 +168,16 @@ export default function FeaturedRecord({ span = "30d" }) {
         .rec-overlay {
           position: fixed; inset: 0; z-index: 1000;
           display: grid; place-items: end center;
-          pointer-events: none;                 /* let child decide interactions */
         }
         .rec-backdrop {
           position: fixed; inset: 0; background: rgba(0,0,0,.45);
-          pointer-events: auto;                 /* clickable backdrop */
+          z-index: 1;
         }
         .rec-panel {
           position: relative;
+          z-index: 2;                       /* <- above backdrop */
           width: min(980px, 100%);
-          max-height: 88vh;                     /* desktop sheet height */
+          max-height: 88vh;                 /* desktop sheet cap */
           background: #0f1110;
           color: #eaf4ed;
           border-top-left-radius: 16px;
@@ -181,18 +185,15 @@ export default function FeaturedRecord({ span = "30d" }) {
           border: 1px solid rgba(255,255,255,.12);
           box-shadow: 0 -12px 30px rgba(0,0,0,.35);
           padding: 12px;
-          overflow-y: auto;                      /* vertical scroll here */
-          -webkit-overflow-scrolling: touch;     /* smooth iOS scroll */
-          overscroll-behavior: contain;          /* stop bounce propagation */
-          touch-action: pan-y;                   /* allow vertical pan */
-          pointer-events: auto;                  /* interactive */
+          display: flex;                    /* flex column */
+          flex-direction: column;
         }
         .rec-head {
           display: flex; align-items: center; gap: 8px;
           position: sticky; top: 0;
           padding: 6px 0 10px 0;
           background: linear-gradient(180deg, rgba(15,17,16,1) 70%, rgba(15,17,16,0) 100%);
-          z-index: 2; border-bottom: 1px solid rgba(255,255,255,.08);
+          z-index: 3; border-bottom: 1px solid rgba(255,255,255,.08);
         }
         .rec-close {
           margin-left: auto; padding: 6px 10px; border-radius: 8px;
@@ -202,6 +203,15 @@ export default function FeaturedRecord({ span = "30d" }) {
 
         .rec-kpis{
           display:flex; gap:18px; margin:12px 0 8px; flex-wrap:wrap;
+        }
+
+        /* scrollable content area */
+        .rec-body{
+          min-height: 0;                    /* required for flex children to shrink */
+          overflow-y: auto;                 /* vertical scroll here */
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;     /* stop bounce propagation */
+          touch-action: pan-y;              /* allow vertical pan */
         }
 
         .rec-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -228,20 +238,16 @@ export default function FeaturedRecord({ span = "30d" }) {
 
         /* ---------- Mobile: true full-screen bottom sheet ---------- */
         @media (max-width: 700px) {
-          .rec-overlay { place-items: stretch; }
           .rec-panel {
             width: 100vw;
-            height: 100dvh;                     /* full device height */
+            height: 100dvh;                 /* full device height */
             max-height: none;
             inset: 0;
             border-radius: 0;
             padding:
               calc(10px + env(safe-area-inset-top)) 10px
               calc(28px + env(safe-area-inset-bottom) + 96px);
-            overflow-y: auto;                    /* keep vertical scroll */
-            -webkit-overflow-scrolling: touch;
           }
-          .rec-head { top: env(safe-area-inset-top); }
           .rec-table { min-width: 620px; }
           .rec-spacer { height: 96px; }
         }
