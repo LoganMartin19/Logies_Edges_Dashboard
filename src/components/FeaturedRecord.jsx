@@ -182,23 +182,26 @@ export default function FeaturedRecord({ span = "30d" }) {
         /* ---------- Mobile: make it truly full screen ---------- */
         @media (max-width: 700px) {
             .rec-overlay { place-items: stretch; }
-            .rec-panel {
-            width: 100vw;
-            height: 100dvh;           /* small viewport unit = ignores browser chrome */
-            max-height: none;
-            inset: 0;                 /* fill screen */
-            border-radius: 0;         /* edge-to-edge */
-            padding:
+            .rec-panel{
+                width: 100vw;
+                height: 100dvh;            /* true full height */
+                max-height: none;
+                inset: 0;
+                border-radius: 0;
+                /* give generous bottom padding to clear Safari toolbar */
+                padding:
                 calc(10px + env(safe-area-inset-top)) 10px
-                calc(12px + env(safe-area-inset-bottom));
+                calc(28px + env(safe-area-inset-bottom) + 96px);
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
             }
-            .rec-head { 
-            position: sticky;
-            top: env(safe-area-inset-top); 
-            padding-top: 0;
+            .rec-head{
+                position: sticky;
+                top: env(safe-area-inset-top);
             }
-            .rec-table thead th, .rec-table tbody td { padding: 10px 6px; font-size: 13px; }
-        }
+            /* spacer only shows on mobile */
+            .rec-spacer { height: 96px; }
+            }
         `}</style>
     </>
   );
