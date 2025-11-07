@@ -39,7 +39,7 @@ export default function FeaturedRecord({ span = "30d" }) {
     return () => { alive = false; };
   }, [span]);
 
-  // ✅ lock the page scroll when the drawer is open (iOS-friendly)
+  // lock page scroll while drawer open (iOS-friendly)
   useEffect(() => {
     if (!open) return;
     const prevHtml = document.documentElement.style.overflow;
@@ -71,7 +71,7 @@ export default function FeaturedRecord({ span = "30d" }) {
 
       {/* DRAWER */}
       {open && (
-        <div className="rec-overlay" role="dialog" aria-modal="true" onClick={() => setOpen(false)}>
+        <div className="rec-overlay" role="dialog" aria-modal="true">
           <div className="rec-panel" onClick={(e) => e.stopPropagation()}>
             <div className="rec-head">
               <div style={{ fontWeight: 800, fontSize: 18, color: "#eaf4ed" }}>
@@ -124,10 +124,16 @@ export default function FeaturedRecord({ span = "30d" }) {
                         <td className="col-book">{p.bookmaker || "—"}</td>
                         <td className="col-num">{price ? price.toFixed(2) : "—"}</td>
                         <td className="col-num">{stake ? stake.toFixed(2) : "—"}</td>
-                        <td className="col-num" style={{ color: res === "won" ? "#5efc82" : res === "lost" ? "#ff6b6b" : "#bbb" }}>
+                        <td
+                          className="col-num"
+                          style={{ color: res === "won" ? "#5efc82" : res === "lost" ? "#ff6b6b" : "#bbb" }}
+                        >
                           {res || "—"}
                         </td>
-                        <td className="col-num" style={{ color: units > 0 ? "#5efc82" : units < 0 ? "#ff6b6b" : "#bbb" }}>
+                        <td
+                          className="col-num"
+                          style={{ color: units > 0 ? "#5efc82" : units < 0 ? "#ff6b6b" : "#bbb" }}
+                        >
                           {units ? units.toFixed(2) : "0.00"}
                         </td>
                         <td>{p.note || ""}</td>
@@ -149,7 +155,7 @@ export default function FeaturedRecord({ span = "30d" }) {
           </div>
 
           {/* click outside to close */}
-          <div className="rec-backdrop" />
+          <div className="rec-backdrop" onClick={() => setOpen(false)} />
         </div>
       )}
 
@@ -158,15 +164,16 @@ export default function FeaturedRecord({ span = "30d" }) {
         .rec-overlay {
           position: fixed; inset: 0; z-index: 1000;
           display: grid; place-items: end center;
-          touch-action: none;                 /* don't scroll page behind */
+          pointer-events: none;                 /* let child decide interactions */
         }
         .rec-backdrop {
           position: fixed; inset: 0; background: rgba(0,0,0,.45);
+          pointer-events: auto;                 /* clickable backdrop */
         }
         .rec-panel {
           position: relative;
           width: min(980px, 100%);
-          max-height: 88vh;                   /* desktop sheet height */
+          max-height: 88vh;                     /* desktop sheet height */
           background: #0f1110;
           color: #eaf4ed;
           border-top-left-radius: 16px;
@@ -174,10 +181,11 @@ export default function FeaturedRecord({ span = "30d" }) {
           border: 1px solid rgba(255,255,255,.12);
           box-shadow: 0 -12px 30px rgba(0,0,0,.35);
           padding: 12px;
-          overflow-y: auto;                    /* vertical scroll here */
-          -webkit-overflow-scrolling: touch;   /* smooth iOS scroll */
-          overscroll-behavior: contain;        /* stop bounce propagation */
-          touch-action: pan-y;                 /* allow vertical pan */
+          overflow-y: auto;                      /* vertical scroll here */
+          -webkit-overflow-scrolling: touch;     /* smooth iOS scroll */
+          overscroll-behavior: contain;          /* stop bounce propagation */
+          touch-action: pan-y;                   /* allow vertical pan */
+          pointer-events: auto;                  /* interactive */
         }
         .rec-head {
           display: flex; align-items: center; gap: 8px;
@@ -223,13 +231,15 @@ export default function FeaturedRecord({ span = "30d" }) {
           .rec-overlay { place-items: stretch; }
           .rec-panel {
             width: 100vw;
-            height: 100dvh;
+            height: 100dvh;                     /* full device height */
             max-height: none;
             inset: 0;
             border-radius: 0;
             padding:
               calc(10px + env(safe-area-inset-top)) 10px
               calc(28px + env(safe-area-inset-bottom) + 96px);
+            overflow-y: auto;                    /* keep vertical scroll */
+            -webkit-overflow-scrolling: touch;
           }
           .rec-head { top: env(safe-area-inset-top); }
           .rec-table { min-width: 620px; }
