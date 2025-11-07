@@ -89,10 +89,26 @@ const S = {
   pickTeam: { display: "flex", alignItems: "center", gap: 8, fontWeight: 700 },
   pickSub: { fontSize: 12, opacity: 0.85, marginTop: 2 },
   sectionTitle: { fontSize: 18, fontWeight: 700, marginTop: 18, marginBottom: 8 },
+
+  // TABLE: dark-friendly
   tbl: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "left", padding: "8px 6px", borderBottom: "1px solid #eee", fontSize: 14 },
-  td: { padding: "10px 6px", borderBottom: "1px solidrgb(15, 15, 15)", fontSize: 14 },
-  muted: { color: "#777" },
+  th: {
+    textAlign: "left",
+    padding: "8px 6px",
+    borderBottom: "1px solid rgba(255,255,255,.12)",
+    fontSize: 14,
+    color: "#eaf4ed",
+    background: "rgba(255,255,255,.06)",
+    whiteSpace: "nowrap",
+  },
+  td: {
+    padding: "10px 6px",
+    borderBottom: "1px solid rgba(255,255,255,.08)", // ✅ fix invalid CSS + dark border
+    fontSize: 14,
+    color: "#eaf4ed",
+  },
+
+  muted: { color: "rgba(255,255,255,.7)" },
   pillRow: { display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 },
   pill: (active) => ({
     padding: "6px 10px",
@@ -104,7 +120,6 @@ const S = {
     cursor: "pointer",
     fontSize: 13,
   }),
-  // new: subtle action row for the toggle
   picksActions: { textAlign: "center", marginTop: 8 },
 };
 
@@ -350,7 +365,7 @@ export default function PublicDashboard() {
               <tr key={f.id}>
                 <td style={S.td}>{toUK(f.kickoff_utc)}</td>
                 <td style={S.td}>
-                  <Link to={routeFor(f)}>
+                  <Link to={routeFor(f)} style={{ color: "#d7e6db", textDecoration: "none" }}>
                     <TeamChip name={f.home_team} /> <span style={{ opacity: 0.6 }}>vs</span>{" "}
                     <TeamChip name={f.away_team} align="right" />
                   </Link>
