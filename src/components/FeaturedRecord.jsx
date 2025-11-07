@@ -127,62 +127,79 @@ export default function FeaturedRecord({ span = "30d" }) {
       {/* styles */}
       <style jsx="true">{`
         .rec-overlay {
-          position: fixed; inset: 0; z-index: 1000;
-          display: grid; place-items: end center;
+            position: fixed; inset: 0; z-index: 1000;
+            display: grid; place-items: end center;
         }
         .rec-backdrop {
-          position: fixed; inset: 0; background: rgba(0,0,0,.45);
+            position: fixed; inset: 0; background: rgba(0,0,0,.45);
         }
         .rec-panel {
-          position: relative;
-          width: min(980px, 100%);
-          max-height: 88vh;
-          background: #0f1110;
-          color: #eaf4ed;
-          border-top-left-radius: 16px;
-          border-top-right-radius: 16px;
-          border: 1px solid rgba(255,255,255,.12);
-          box-shadow: 0 -12px 30px rgba(0,0,0,.35);
-          padding: 12px;
-          overflow: auto; /* vertical scroll if needed */
+            position: relative;
+            width: min(980px, 100%);
+            max-height: 88vh;
+            background: #0f1110;
+            color: #eaf4ed;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            border: 1px solid rgba(255,255,255,.12);
+            box-shadow: 0 -12px 30px rgba(0,0,0,.35);
+            padding: 12px;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .rec-head {
-          display: flex; align-items: center; gap: 8px;
-          position: sticky; top: 0; padding: 6px 0 10px 0;
-          background: linear-gradient(180deg, rgba(15,17,16,1) 70%, rgba(15,17,16,0) 100%);
-          z-index: 2; border-bottom: 1px solid rgba(255,255,255,.08);
+            display: flex; align-items: center; gap: 8px;
+            position: sticky; top: 0;
+            padding: 6px 0 10px 0;
+            background: linear-gradient(180deg, rgba(15,17,16,1) 70%, rgba(15,17,16,0) 100%);
+            z-index: 2; border-bottom: 1px solid rgba(255,255,255,.08);
         }
         .rec-close {
-          margin-left: auto; padding: 6px 10px; border-radius: 8px;
-          border: 1px solid rgba(255,255,255,.18); background: #111; color: #fff; cursor: pointer;
+            margin-left: auto; padding: 6px 10px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,.18); background: #111; color: #fff; cursor: pointer;
         }
         .rec-muted { color: rgba(255,255,255,.75); }
 
         .rec-scroll { overflow-x: auto; }
-        .rec-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+        .rec-table { width: 100%; border-collapse: collapse; min-width: 640px; }
         .rec-table thead th {
-          text-align: left; font-weight: 700;
-          padding: 10px 8px; font-size: 13px;
-          border-bottom: 1px solid rgba(255,255,255,.12);
-          background: rgba(255,255,255,.06);
+            text-align: left; font-weight: 700;
+            padding: 10px 8px; font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,.12);
+            background: rgba(255,255,255,.06);
         }
         .rec-table tbody td {
-          padding: 12px 8px; border-bottom: 1px solid rgba(255,255,255,.08);
-          font-size: 14px;
+            padding: 12px 8px; border-bottom: 1px solid rgba(255,255,255,.08);
+            font-size: 14px;
         }
 
         .rec-card {
-          background: #111; border: 1px solid rgba(255,255,255,.12);
-          border-radius: 12px; padding: 12px;
+            background: #111; border: 1px solid rgba(255,255,255,.12);
+            border-radius: 12px; padding: 12px;
         }
         .rec-subtitle { font-weight: 700; margin-bottom: 8px; }
 
-        /* --- Mobile tweaks --- */
+        /* ---------- Mobile: make it truly full screen ---------- */
         @media (max-width: 700px) {
-          .rec-panel { border-radius: 14px 14px 0 0; padding: 10px; }
-          .rec-table thead th, .rec-table tbody td { padding: 10px 6px; font-size: 13px; }
+            .rec-overlay { place-items: stretch; }
+            .rec-panel {
+            width: 100vw;
+            height: 100dvh;           /* small viewport unit = ignores browser chrome */
+            max-height: none;
+            inset: 0;                 /* fill screen */
+            border-radius: 0;         /* edge-to-edge */
+            padding:
+                calc(10px + env(safe-area-inset-top)) 10px
+                calc(12px + env(safe-area-inset-bottom));
+            }
+            .rec-head { 
+            position: sticky;
+            top: env(safe-area-inset-top); 
+            padding-top: 0;
+            }
+            .rec-table thead th, .rec-table tbody td { padding: 10px 6px; font-size: 13px; }
         }
-      `}</style>
+        `}</style>
     </>
   );
 }
