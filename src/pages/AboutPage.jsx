@@ -64,6 +64,25 @@ export default function AboutPage() {
       <p style={{ marginTop: 24, color: "#666" }}>
         Built in Scotland • Data-driven • For bettors who think in percentages, not predictions.
       </p>
+
+      {/* --- Legal Disclaimer --- */}
+      <hr style={{ margin: "40px 0", borderTop: "1px solid #ddd" }} />
+      <h3>⚖️ Legal & Disclaimer</h3>
+      <p style={{ color: "#666", fontSize: "0.95em" }}>
+        Logie’s Edges provides sports analytics and statistical insights for informational purposes
+        only. We do not provide or facilitate gambling services, and no content on this platform
+        constitutes betting advice or a guarantee of outcome.  
+        <br /><br />
+        Users must be 18+ and are responsible for complying with local gambling laws. Always gamble
+        responsibly — see{" "}
+        <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer">
+          BeGambleAware.org
+        </a>
+        .  
+        <br /><br />
+        © {new Date().getFullYear()} Logie’s Edges. All rights reserved.  
+        Registered in Scotland (pending).
+      </p>
     </div>
   );
 }
