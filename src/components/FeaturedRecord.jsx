@@ -1,6 +1,25 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 
+// Try all reasonable field names the API might use
+function getMatchup(p = {}) {
+    const h =
+      p.home?.trim?.() ||
+      p.home_team?.trim?.() ||
+      p.homeName?.trim?.() ||
+      p.home_name?.trim?.();
+    const a =
+      p.away?.trim?.() ||
+      p.away_team?.trim?.() ||
+      p.awayName?.trim?.() ||
+      p.away_name?.trim?.();
+  
+    if (h && a) return `${h} v ${a}`;
+    if (p.matchup?.trim?.()) return p.matchup.trim();
+    if (p.fixture_name?.trim?.()) return p.fixture_name.trim();
+    return "—";
+  }
+
 export default function FeaturedRecord({ span = "30d" }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState(null);
@@ -94,24 +113,26 @@ export default function FeaturedRecord({ span = "30d" }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {picks.map((p, i) => {
-                        const matchup =
-                          p.matchup ||
-                          (p.home_team && p.away_team ? `${p.home_team} v ${p.away_team}` : "—");
-                        const comp = p.comp || p.league || "—";
-                        return (
-                          <tr key={i}>
-                            <td className="fixture">{matchup}</td>
-                            <td>{comp}</td>
-                            <td>{p.market || "—"}</td>
-                            <td className="col-book">{p.bookmaker || "—"}</td>
-                            <td className="col-odds">
-                              {p.price ? Number(p.price).toFixed(2) : "—"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
+                        {picks.map((p, i) => {
+                            const matchup = getMatchup(p);           // <-- use helper
+                            const comp = p.comp || p.league || "—";
+                            const price =
+                            p.price != null
+                                ? Number(p.price).toFixed(2)
+                                : p.odds != null
+                                ? Number(p.odds).toFixed(2)
+                                : "—";
+                            return (
+                            <tr key={i}>
+                                <td className="fixture">{matchup}</td>
+                                <td>{comp}</td>
+                                <td>{p.market || "—"}</td>
+                                <td className="col-book">{p.bookmaker || p.book || "—"}</td>
+                                <td className="col-odds">{price}</td>
+                            </tr>
+                            );
+                        })}
+                        </tbody>
                   </table>
                 </div>
 
