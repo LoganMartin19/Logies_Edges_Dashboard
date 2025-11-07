@@ -1,259 +1,242 @@
 // src/components/FeaturedRecord.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "../api";
 
+const pill = {
+  display: "inline-flex",
+  gap: 10,
+  alignItems: "baseline",
+  background: "rgba(255,255,255,.1)",
+  borderRadius: 999,
+  padding: "6px 12px",
+  color: "#fff",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+const small = { fontSize: 12, opacity: 0.9, fontWeight: 500 };
+
 export default function FeaturedRecord({ span = "30d" }) {
-  const [open, setOpen] = useState(false);
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
     api
       .get("/api/public/picks/record", { params: { span } })
-      .then(({ data }) => alive && setData(data || {}))
-      .catch(() => alive && setData(null))
-      .finally(() => alive && setLoading(false));
-    return () => { alive = false; };
+      .then(({ data }) => alive && setData(data))
+      .catch(() => alive && setData(null));
+    return () => {
+      alive = false;
+    };
   }, [span]);
 
-  const s = data?.summary || {};
-  const badge = useMemo(() => {
-    const won  = s?.record?.won  ?? 0;
-    const lost = s?.record?.lost ?? 0;
-    const v    = s?.record?.void ?? 0;
-    const roiPct = typeof s?.roi === "number" ? `${s.roi.toFixed(1)}%` : "—";
-    const picksCount = data?.picks?.length ?? 0;
-    return {
-      text: `Record: ${won}W-${lost}L-${v}V`,
-      roi: roiPct,
-      count: picksCount,
-    };
-  }, [data, s]);
+  if (!data) return null;
+
+  // ✅ your backend sends: { summary: { record: {...}, staked, returned, pnl, roi }, picks: [...] }
+  const s = data.summary || {};
+  const recObj = s.record || {};
+  const rec = `${recObj.won || 0}W-${recObj.lost || 0}L-${recObj.void || 0}V`;
+  const roi = s.roi != null ? s.roi.toFixed(1) : "0.0";
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        style={{
-          borderRadius: 10,
-          border: "1px solid rgba(255,255,255,.15)",
-          background: "rgba(0,0,0,.25)",
-          padding: "6px 10px",
-          color: "#fff",
-          display: "inline-flex",
-          gap: 10,
-          alignItems: "center",
-          fontWeight: 700,
-        }}
-        title={`View ${span} record`}
-      >
-        {badge.text}
-        <span style={{
-          padding: "4px 8px",
-          borderRadius: 8,
-          background: "rgba(15,88,40,.18)",
-          border: "1px solid rgba(15,88,40,.35)",
-          fontWeight: 800,
-        }}>ROI {badge.roi}</span>
-        <span style={{ opacity: 0.75, fontWeight: 500 }}>
-          ({badge.count} picks / {span})
-        </span>
-      </button>
+      <div style={pill} onClick={() => setOpen(true)} title="Click for details">
+        <span>Record: {rec}</span>
+        <span style={small}>ROI {roi}%</span>
+        <span style={small}>({data.picks?.length || 0} picks / {span})</span>
+      </div>
 
       {open && (
-        <div className="rec-overlay" role="dialog" aria-modal="true">
-          <div className="rec-panel">
-            <div className="rec-head">
-              <div style={{ fontWeight: 800, fontSize: 18, color: "#eaf4ed" }}>
-                Featured Picks — {span}
-              </div>
-              <button className="rec-close" onClick={() => setOpen(false)}>Close</button>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setOpen(false)}
+        >
+          <div
+            style={{
+              background: "#111",
+              color: "#fff",
+              width: "min(940px, 94vw)",
+              borderRadius: 12,
+              padding: 16,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <h3 style={{ margin: 0 }}>Featured Picks — {span}</h3>
+              <button onClick={() => setOpen(false)}>Close</button>
             </div>
 
-            {loading ? (
-              <div className="rec-muted">Loading…</div>
-            ) : !data?.picks?.length ? (
-              <div className="rec-muted">No picks in this period.</div>
-            ) : (
-              <>
-                <div className="rec-scroll">
-                  <table className="rec-table">
-                    <thead>
-                      <tr>
-                        <th className="fixture">Fixture</th>
-                        <th>Comp</th>
-                        <th>Market</th>
-                        <th>Book</th>
-                        <th>Odds</th>
-                        <th>Result</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.picks.map((p, i) => {
-                        const matchup = getMatchup(p);
-                        const comp = p.league || p.comp || "—";
-                        const book = p.bookmaker || p.book || "—";
-                        const price = p.price != null
-                          ? Number(p.price).toFixed(2)
-                          : (p.odds != null ? Number(p.odds).toFixed(2) : "—");
-                        return (
-                          <tr key={i}>
-                            <td className="fixture">{matchup}</td>
-                            <td>{comp}</td>
-                            <td>{p.market || "—"}</td>
-                            <td>{book}</td>
-                            <td>{price}</td>
-                            <td style={{ color: colorFor(p.result) }}>{prettyResult(p.result)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+            {/* KPIs */}
+            <div
+              style={{
+                display: "flex",
+                gap: 18,
+                margin: "12px 0 8px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <b>Staked:</b> £{(s.staked || 0).toFixed(2)}
+              </div>
+              <div>
+                <b>Returned:</b> £{(s.returned || 0).toFixed(2)}
+              </div>
+              <div>
+                <b>P/L:</b> £{(s.pnl || 0).toFixed(2)}
+              </div>
+              <div>
+                <b>ROI:</b> {roi}%
+              </div>
+              <div>
+                <b>Record:</b> {rec}
+              </div>
+            </div>
 
-                <div className="rec-card" style={{ marginTop: 16 }}>
-                  <div className="rec-subtitle">Kelly Stake Calculator</div>
-                  <Kelly />
-                </div>
-              </>
-            )}
+            {/* Table */}
+            <div style={{ overflow: "auto", maxHeight: "70vh", borderTop: "1px solid #222" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th align="left">Fixture</th>
+                    <th align="left">Comp</th>
+                    <th align="left">Market</th>
+                    <th align="left">Book</th>
+                    <th align="right">Odds</th>
+                    <th align="right">Stake</th>
+                    <th align="right">Result</th>
+                    <th align="right">Units</th>
+                    <th align="left">Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data.picks || []).map((p) => {
+                    // ✅ real keys from backend
+                    const match = p.match || "—";          // e.g. "Pisa v Lazio"
+                    const comp = p.league || "-";          // e.g. "SERIE A"
+                    const stake = +p.stake || 0;
+                    const price = +p.price || 0;
+                    const res = (p.result || "").toLowerCase();
+
+                    let units = 0;
+                    if (res === "won") units = stake * (price - 1);
+                    else if (res === "lost") units = -stake;
+
+                    return (
+                      <tr key={p.pick_id} style={{ borderTop: "1px solid #222" }}>
+                        <td>{match}</td>
+                        <td>{comp}</td>
+                        <td>{p.market}</td>
+                        <td>{p.bookmaker}</td>
+                        <td align="right">{price ? price.toFixed(2) : "—"}</td>
+                        <td align="right">{stake ? stake.toFixed(2) : "—"}</td>
+                        <td
+                          align="right"
+                          style={{
+                            color:
+                              res === "won" ? "#5efc82" : res === "lost" ? "#ff6b6b" : "#bbb",
+                          }}
+                        >
+                          {res || "—"}
+                        </td>
+                        <td
+                          align="right"
+                          style={{
+                            color: units > 0 ? "#5efc82" : units < 0 ? "#ff6b6b" : "#bbb",
+                          }}
+                        >
+                          {units ? units.toFixed(2) : "0.00"}
+                        </td>
+                        <td>{p.note || ""}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: 14 }}>
+              <KellyWidget />
+            </div>
           </div>
-          <div className="rec-backdrop" onClick={() => setOpen(false)} />
         </div>
       )}
-
-      <style jsx="true">{`
-        .rec-overlay { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: end center; }
-        .rec-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); }
-        .rec-panel {
-          position: relative; width: min(980px, 100%); max-height: 88vh;
-          background: #0f1110; color: #eaf4ed; border-top-left-radius: 16px; border-top-right-radius: 16px;
-          border: 1px solid rgba(255,255,255,.12); box-shadow: 0 -12px 30px rgba(0,0,0,.35);
-          padding: 12px; overflow: auto; -webkit-overflow-scrolling: touch;
-        }
-        .rec-head {
-          display: flex; align-items: center; gap: 8px; position: sticky; top: 0;
-          padding: 6px 0 10px 0;
-          background: linear-gradient(180deg, rgba(15,17,16,1) 70%, rgba(15,17,16,0) 100%);
-          z-index: 2; border-bottom: 1px solid rgba(255,255,255,.08);
-        }
-        .rec-close { margin-left: auto; padding: 6px 10px; border-radius: 8px;
-          border: 1px solid rgba(255,255,255,.18); background: #111; color: #fff; cursor: pointer; }
-        .rec-muted { color: rgba(255,255,255,.75); }
-
-        .rec-scroll { overflow-x: auto; }
-        .rec-table { width: 100%; border-collapse: collapse; min-width: 760px; }
-        .rec-table thead th {
-          text-align: left; font-weight: 700; padding: 10px 8px; font-size: 13px;
-          border-bottom: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06);
-        }
-        .rec-table tbody td {
-          padding: 12px 8px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 14px;
-        }
-        .rec-table .fixture { min-width: 260px; }
-
-        .rec-card { background: #111; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 12px; }
-        .rec-subtitle { font-weight: 700; margin-bottom: 8px; }
-
-        @media (max-width: 700px) {
-          .rec-overlay { place-items: stretch; }
-          .rec-panel{
-            width: 100vw; height: 100dvh; max-height: none; inset: 0; border-radius: 0;
-            padding: calc(10px + env(safe-area-inset-top)) 10px calc(28px + env(safe-area-inset-bottom) + 96px);
-            overflow: auto; -webkit-overflow-scrolling: touch;
-          }
-          .rec-head{ position: sticky; top: env(safe-area-inset-top); }
-          .rec-table { min-width: 700px; } /* ensure horizontal scroll not wrap */
-        }
-      `}</style>
     </>
   );
 }
 
-/* ---------- helpers ---------- */
-function getMatchup(p = {}) {
-  // 1) If API provided a matchup string, trust it
-  if (p.matchup && typeof p.matchup === "string" && p.matchup.trim()) return p.matchup.trim();
+function KellyWidget() {
+  const [bankroll, setBankroll] = useState(1000);
+  const [prob, setProb] = useState(0.55);
+  const [odds, setOdds] = useState(1.91);
+  const [half, setHalf] = useState(true);
 
-  // 2) Otherwise try common home/away field names
-  const h =
-    p.home?.trim?.() ||
-    p.home_team?.trim?.() ||
-    p.homeTeam?.trim?.() ||
-    p.home_name?.trim?.() ||
-    p.homeName?.trim?.();
-  const a =
-    p.away?.trim?.() ||
-    p.away_team?.trim?.() ||
-    p.awayTeam?.trim?.() ||
-    p.away_name?.trim?.() ||
-    p.awayName?.trim?.();
-
-  if (h && a) return `${h} v ${a}`;
-
-  // 3) Nothing available
-  return "—";
-}
-
-function colorFor(res = "") {
-  const r = res.toLowerCase();
-  if (r === "won") return "#0f5828";
-  if (r === "lost") return "#c62828";
-  return "#eaf4ed";
-}
-function prettyResult(res = "") {
-  const r = res?.toUpperCase?.() || "—";
-  return r === "VOID" ? "Void" : r;
-}
-
-/* ---------- Kelly (responsive) ---------- */
-function Kelly() {
-  const [bank, setBank] = useState("1000");
-  const [p, setP] = useState("0.55");
-  const [odds, setOdds] = useState("1.91");
-
-  const k = useMemo(() => {
-    const bankroll = clamp(+bank, 0, 1e9);
-    const prob = clamp(+p, 0, 1);
-    const o = clamp(+odds, 1.01, 1e4);
-    const b = o - 1;
-    const q = 1 - prob;
-    const f = Math.max(0, (b * prob - q) / b);
-    return { f, stake: bankroll * f, bankroll };
-  }, [bank, p, odds]);
+  const b = Math.max(0, odds - 1);
+  const p = Math.min(0.9999, Math.max(0, prob));
+  const q = 1 - p;
+  const kelly = b > 0 ? Math.max(0, (b * p - q) / b) : 0;
+  const frac = half ? kelly / 2 : kelly;
+  const stake = bankroll * frac;
 
   return (
-    <>
-      <div className="kelly-grid">
+    <div style={{ border: "1px solid #222", borderRadius: 10, padding: 12 }}>
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>Kelly Stake Calculator</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
         <label>
-          <div className="lab">Bankroll (£)</div>
-          <input value={bank} onChange={(e) => setBank(e.target.value)} inputMode="decimal" />
+          Bankroll (£)
+          <input
+            value={bankroll}
+            onChange={(e) => setBankroll(+e.target.value || 0)}
+            inputMode="decimal"
+          />
         </label>
         <label>
-          <div className="lab">Model Probability (0–1)</div>
-          <input value={p} onChange={(e) => setP(e.target.value)} inputMode="decimal" />
+          Model Probability (0–1)
+          <input
+            value={prob}
+            onChange={(e) => setProb(+e.target.value || 0)}
+            inputMode="decimal"
+          />
         </label>
         <label>
-          <div className="lab">Odds (decimal)</div>
-          <input value={odds} onChange={(e) => setOdds(e.target.value)} inputMode="decimal" />
+          Odds (decimal)
+          <input value={odds} onChange={(e) => setOdds(+e.target.value || 0)} inputMode="decimal" />
+        </label>
+        <label>
+          Fraction
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                checked={half}
+                onChange={() => setHalf(!half)}
+              />{" "}
+              Use half-Kelly
+            </label>
+          </div>
         </label>
       </div>
-      <div className="kelly-out">
-        <b>Kelly f*:</b> {(k.f * 100).toFixed(2)}% &nbsp; | &nbsp; <b>Stake:</b> £{k.stake.toFixed(2)}
+      <div style={{ marginTop: 10 }}>
+        <b>Kelly f*:</b> {(kelly * 100).toFixed(2)}% &nbsp;|&nbsp; <b>Stake:</b> £
+        {stake.toFixed(2)}
       </div>
-
-      <style jsx="true">{`
-        .kelly-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-        .lab { font-size: 12px; color: rgba(255,255,255,.75); margin-bottom: 4px; }
-        input { width: 100%; padding: 8px 10px; border-radius: 8px;
-          border: 1px solid rgba(255,255,255,.18); background: #0f1110; color: #eaf4ed; }
-        .kelly-out { margin-top: 8px; font-weight: 700; }
-        @media (max-width: 700px) { .kelly-grid { grid-template-columns: 1fr; } }
-      `}</style>
-    </>
+      <div style={{ opacity: 0.8, fontSize: 12, marginTop: 6 }}>
+        Formula: f* = (b·p − q) / b where b = odds − 1, p = model win prob, q = 1 − p. Many
+        bettors use ½-Kelly to reduce variance.
+      </div>
+    </div>
   );
 }
-
-function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, isFinite(x) ? x : 0)); }
