@@ -1,24 +1,6 @@
+// src/components/FeaturedRecord.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
-
-// Try all reasonable field names the API might use
-function getMatchup(p = {}) {
-    const h =
-      p.home?.trim?.() ||
-      p.home_team?.trim?.() ||
-      p.homeName?.trim?.() ||
-      p.home_name?.trim?.();
-    const a =
-      p.away?.trim?.() ||
-      p.away_team?.trim?.() ||
-      p.awayName?.trim?.() ||
-      p.away_name?.trim?.();
-  
-    if (h && a) return `${h} v ${a}`;
-    if (p.matchup?.trim?.()) return p.matchup.trim();
-    if (p.fixture_name?.trim?.()) return p.fixture_name.trim();
-    return "—";
-  }
 
 export default function FeaturedRecord({ span = "30d" }) {
   const [open, setOpen] = useState(false);
@@ -30,7 +12,7 @@ export default function FeaturedRecord({ span = "30d" }) {
     setLoading(true);
     api
       .get("/api/public/picks/record", { params: { span } })
-      .then(({ data }) => { if (alive) setData(data || {}); })
+      .then(({ data }) => alive && setData(data || {}))
       .catch(() => alive && setData(null))
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
@@ -43,14 +25,15 @@ export default function FeaturedRecord({ span = "30d" }) {
     const v    = s?.record?.void ?? 0;
     const roiPct = typeof s?.roi === "number" ? `${s.roi.toFixed(1)}%` : "—";
     const picksCount = data?.picks?.length ?? 0;
-    return { text: `Record: ${won}W-${lost}L-${v}V`, roi: roiPct, count: picksCount };
+    return {
+      text: `Record: ${won}W-${lost}L-${v}V`,
+      roi: roiPct,
+      count: picksCount,
+    };
   }, [data, s]);
-
-  const picks = data?.picks || []; // ✅ define picks for render
 
   return (
     <>
-      {/* Header badge (click to open) */}
       <button
         onClick={() => setOpen(true)}
         style={{
@@ -67,23 +50,18 @@ export default function FeaturedRecord({ span = "30d" }) {
         title={`View ${span} record`}
       >
         {badge.text}
-        <span
-          style={{
-            padding: "4px 8px",
-            borderRadius: 8,
-            background: "rgba(15,88,40,.18)",
-            border: "1px solid rgba(15,88,40,.35)",
-            fontWeight: 800,
-          }}
-        >
-          ROI {badge.roi}
-        </span>
+        <span style={{
+          padding: "4px 8px",
+          borderRadius: 8,
+          background: "rgba(15,88,40,.18)",
+          border: "1px solid rgba(15,88,40,.35)",
+          fontWeight: 800,
+        }}>ROI {badge.roi}</span>
         <span style={{ opacity: 0.75, fontWeight: 500 }}>
           ({badge.count} picks / {span})
         </span>
       </button>
 
-      {/* Drawer */}
       {open && (
         <div className="rec-overlay" role="dialog" aria-modal="true">
           <div className="rec-panel">
@@ -96,47 +74,45 @@ export default function FeaturedRecord({ span = "30d" }) {
 
             {loading ? (
               <div className="rec-muted">Loading…</div>
-            ) : !picks.length ? (
+            ) : !data?.picks?.length ? (
               <div className="rec-muted">No picks in this period.</div>
             ) : (
               <>
-                {/* Scrollable table wrapper for small screens */}
                 <div className="rec-scroll">
-                  <table className="rec-table">{/* ✅ matches CSS selector */}
+                  <table className="rec-table">
                     <thead>
                       <tr>
                         <th className="fixture">Fixture</th>
                         <th>Comp</th>
                         <th>Market</th>
-                        <th className="col-book">Book</th>
-                        <th className="col-odds">Odds</th>
+                        <th>Book</th>
+                        <th>Odds</th>
+                        <th>Result</th>
                       </tr>
                     </thead>
                     <tbody>
-                        {picks.map((p, i) => {
-                            const matchup = getMatchup(p);           // <-- use helper
-                            const comp = p.comp || p.league || "—";
-                            const price =
-                            p.price != null
-                                ? Number(p.price).toFixed(2)
-                                : p.odds != null
-                                ? Number(p.odds).toFixed(2)
-                                : "—";
-                            return (
-                            <tr key={i}>
-                                <td className="fixture">{matchup}</td>
-                                <td>{comp}</td>
-                                <td>{p.market || "—"}</td>
-                                <td className="col-book">{p.bookmaker || p.book || "—"}</td>
-                                <td className="col-odds">{price}</td>
-                            </tr>
-                            );
-                        })}
-                        </tbody>
+                      {data.picks.map((p, i) => {
+                        const matchup = getMatchup(p);
+                        const comp = p.league || p.comp || "—";
+                        const book = p.bookmaker || p.book || "—";
+                        const price = p.price != null
+                          ? Number(p.price).toFixed(2)
+                          : (p.odds != null ? Number(p.odds).toFixed(2) : "—");
+                        return (
+                          <tr key={i}>
+                            <td className="fixture">{matchup}</td>
+                            <td>{comp}</td>
+                            <td>{p.market || "—"}</td>
+                            <td>{book}</td>
+                            <td>{price}</td>
+                            <td style={{ color: colorFor(p.result) }}>{prettyResult(p.result)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
                   </table>
                 </div>
 
-                {/* Kelly calculator (optional) */}
                 <div className="rec-card" style={{ marginTop: 16 }}>
                   <div className="rec-subtitle">Kelly Stake Calculator</div>
                   <Kelly />
@@ -144,13 +120,10 @@ export default function FeaturedRecord({ span = "30d" }) {
               </>
             )}
           </div>
-
-          {/* click outside to close */}
           <div className="rec-backdrop" onClick={() => setOpen(false)} />
         </div>
       )}
 
-      {/* styles */}
       <style jsx="true">{`
         .rec-overlay { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: end center; }
         .rec-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); }
@@ -171,7 +144,7 @@ export default function FeaturedRecord({ span = "30d" }) {
         .rec-muted { color: rgba(255,255,255,.75); }
 
         .rec-scroll { overflow-x: auto; }
-        .rec-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+        .rec-table { width: 100%; border-collapse: collapse; min-width: 760px; }
         .rec-table thead th {
           text-align: left; font-weight: 700; padding: 10px 8px; font-size: 13px;
           border-bottom: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06);
@@ -179,30 +152,51 @@ export default function FeaturedRecord({ span = "30d" }) {
         .rec-table tbody td {
           padding: 12px 8px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 14px;
         }
-        /* make fixture readable */
-        .rec-table .fixture { white-space: normal; line-height: 1.25; min-width: 220px; }
+        .rec-table .fixture { min-width: 260px; }
 
         .rec-card { background: #111; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 12px; }
         .rec-subtitle { font-weight: 700; margin-bottom: 8px; }
 
-        /* ---------- Mobile: full-screen + readable columns ---------- */
         @media (max-width: 700px) {
           .rec-overlay { place-items: stretch; }
           .rec-panel{
             width: 100vw; height: 100dvh; max-height: none; inset: 0; border-radius: 0;
-            padding: calc(10px + env(safe-area-inset-top)) 10px calc(28px + env(safe-area-inset-bottom) + 72px);
+            padding: calc(10px + env(safe-area-inset-top)) 10px calc(28px + env(safe-area-inset-bottom) + 96px);
+            overflow: auto; -webkit-overflow-scrolling: touch;
           }
           .rec-head{ position: sticky; top: env(safe-area-inset-top); }
-          /* show the matchup; trim less-critical columns */
-          .rec-table .col-book, .rec-table .col-odds { display: none; }
-          .rec-table .fixture { min-width: auto; }
+          .rec-table { min-width: 700px; } /* ensure horizontal scroll not wrap */
         }
       `}</style>
     </>
   );
 }
 
-/* ---------- (optional) helpers for future result coloring ---------- */
+/* ---------- helpers ---------- */
+function getMatchup(p = {}) {
+  // 1) If API provided a matchup string, trust it
+  if (p.matchup && typeof p.matchup === "string" && p.matchup.trim()) return p.matchup.trim();
+
+  // 2) Otherwise try common home/away field names
+  const h =
+    p.home?.trim?.() ||
+    p.home_team?.trim?.() ||
+    p.homeTeam?.trim?.() ||
+    p.home_name?.trim?.() ||
+    p.homeName?.trim?.();
+  const a =
+    p.away?.trim?.() ||
+    p.away_team?.trim?.() ||
+    p.awayTeam?.trim?.() ||
+    p.away_name?.trim?.() ||
+    p.awayName?.trim?.();
+
+  if (h && a) return `${h} v ${a}`;
+
+  // 3) Nothing available
+  return "—";
+}
+
 function colorFor(res = "") {
   const r = res.toLowerCase();
   if (r === "won") return "#0f5828";
@@ -211,8 +205,7 @@ function colorFor(res = "") {
 }
 function prettyResult(res = "") {
   const r = res?.toUpperCase?.() || "—";
-  if (r === "VOID") return "Void";
-  return r;
+  return r === "VOID" ? "Void" : r;
 }
 
 /* ---------- Kelly (responsive) ---------- */
@@ -225,21 +218,25 @@ function Kelly() {
     const bankroll = clamp(+bank, 0, 1e9);
     const prob = clamp(+p, 0, 1);
     const o = clamp(+odds, 1.01, 1e4);
-    const b = o - 1; const q = 1 - prob;
+    const b = o - 1;
+    const q = 1 - prob;
     const f = Math.max(0, (b * prob - q) / b);
-    return { f, stake: bankroll * f };
+    return { f, stake: bankroll * f, bankroll };
   }, [bank, p, odds]);
 
   return (
     <>
       <div className="kelly-grid">
-        <label><div className="lab">Bankroll (£)</div>
+        <label>
+          <div className="lab">Bankroll (£)</div>
           <input value={bank} onChange={(e) => setBank(e.target.value)} inputMode="decimal" />
         </label>
-        <label><div className="lab">Model Probability (0–1)</div>
+        <label>
+          <div className="lab">Model Probability (0–1)</div>
           <input value={p} onChange={(e) => setP(e.target.value)} inputMode="decimal" />
         </label>
-        <label><div className="lab">Odds (decimal)</div>
+        <label>
+          <div className="lab">Odds (decimal)</div>
           <input value={odds} onChange={(e) => setOdds(e.target.value)} inputMode="decimal" />
         </label>
       </div>
@@ -251,7 +248,7 @@ function Kelly() {
         .kelly-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
         .lab { font-size: 12px; color: rgba(255,255,255,.75); margin-bottom: 4px; }
         input { width: 100%; padding: 8px 10px; border-radius: 8px;
-                border: 1px solid rgba(255,255,255,.18); background: #0f1110; color: #eaf4ed; }
+          border: 1px solid rgba(255,255,255,.18); background: #0f1110; color: #eaf4ed; }
         .kelly-out { margin-top: 8px; font-weight: 700; }
         @media (max-width: 700px) { .kelly-grid { grid-template-columns: 1fr; } }
       `}</style>
