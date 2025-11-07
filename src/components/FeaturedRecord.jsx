@@ -84,30 +84,36 @@ export default function FeaturedRecord({ span = "30d" }) {
               <>
                 {/* Scrollable table wrapper for small screens */}
                 <div className="rec-scroll">
-                  <table className="rec-table">
+                <table className="rec-tbl">
                     <thead>
-                      <tr>
-                        <th>Fixture</th>
+                        <tr>
+                        <th className="fixture">Fixture</th>
                         <th>Comp</th>
                         <th>Market</th>
-                        <th>Book</th>
-                        <th>Odds</th>
-                        <th>Result</th>
-                      </tr>
+                        <th className="col-book">Book</th>
+                        <th className="col-odds">Odds</th>
+                        </tr>
                     </thead>
                     <tbody>
-                      {data.picks.map((p, i) => (
-                        <tr key={i}>
-                          <td>{p.matchup}</td>
-                          <td>{p.league || p.comp || "—"}</td>
-                          <td>{p.market}</td>
-                          <td>{p.bookmaker}</td>
-                          <td>{Number(p.price).toFixed(2)}</td>
-                          <td style={{ color: colorFor(p.result) }}>{prettyResult(p.result)}</td>
-                        </tr>
-                      ))}
+                        {picks.map((p, i) => {
+                        const matchup =
+                            p.matchup ||
+                            (p.home_team && p.away_team ? `${p.home_team} v ${p.away_team}` : "—");
+                        const comp = p.comp || p.league || "—";
+                        return (
+                            <tr key={i}>
+                            <td className="fixture">
+                                {matchup}
+                            </td>
+                            <td>{comp}</td>
+                            <td>{p.market || "—"}</td>
+                            <td className="col-book">{p.bookmaker || "—"}</td>
+                            <td className="col-odds">{p.price ? Number(p.price).toFixed(2) : "—"}</td>
+                            </tr>
+                        );
+                        })}
                     </tbody>
-                  </table>
+                    </table>
                 </div>
 
                 {/* Kelly calculator (responsive) */}
