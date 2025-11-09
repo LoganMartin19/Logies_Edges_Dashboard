@@ -450,3 +450,28 @@
   width: 100%;
   max-width: 100%;
 }
+
+.backBtn {
+  appearance: none;
+  border: 1px solid rgba(0,0,0,.12);
+  background: #fff;
+  color: #0f1f14;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+.backBtn:hover {
+  background: #f6f7f6;
+}
+@media (prefers-color-scheme: dark) {
+  .backBtn {
+    background: #111;
+    color: #eaf4ed;
+    border-color: rgba(255,255,255,.15);
+  }
+  .backBtn:hover {
+    background: #161616;
+  }
+}

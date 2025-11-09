@@ -1,6 +1,6 @@
 // File: FixturePage.jsx
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import LeagueFixtures from "../components/LeagueFixtures";
 import Poll from "../components/Poll";
 import FormBreakdown from "../components/FormBreakdown";
@@ -18,6 +18,13 @@ import { api } from "../api";
 
 const FixturePage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const goBack = () => {
+    // If user navigated here from another page, go back; else fallback to fixtures index
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/fixtures");
+ };
+
   const fixtureIdNum = Number(id);
   const isAdminView =
     typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
@@ -218,6 +225,9 @@ const FixturePage = () => {
     <div className={`${styles.page} scrollX`}>
       <div className={styles.headerBar}>
         <div className={styles.headerInner}>
+          <button className={styles.backBtn} onClick={goBack} aria-label="Back to Fixtures">
+            ← Back to Fixtures
+          </button>
           <div className={styles.headerTeams}>
             <div className={styles.teamWithLogo}>
               <img
