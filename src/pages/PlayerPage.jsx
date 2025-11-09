@@ -249,10 +249,8 @@ export default function PlayerPage() {
   const [summary, setSummary] = useState(null);
   const [matchPlayers, setMatchPlayers] = useState(null);
   const [gameLog, setGameLog] = useState([]);
-  const [propsRaw, setPropsRaw] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [lastN, setLastN] = useState(8);
-  const [compFilter, setCompFilter] = useState("__all__");
+  const [lastN]= useState(8);
 
   useEffect(() => {
     if (!id || !fixtureId) return;
@@ -260,15 +258,13 @@ export default function PlayerPage() {
 
     async function loadAll() {
       try {
-        const [sumRes, pmRes, propsRes] = await Promise.all([
+        const [sumRes, pmRes] = await Promise.all([
           api.get("/football/player/summary", { params: { fixture_id: fixtureId, player_id: id } }),
           api.get("/football/players", { params: { fixture_id: fixtureId } }),
-          api.get("/football/player-props/fair", { params: { fixture_id: fixtureId } }),
         ]);
         if (!alive) return;
         setSummary(sumRes.data);
         setMatchPlayers(pmRes.data?.players || { home: [], away: [] });
-        setPropsRaw(propsRes.data?.props || []);
       } catch (e) {
         console.error("PlayerPage core fetch failed:", e);
       } finally {
@@ -321,8 +317,6 @@ export default function PlayerPage() {
   const matchGoals = `${goals.total || 0} G · ${shots.total || 0} Sh`;
   const matchSot = `${shots.on || 0} on target`;
   const matchCards = `${cards.yellow || 0}Y · ${cards.red || 0}R`;
-
-  const compSet = Array.from(new Set((gameLog || []).map((g) => g.competition || "Unknown")));
 
   return (
     <div className={`${styles.page} scrollX`}>

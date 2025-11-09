@@ -92,7 +92,6 @@ const SettleButtons = ({ onSettle, disabled }) => (
 export default function TipsterDetailPage() {
   const { username } = useParams();
   const nav = useNavigate();
-  const { user } = useAuth();
 
   const [tipster, setTipster] = useState(null);
   const [picks, setPicks] = useState([]);

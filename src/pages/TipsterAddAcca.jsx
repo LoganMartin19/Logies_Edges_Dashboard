@@ -147,12 +147,15 @@ export default function TipsterAddAcca() {
                   borderRadius: 8,
                 }}
               >
-                <div style={{ fontWeight: 600 }}>
-                  {fx.home_team ?? fx.home_name ?? fx.home ?? "Home"}
-                </div>
-                <div style={{ opacity: 0.7 }}>vs</div>
-                <div style={{ fontWeight: 600 }}>
-                  {fx.away_team ?? fx.away_name ?? fx.away ?? "Away"}
+                 <div style={{ fontWeight: 600 }}>
+                  {(() => {
+                    const h = fx.home_team ?? fx.home_name ?? fx.home ?? "Home";
+                    const a = fx.away_team ?? fx.away_name ?? fx.away ?? "Away";
+                    const ko = fx.kickoff_utc
+                      ? new Date(fx.kickoff_utc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                      : "";
+                    return `${h} vs ${a}${ko ? ` — ${ko}` : ""}`;
+                  })()}
                 </div>
                 <button onClick={() => addLeg(fx)} style={{ marginLeft: "auto" }}>
                   Add leg

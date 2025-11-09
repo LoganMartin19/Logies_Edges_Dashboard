@@ -56,7 +56,11 @@ export default function Performance() {
     return () => { alive = false; };
   }, [span]);
 
-  const picks = data?.picks || [];
+  // ✅ Stabilise picks reference so downstream useMemos don’t re-run unnecessarily
+  const picks = useMemo(
+    () => (Array.isArray(data?.picks) ? data.picks : []),
+    [data?.picks]
+  );
 
   const kpis = useMemo(() => {
     const s = data?.summary || {};
@@ -68,7 +72,7 @@ export default function Performance() {
       record: s.record || { won: 0, lost: 0, void: 0 },
       count: picks.length,
     };
-  }, [data, picks.length]);
+  }, [data?.summary, picks.length]);
 
   const byMarket = useMemo(() => {
     const m = {};
@@ -80,8 +84,9 @@ export default function Performance() {
       const stake = Number(p.stake || 1);
       const price = Number(p.price || 0);
       row.staked += stake;
-      if ((p.result || "").toLowerCase() === "won") { row.won += 1; row.returned += stake * price; }
-      else if ((p.result || "").toLowerCase() === "lost") { row.lost += 1; }
+      const res = (p.result || "").toLowerCase();
+      if (res === "won" || res === "win") { row.won += 1; row.returned += stake * price; }
+      else if (res === "lost" || res === "lose") { row.lost += 1; }
       else { row.void += 1; row.returned += stake; }
     }
     return Object.values(m).map(r => {
@@ -101,8 +106,9 @@ export default function Performance() {
       const stake = Number(p.stake || 1);
       const price = Number(p.price || 0);
       row.staked += stake;
-      if ((p.result || "").toLowerCase() === "won") { row.won += 1; row.returned += stake * price; }
-      else if ((p.result || "").toLowerCase() === "lost") { row.lost += 1; }
+      const res = (p.result || "").toLowerCase();
+      if (res === "won" || res === "win") { row.won += 1; row.returned += stake * price; }
+      else if (res === "lost" || res === "lose") { row.lost += 1; }
       else { row.void += 1; row.returned += stake; }
     }
     return Object.values(m).map(r => {
@@ -122,8 +128,9 @@ export default function Performance() {
       const stake = Number(p.stake || 1);
       const price = Number(p.price || 0);
       row.staked += stake;
-      if ((p.result || "").toLowerCase() === "won") { row.won += 1; row.returned += stake * price; }
-      else if ((p.result || "").toLowerCase() === "lost") { row.lost += 1; }
+      const res = (p.result || "").toLowerCase();
+      if (res === "won" || res === "win") { row.won += 1; row.returned += stake * price; }
+      else if (res === "lost" || res === "lose") { row.lost += 1; }
       else { row.void += 1; row.returned += stake; }
     }
     return Object.values(m).map(r => {
@@ -163,7 +170,6 @@ export default function Performance() {
         })}
       </div>
 
-      {/* KPIs */}
       {loading ? (
         <p>Loading…</p>
       ) : (
@@ -177,7 +183,6 @@ export default function Performance() {
             <Kpi title="ROI" value={`${kpis.roi.toFixed(1)}%`} tone={kpis.roi > 0 ? "good" : kpis.roi < 0 ? "bad" : "muted"} />
           </div>
 
-          {/* Markets performance */}
           <Section title="By market">
             {!byMarket.length ? (
               <p style={{ color: COL.muted }}>No picks for this period.</p>
@@ -209,7 +214,6 @@ export default function Performance() {
             )}
           </Section>
 
-          {/* Leagues performance */}
           <Section title="By league / competition">
             {!byLeague.length ? (
               <p style={{ color: COL.muted }}>No picks for this period.</p>
@@ -241,7 +245,6 @@ export default function Performance() {
             )}
           </Section>
 
-          {/* Bookmakers performance */}
           <Section title="By source / bookmaker">
             {!byBook.length ? (
               <p style={{ color: COL.muted }}>No picks for this period.</p>
@@ -304,7 +307,7 @@ function Section({ title, children }) {
     <div style={{ marginTop: 24 }}>
       <h3 style={{ 
         marginBottom: 10, 
-        color: "#eaf4ed",          // ✅ make section headers readable on dark
+        color: "#eaf4ed",
         borderBottom: "1px solid rgba(255,255,255,0.1)", 
         paddingBottom: 4 
       }}>
@@ -336,7 +339,7 @@ function Th({ children, align = "left" }) {
         fontSize: 13,
         whiteSpace: "nowrap",
         color: COL.text,
-        background: "transparent",                // ← force no white bg
+        background: "transparent",
         borderBottom: `1px solid ${COL.cardBorder}`,
       }}
     >

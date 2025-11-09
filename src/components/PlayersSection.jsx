@@ -1,13 +1,12 @@
 // src/components/PlayersSection.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom"; // optional (for player detail route)
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import styles from "../styles/FixturePage.module.css";
 import { api } from "../api"; // ✅ env-based axios client
 
 const fmtPct = (p) => (p == null ? "—" : `${(Number(p) * 100).toFixed(0)}%`);
 const fmtOdds = (o) =>
   o == null ? "—" : Number(o) >= 100 ? Number(o).toFixed(0) : Number(o).toFixed(2);
-// If backend gives edge directly, prefer that; otherwise compute from p & price.
 const fmtEdgeVal = (edge, p, price) =>
   edge != null
     ? `${(Number(edge) * 100).toFixed(1)}%`
@@ -19,7 +18,7 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
   const [matchData, setMatchData] = useState({ home: [], away: [] });
   const [seasonData, setSeasonData] = useState({ home: [], away: [] });
   const [lineupIds, setLineupIds] = useState({ home: null, away: null });
-  const [propsMap, setPropsMap] = useState({}); // { [playerId]: { market -> {prob,fair_odds,best_price,edge,...} } }
+  const [propsMap, setPropsMap] = useState({});
 
   useEffect(() => {
     let mounted = true;
@@ -32,14 +31,14 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
         });
         const matchJson = matchRes.data;
 
-        // 2) Season totals (note: structure has players block)
+        // 2) Season totals
         const seasonRes = await api.get("/football/season-players", {
           params: { fixture_id: fixtureId },
         });
         const seasonJson = seasonRes.data;
         const seasonPlayers = seasonJson?.players || { home: [], away: [] };
 
-        // 3) Lineups → only show players in squad (if available)
+        // 3) Lineups
         const lineRes = await api.get("/football/lineups", {
           params: { fixture_id: fixtureId },
         });
@@ -56,7 +55,7 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
         });
 
         const toIdSet = (teamBlock) => {
-          if (!teamBlock) return null; // null = don’t filter when no lineups yet
+          if (!teamBlock) return null;
           const ids = new Set();
           (teamBlock.startXI || []).forEach((x) => x?.player?.id && ids.add(x.player.id));
           (teamBlock.substitutes || []).forEach((x) => x?.player?.id && ids.add(x.player.id));
@@ -73,7 +72,7 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
         }
         setLineupIds({ home: toIdSet(homeLine), away: toIdSet(awayLine) });
 
-        // 4) Props (one call per side)
+        // 4) Player props
         const [homePropsRes, awayPropsRes] = await Promise.all([
           api.get("/football/player-props/fair", { params: { fixture_id: fixtureId, team: "home" } }),
           api.get("/football/player-props/fair", { params: { fixture_id: fixtureId, team: "away" } }),
@@ -104,30 +103,34 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
     };
   }, [fixtureId, homeTeam, awayTeam]);
 
-  // merge match + season + props, optionally filter by lineup ids
-  const mergeStats = (matchList, seasonList, idSet) => {
-    const seasonMap = new Map(seasonList.map((p) => [p?.player?.id, p]));
-    const filtered = idSet ? matchList.filter((p) => idSet.has(p?.player?.id)) : matchList;
+  // ✅ Wrapped in useCallback so useMemo deps are valid
+  const mergeStats = useCallback(
+    (matchList, seasonList, idSet) => {
+      const seasonMap = new Map(seasonList.map((p) => [p?.player?.id, p]));
+      const filtered = idSet ? matchList.filter((p) => idSet.has(p?.player?.id)) : matchList;
 
-    return filtered.map((mp) => {
-      const sid = mp?.player?.id;
-      const season = seasonMap.get(sid);
-      return {
-        ...mp,
-        seasonTotal: season?.total || null,
-        competitions: season?.competitions || [],
-        props: propsMap[sid] || {},
-      };
-    });
-  };
+      return filtered.map((mp) => {
+        const sid = mp?.player?.id;
+        const season = seasonMap.get(sid);
+        return {
+          ...mp,
+          seasonTotal: season?.total || null,
+          competitions: season?.competitions || [],
+          props: propsMap[sid] || {},
+        };
+      });
+    },
+    [propsMap]
+  );
 
   const homePlayers = useMemo(
     () => mergeStats(matchData.home, seasonData.home, lineupIds.home),
-    [matchData, seasonData, lineupIds, propsMap]
+    [matchData, seasonData, lineupIds, mergeStats]
   );
+
   const awayPlayers = useMemo(
     () => mergeStats(matchData.away, seasonData.away, lineupIds.away),
-    [matchData, seasonData, lineupIds, propsMap]
+    [matchData, seasonData, lineupIds, mergeStats]
   );
 
   const renderPropsRow = (p) => {
@@ -158,7 +161,6 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
   const renderTeam = (label, list) => {
     if (!list.length) return null;
 
-    // ✅ stable sort: by best edge across markets, then SoT prob
     const getMaxEdge = (pl) =>
       Math.max(
         pl?.props?.["sot_over_0.5"]?.edge ?? -1,

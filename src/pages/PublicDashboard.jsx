@@ -1,5 +1,5 @@
 // src/pages/PublicDashboard.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { api, API_BASE } from "../api";
 import FeaturedRecord from "../components/FeaturedRecord";
@@ -216,7 +216,7 @@ export default function PublicDashboard() {
   const [showAll, setShowAll] = useState(false); // <-- NEW
   const isMobile = useIsMobile(700);
 
-  const load = async () => {
+  const load = useCallback (async () => {
     setLoading(true);
     setErr("");
     try {
@@ -235,9 +235,9 @@ export default function PublicDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [day, sport]);
 
-  useEffect(() => { load(); }, [day, sport]);
+  useEffect(() => { load(); }, [load]);
 
   const fixturesSorted = useMemo(
     () => [...fixtures].sort((a, b) => (a.kickoff_utc || "").localeCompare(b.kickoff_utc || "")),

@@ -1,7 +1,7 @@
 // src/components/Poll.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import styles from "../styles/FixturePage.module.css";
-import { api } from "../api"; // ✅ env-based axios client
+import { api } from "../api";
 
 export default function Poll({ fixtureId, homeTeam, awayTeam }) {
   const [results, setResults] = useState({ home: 0, draw: 0, away: 0 });
@@ -9,23 +9,24 @@ export default function Poll({ fixtureId, homeTeam, awayTeam }) {
   const [vote, setVote] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await api.get("/poll/results", { params: { fixture_id: fixtureId } });
       setResults(data?.results || { home: 0, draw: 0, away: 0 });
       setTotal(data?.total ?? 0);
     } catch (e) {
-      // keep UI calm; log for debugging
       console.error("Poll load failed:", e);
       setResults({ home: 0, draw: 0, away: 0 });
       setTotal(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [fixtureId]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [fixtureId]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const cast = async (choice) => {
     try {
@@ -36,6 +37,8 @@ export default function Poll({ fixtureId, homeTeam, awayTeam }) {
       console.error("Vote failed:", e);
     }
   };
+
+  const safeSlug = (name) => (name || "").toLowerCase().replace(/\s+/g, "_");
 
   return (
     <div className={styles.poll}>
@@ -48,7 +51,7 @@ export default function Poll({ fixtureId, homeTeam, awayTeam }) {
             onClick={() => cast("home")}
           >
             <img
-              src={`/logos/${homeTeam.toLowerCase().replace(/ /g, "_")}.png`}
+              src={`/logos/${safeSlug(homeTeam)}.png`}
               alt={homeTeam}
               className={styles.teamLogo}
               onError={(e) => (e.currentTarget.style.display = "none")}
@@ -74,7 +77,7 @@ export default function Poll({ fixtureId, homeTeam, awayTeam }) {
             onClick={() => cast("away")}
           >
             <img
-              src={`/logos/${awayTeam.toLowerCase().replace(/ /g, "_")}.png`}
+              src={`/logos/${safeSlug(awayTeam)}.png`}
               alt={awayTeam}
               className={styles.teamLogo}
               onError={(e) => (e.currentTarget.style.display = "none")}
