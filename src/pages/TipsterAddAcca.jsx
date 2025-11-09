@@ -50,15 +50,6 @@ export default function TipsterAddAcca() {
 
   const markets = ["HOME_WIN", "AWAY_WIN", "DRAW", "BTTS_Y", "BTTS_N", "O2.5", "U2.5"];
 
-  const label = (fx) => {
-    const h = fx.home_team ?? fx.home_name ?? fx.home ?? "Home";
-    const a = fx.away_team ?? fx.away_name ?? fx.away ?? "Away";
-    const ko = fx.kickoff_utc
-      ? new Date(fx.kickoff_utc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-      : "";
-    return `${h} vs ${a}${ko ? ` — ${ko}` : ""}`;
-  };
-
   const addLeg = (fx) => {
     const h = fx.home_team ?? fx.home_name ?? fx.home ?? "Home";
     const a = fx.away_team ?? fx.away_name ?? fx.away ?? "Away";

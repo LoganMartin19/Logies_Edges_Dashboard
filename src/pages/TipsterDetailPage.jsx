@@ -10,7 +10,6 @@ import {
   settleTipsterAcca,
   deleteTipsterAcca,
 } from "../api";
-import { useAuth } from "../components/AuthGate";
 
 const useFixturesMap = (picks) => {
   const [map, setMap] = useState({});

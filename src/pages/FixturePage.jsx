@@ -41,6 +41,7 @@ const FixturePage = () => {
   const [edges, setEdges] = useState([]);
   const [explanations, setExplanations] = useState({});
   const [expandedWhy, setExpandedWhy] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const [teamStats, setTeamStats] = useState(null);
 
   const formatKickoff = (utcString) => {
