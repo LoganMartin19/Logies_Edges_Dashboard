@@ -28,14 +28,14 @@ export default function TipstersPage() {
         if (cancelled) return;
 
         // Find anyone with blank/zero stats
-        const needsHydrate = list.filter(
-          (t) =>
-            !t ||
-            (t.roi_30d ?? 0) === 0 &&
-            (t.winrate_30d ?? 0) === 0 &&
-            (t.profit_30d ?? 0) === 0 &&
-            (t.picks_30d ?? 0) === 0
-        );
+        const needsHydrate = list.filter((t) => {
+          if (!t) return true;
+          const roi = t.roi_30d ?? 0;
+          const wr = t.winrate_30d ?? 0;
+          const pr = t.profit_30d ?? 0;
+          const pk = t.picks_30d ?? 0;
+          return roi === 0 && wr === 0 && pr === 0 && pk === 0;
+        });
 
         if (needsHydrate.length === 0) {
           setRows(list);
