@@ -426,40 +426,60 @@ export default function TipsterDetailPage() {
         </>
       )}
 
-      <style jsx="true">{`
-        .profile { display:flex; gap:16px; align-items:center; margin-bottom:20px; }
-        .avatar { width:80px; height:80px; border-radius:50%; }
-        .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; }
+<style jsx="true">{`
+  .profile { display:flex; gap:16px; align-items:center; margin-bottom:20px; }
+  .avatar { width:80px; height:80px; border-radius:50%; }
+  .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; }
 
-        /* ✅ Tables + Sticky Header Fix */
-        .tableWrap { position: relative; background: #0c331f; }
-        table { width:100%; border-collapse:separate; border-spacing:0; margin-top:12px; }
-        thead { position: sticky; top: 0; z-index: 3; background:#0c331f; }
-        th, td { border-bottom:1px solid #1e2b21; padding:10px; vertical-align:top; }
-        th { text-align:left; background:#0c331f; color:#fff; }
-        .picks { background:#0a0f0c; }
+  /* ✅ Tables + sticky header (Safari/iPad safe) */
+  .tableWrap {
+    position: relative;
+    background:#0c331f;     /* solid behind the header */
+    overflow-x:auto;
+    border-radius:6px;
+  }
+  table { width:100%; border-collapse:separate; border-spacing:0; margin-top:12px; }
+  th, td { border-bottom:1px solid #1e2b21; padding:10px; vertical-align:top; }
+  /* Make EACH TH sticky instead of thead */
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background:#0c331f;     /* ensure no white bar */
+    color:#fff;
+    text-align:left;
+  }
+  /* subtle divider under the sticky header while scrolling */
+  thead th::after {
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:-1px; height:1px;
+    background:#1e2b21;
+  }
 
-        .btnSmall { padding:6px 10px; border-radius:8px; background:#2e7d32; color:#fff; border:0; cursor:pointer; }
-        .btnGhost { background:transparent; border:1px solid #2e7d32; color:#2e7d32; }
-        .btnDanger { background:#a52727; }
-        .btnSmall[disabled] { opacity:.6; cursor:not-allowed; }
+  .picks { background:#0a0f0c; }
 
-        .actionsCell { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-        .settleRow { display:flex; gap:6px; flex-wrap:wrap; }
+  .btnSmall { padding:6px 10px; border-radius:8px; background:#2e7d32; color:#fff; border:0; cursor:pointer; }
+  .btnGhost { background:transparent; border:1px solid #2e7d32; color:#2e7d32; }
+  .btnDanger { background:#a52727; }
+  .btnSmall[disabled] { opacity:.6; cursor:not-allowed; }
 
-        .btnTag { padding:4px 8px; border-radius:999px; font-size:.8rem; border:0; cursor:pointer; }
-        .btnTag.win { background:#124b27; color:#b6f2c6; }
-        .btnTag.lose { background:#4b1212; color:#f2b6b6; }
-        .btnTag.push { background:#1f2a44; color:#c8d7ff; }
-        .btnTag.void { background:#3b3b3b; color:#e7e7e7; }
-        .btnTag:disabled { opacity:.6; cursor:not-allowed; }
+  .actionsCell { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .settleRow { display:flex; gap:6px; flex-wrap:wrap; }
 
-        .badge { padding:2px 8px; border-radius:999px; font-size:.75rem; }
-        .badge.win { background:#124b27; color:#b6f2c6; }
-        .badge.lose { background:#4b1212; color:#f2b6b6; }
-        .badge.push { background:#1f2a44; color:#c8d7ff; }
-        .badge.void { background:#3b3b3b; color:#e7e7e7; }
-        .badge.neutral { background:#263238; color:#e0e0e0; }
+  .btnTag { padding:4px 8px; border-radius:999px; font-size:.8rem; border:0; cursor:pointer; }
+  .btnTag.win { background:#124b27; color:#b6f2c6; }
+  .btnTag.lose { background:#4b1212; color:#f2b6b6; }
+  .btnTag.push { background:#1f2a44; color:#c8d7ff; }
+  .btnTag.void { background:#3b3b3b; color:#e7e7e7; }
+  .btnTag:disabled { opacity:.6; cursor:not-allowed; }
+
+  .badge { padding:2px 8px; border-radius:999px; font-size:.75rem; }
+  .badge.win { background:#124b27; color:#b6f2c6; }
+  .badge.lose { background:#4b1212; color:#f2b6b6; }
+  .badge.push { background:#1f2a44; color:#c8d7ff; }
+  .badge.void { background:#3b3b3b; color:#e7e7e7; }
+  .badge.neutral { background:#263238; color:#e0e0e0; }
 `}</style>
     </div>
   );
