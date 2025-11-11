@@ -263,168 +263,166 @@ export default function TipsterDetailPage() {
       </div>
 
       <h3>Recent Picks</h3>
-      <table className="picks">
-        <thead>
-          <tr>
-            <th>Fixture</th>
-            <th>Market</th>
-            <th>Bookmaker</th>
-            <th>Odds</th>
-            <th>Stake</th>
-            <th>Result</th>
-            <th style={{ textAlign: "right" }}>EV</th>
-            <th style={{ textAlign: "right" }}>Profit</th>
-            {isOwner && <th style={{ width: 220 }}>Actions</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {picks.map((p) => {
-            const fx = fxMap[p.fixture_id];
-            const settled = !!p.result;
-            return (
-              <tr key={p.id}>
-                <td>
-                  <Link
-                    to={`/fixture/${p.fixture_id}`}
-                    style={{ textDecoration: "none", color: "inherit" }}
-                  >
-                    <TeamCell fixture={fx} homeName={p.home_name} awayName={p.away_name} />
-                  </Link>
-                </td>
-                <td>{p.market}</td>
-                <td>{p.bookmaker || "—"}</td>
-                <td>{number(p.price)}</td>
-                <td>{number(p.stake)}</td>
-                <td>
-                  <ResultBadge result={p.result} />
-                </td>
-                <td
-                  style={{
-                    textAlign: "right",
-                    color: (p.model_edge ?? 0) >= 0 ? "#1db954" : "#d23b3b",
-                  }}
-                >
-                  {p.model_edge == null
-                    ? "—"
-                    : number(p.model_edge * 100, 1) + "%"}
-                </td>
-                <td
-                  style={{
-                    textAlign: "right",
-                    color: (p.profit ?? 0) >= 0 ? "#1db954" : "#d23b3b",
-                  }}
-                >
-                  {number(p.profit)}
-                </td>
-                {isOwner && (
+      <div className="tableWrap">
+        <table className="picks">
+          <thead>
+            <tr>
+              <th>Fixture</th>
+              <th>Market</th>
+              <th>Bookmaker</th>
+              <th>Odds</th>
+              <th>Stake</th>
+              <th>Result</th>
+              <th style={{ textAlign: "right" }}>EV</th>
+              <th style={{ textAlign: "right" }}>Profit</th>
+              {isOwner && <th style={{ width: 220 }}>Actions</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {picks.map((p) => {
+              const fx = fxMap[p.fixture_id];
+              const settled = !!p.result;
+              return (
+                <tr key={p.id}>
                   <td>
-                    <div className="actionsCell">
-                      {!settled && (
-                        <SettleButtons
-                          disabled={busyPickId === p.id}
-                          onSettle={(res) => handleSettlePick(p, res)}
-                        />
-                      )}
-                      {p.can_delete && (
-                        <button
-                          className="btnSmall btnDanger"
-                          disabled={busyPickId === p.id}
-                          onClick={() => handleDeletePick(p)}
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
+                    <Link
+                      to={`/fixture/${p.fixture_id}`}
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      <TeamCell fixture={fx} homeName={p.home_name} awayName={p.away_name} />
+                    </Link>
                   </td>
-                )}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  <td>{p.market}</td>
+                  <td>{p.bookmaker || "—"}</td>
+                  <td>{number(p.price)}</td>
+                  <td>{number(p.stake)}</td>
+                  <td><ResultBadge result={p.result} /></td>
+                  <td
+                    style={{
+                      textAlign: "right",
+                      color: (p.model_edge ?? 0) >= 0 ? "#1db954" : "#d23b3b",
+                    }}
+                  >
+                    {p.model_edge == null ? "—" : number(p.model_edge * 100, 1) + "%"}
+                  </td>
+                  <td
+                    style={{
+                      textAlign: "right",
+                      color: (p.profit ?? 0) >= 0 ? "#1db954" : "#d23b3b",
+                    }}
+                  >
+                    {number(p.profit)}
+                  </td>
+                  {isOwner && (
+                    <td>
+                      <div className="actionsCell">
+                        {!settled && (
+                          <SettleButtons
+                            disabled={busyPickId === p.id}
+                            onSettle={(res) => handleSettlePick(p, res)}
+                          />
+                        )}
+                        {p.can_delete && (
+                          <button
+                            className="btnSmall btnDanger"
+                            disabled={busyPickId === p.id}
+                            onClick={() => handleDeletePick(p)}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {accas.length > 0 && (
         <>
           <h3 style={{ marginTop: 24 }}>Accas</h3>
-          <table className="picks">
-            <thead>
-              <tr>
-                <th>Acca</th>
-                <th>Legs</th>
-                <th>Combined</th>
-                <th>Stake</th>
-                <th>Result</th>
-                <th style={{ textAlign: "right" }}>Profit</th>
-                {isOwner && <th style={{ width: 220 }}>Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {accas.map((a) => {
-                const settled = !!a.result;
-                return (
-                  <tr key={a.id}>
-                    <td>#{a.id}</td>
-                    <td>
-                      <div style={{ display: "grid", gap: 6 }}>
-                        {a.legs.map((leg, i) => (
-                          <Link
-                            key={`${a.id}-${i}`}
-                            to={`/fixture/${leg.fixture_id}`}
-                            style={{ textDecoration: "none", color: "inherit" }}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ opacity: 0.7 }}>{i + 1}.</span>
-                              <span style={{ fontWeight: 600 }}>{leg.home_name}</span>
-                              <span style={{ opacity: 0.7 }}>vs</span>
-                              <span style={{ fontWeight: 600 }}>{leg.away_name}</span>
-                              <span style={{ marginLeft: 8, opacity: 0.75 }}>{leg.market}</span>
-                              <span style={{ marginLeft: "auto", opacity: 0.85 }}>
-                                {number(leg.price)}
-                              </span>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </td>
-                    <td>{number(a.combined_price)}</td>
-                    <td>{number(a.stake)}</td>
-                    <td>
-                      <ResultBadge result={a.result} />
-                    </td>
-                    <td
-                      style={{
-                        textAlign: "right",
-                        color: (a.profit ?? 0) >= 0 ? "#1db954" : "#d23b3b",
-                      }}
-                    >
-                      {number(a.profit)}
-                    </td>
-                    {isOwner && (
+          <div className="tableWrap">
+            <table className="picks">
+              <thead>
+                <tr>
+                  <th>Acca</th>
+                  <th>Legs</th>
+                  <th>Combined</th>
+                  <th>Stake</th>
+                  <th>Result</th>
+                  <th style={{ textAlign: "right" }}>Profit</th>
+                  {isOwner && <th style={{ width: 220 }}>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {accas.map((a) => {
+                  const settled = !!a.result;
+                  return (
+                    <tr key={a.id}>
+                      <td>#{a.id}</td>
                       <td>
-                        <div className="actionsCell">
-                          {!settled && (
-                            <SettleButtons
-                              disabled={busyAccaId === a.id}
-                              onSettle={(res) => handleSettleAcca(a, res)}
-                            />
-                          )}
-                          {a.can_delete && (
-                            <button
-                              className="btnSmall btnDanger"
-                              disabled={busyAccaId === a.id}
-                              onClick={() => handleDeleteAcca(a)}
+                        <div style={{ display: "grid", gap: 6 }}>
+                          {a.legs.map((leg, i) => (
+                            <Link
+                              key={`${a.id}-${i}`}
+                              to={`/fixture/${leg.fixture_id}`}
+                              style={{ textDecoration: "none", color: "inherit" }}
                             >
-                              Delete
-                            </button>
-                          )}
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ opacity: 0.7 }}>{i + 1}.</span>
+                                <span style={{ fontWeight: 600 }}>{leg.home_name}</span>
+                                <span style={{ opacity: 0.7 }}>vs</span>
+                                <span style={{ fontWeight: 600 }}>{leg.away_name}</span>
+                                <span style={{ marginLeft: 8, opacity: 0.75 }}>{leg.market}</span>
+                                <span style={{ marginLeft: "auto", opacity: 0.85 }}>
+                                  {number(leg.price)}
+                                </span>
+                              </div>
+                            </Link>
+                          ))}
                         </div>
                       </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td>{number(a.combined_price)}</td>
+                      <td>{number(a.stake)}</td>
+                      <td><ResultBadge result={a.result} /></td>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          color: (a.profit ?? 0) >= 0 ? "#1db954" : "#d23b3b",
+                        }}
+                      >
+                        {number(a.profit)}
+                      </td>
+                      {isOwner && (
+                        <td>
+                          <div className="actionsCell">
+                            {!settled && (
+                              <SettleButtons
+                                disabled={busyAccaId === a.id}
+                                onSettle={(res) => handleSettleAcca(a, res)}
+                              />
+                            )}
+                            {a.can_delete && (
+                              <button
+                                className="btnSmall btnDanger"
+                                disabled={busyAccaId === a.id}
+                                onClick={() => handleDeleteAcca(a)}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
 
@@ -432,28 +430,37 @@ export default function TipsterDetailPage() {
         .profile { display:flex; gap:16px; align-items:center; margin-bottom:20px; }
         .avatar { width:80px; height:80px; border-radius:50%; }
         .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; }
-        table { width:100%; border-collapse:collapse; margin-top:12px; }
+
+        /* ✅ Tables + Sticky Header Fix */
+        .tableWrap { position: relative; background: #0c331f; }
+        table { width:100%; border-collapse:separate; border-spacing:0; margin-top:12px; }
+        thead { position: sticky; top: 0; z-index: 3; background:#0c331f; }
         th, td { border-bottom:1px solid #1e2b21; padding:10px; vertical-align:top; }
-        th { text-align:left; background:#0c331f; color:#fff; position:sticky; top:0; z-index:2; }
+        th { text-align:left; background:#0c331f; color:#fff; }
+        .picks { background:#0a0f0c; }
+
         .btnSmall { padding:6px 10px; border-radius:8px; background:#2e7d32; color:#fff; border:0; cursor:pointer; }
         .btnGhost { background:transparent; border:1px solid #2e7d32; color:#2e7d32; }
         .btnDanger { background:#a52727; }
         .btnSmall[disabled] { opacity:.6; cursor:not-allowed; }
+
         .actionsCell { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
         .settleRow { display:flex; gap:6px; flex-wrap:wrap; }
+
         .btnTag { padding:4px 8px; border-radius:999px; font-size:.8rem; border:0; cursor:pointer; }
         .btnTag.win { background:#124b27; color:#b6f2c6; }
         .btnTag.lose { background:#4b1212; color:#f2b6b6; }
         .btnTag.push { background:#1f2a44; color:#c8d7ff; }
         .btnTag.void { background:#3b3b3b; color:#e7e7e7; }
         .btnTag:disabled { opacity:.6; cursor:not-allowed; }
+
         .badge { padding:2px 8px; border-radius:999px; font-size:.75rem; }
         .badge.win { background:#124b27; color:#b6f2c6; }
         .badge.lose { background:#4b1212; color:#f2b6b6; }
         .badge.push { background:#1f2a44; color:#c8d7ff; }
         .badge.void { background:#3b3b3b; color:#e7e7e7; }
         .badge.neutral { background:#263238; color:#e0e0e0; }
-      `}</style>
+`}</style>
     </div>
   );
 }
