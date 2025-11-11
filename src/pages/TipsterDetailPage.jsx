@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   fetchTipster,
@@ -11,6 +11,57 @@ import {
   deleteTipsterAcca,
 } from "../api";
 
+/* ---------------- helpers ---------------- */
+const number = (x, d = 2) =>
+  typeof x === "number" && isFinite(x) ? x.toFixed(d) : "—";
+
+const percent = (x, d = 1) =>
+  typeof x === "number" && isFinite(x) ? (x * 100).toFixed(d) : "—";
+
+/** Compute 30d-style rolling stats from the loaded picks as a fallback. */
+const useLocalRollingFromPicks = (picks) =>
+  useMemo(() => {
+    if (!Array.isArray(picks) || picks.length === 0) {
+      return { roi: 0, winrate: 0, profit: 0, picksCount: 0, settled: 0 };
+    }
+    let profit = 0;
+    let stakeSum = 0;
+    let wins = 0;
+    let settled = 0;
+
+    for (const p of picks) {
+      const stake = Number(p?.stake ?? 0) || 0;
+      const price = Number(p?.price ?? 0) || 0;
+      const res = (p?.result || "").toUpperCase();
+
+      if (res) {
+        settled += 1;
+        if (res === "WIN") {
+          wins += 1;
+          // Profit is denormalised on BE, but we recompute to be safe:
+          profit += stake * (price - 1.0);
+          stakeSum += stake;
+        } else if (res === "LOSE") {
+          profit -= stake;
+          stakeSum += stake;
+        } else {
+          // PUSH/VOID: 0 profit, 0 extra stake toward ROI
+        }
+      }
+    }
+
+    const roi = stakeSum > 0 ? profit / stakeSum : 0;
+    const winrate = settled > 0 ? wins / settled : 0;
+    return {
+      roi,
+      winrate,
+      profit,
+      picksCount: picks.length,
+      settled,
+    };
+  }, [picks]);
+
+/* --------------- data helpers --------------- */
 const useFixturesMap = (picks) => {
   const [map, setMap] = useState({});
   useEffect(() => {
@@ -32,6 +83,7 @@ const useFixturesMap = (picks) => {
   return map;
 };
 
+/* --------------- small UI bits --------------- */
 const TeamCell = ({ fixture }) => {
   if (!fixture) return <>Fixture</>;
   const h = fixture.home || {};
@@ -53,8 +105,6 @@ const TeamCell = ({ fixture }) => {
     </div>
   );
 };
-
-const number = (x, d = 2) => (typeof x === "number" ? x.toFixed(d) : "—");
 
 const ResultBadge = ({ result }) => {
   if (!result) return <span className="badge neutral">—</span>;
@@ -88,6 +138,7 @@ const SettleButtons = ({ onSettle, disabled }) => (
   </div>
 );
 
+/* --------------- main page --------------- */
 export default function TipsterDetailPage() {
   const { username } = useParams();
   const nav = useNavigate();
@@ -107,9 +158,26 @@ export default function TipsterDetailPage() {
   }, [username]);
 
   const fxMap = useFixturesMap(picks);
+  const localStats = useLocalRollingFromPicks(picks);
 
   if (!tipster) return <div>Loading…</div>;
   const isOwner = !!tipster.is_owner;
+
+  // Prefer API metrics if they’re positive; otherwise use local fallback.
+  const roiVal =
+    typeof tipster.roi_30d === "number" && tipster.roi_30d > 0
+      ? tipster.roi_30d
+      : localStats.roi;
+
+  const wrVal =
+    typeof tipster.winrate_30d === "number" && tipster.winrate_30d > 0
+      ? tipster.winrate_30d
+      : localStats.winrate;
+
+  const profitVal =
+    typeof tipster.profit_30d === "number" && tipster.profit_30d !== 0
+      ? tipster.profit_30d
+      : localStats.profit;
 
   // --- Handlers: Picks ---
   const handleSettlePick = async (pick, result) => {
@@ -204,10 +272,11 @@ export default function TipsterDetailPage() {
           </h2>
           <p>@{tipster.username}</p>
           <p>{tipster.bio}</p>
+
           <div className="metrics">
-            <span>ROI: {number(tipster.roi_30d)}%</span>
-            <span>Profit: {number(tipster.profit_30d)}</span>
-            <span>Winrate: {number(tipster.winrate_30d)}%</span>
+            <span>ROI: {percent(roiVal)}%</span>
+            <span>Profit: {number(profitVal)}</span>
+            <span>Winrate: {percent(wrVal)}%</span>
           </div>
         </div>
       </div>
@@ -328,7 +397,7 @@ export default function TipsterDetailPage() {
                               <span style={{ fontWeight: 600 }}>{leg.away_name}</span>
                               <span style={{ marginLeft: 8, opacity: 0.75 }}>{leg.market}</span>
                               <span style={{ marginLeft: "auto", opacity: 0.85 }}>
-                                {leg.price?.toFixed(2)}
+                                {number(leg.price)}
                               </span>
                             </div>
                           </Link>
