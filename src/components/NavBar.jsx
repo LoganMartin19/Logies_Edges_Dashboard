@@ -55,7 +55,7 @@ export default function NavBar() {
 
           <li className={styles.dropdown}>
             <span>Sports ▾</span>
-            <ul className={styles.dropdownContent} onClick={closeMenu}>
+            <ul className={styles.dropdownContent}>
               <li><NavLink to="/football" className={({isActive}) => (isActive ? styles.active : "")}>Football</NavLink></li>
               <li><NavLink to="/basketball" className={({isActive}) => (isActive ? styles.active : "")}>NBA</NavLink></li>
               <li><NavLink to="/nhl" className={({isActive}) => (isActive ? styles.active : "")}>NHL</NavLink></li>

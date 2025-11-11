@@ -67,10 +67,10 @@
 .dropdown > span {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 0.93rem;
-  padding: 5px 10px;
-  border-radius: 6px;
+  padding: 10px 12px;              /* bigger tap target */
+  border-radius: 8px;
 }
 
 .dropdown:hover > span {
@@ -81,27 +81,37 @@
   display: none;
   position: absolute;
   background-color: #00260f;
-  min-width: 150px;
-  border-radius: 6px;
-  top: 32px;
+  min-width: 220px;                /* wider panel */
+  top: calc(100% + 6px);
   left: 0;
   z-index: 1000;
-  padding: 6px 0;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  padding: 8px;                    /* comfy padding */
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+
+  /* scrollable & touch friendly */
+  max-height: 70vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .dropdownContent li {
   padding: 0;
 }
 
-.dropdownContent li a {
+.dropdownContent li a,
+.dropdownContent li > * {
   display: block;
   color: #fff;
-  font-size: 0.9rem;
-  padding: 7px 12px;
+  font-size: 0.92rem;
+  padding: 10px 12px;              /* bigger tap target */
+  border-radius: 8px;
+  text-decoration: none;
 }
 
-.dropdownContent li a:hover {
+.dropdownContent li a:hover,
+.dropdownContent li > *:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -162,7 +172,7 @@
     display: none;
   }
 
-  /* ✅ ensure active menu displays on mobile */
+  /* ensure active menu displays on mobile */
   .navMenu.navMenuActive {
     display: flex;
   }
@@ -183,21 +193,26 @@
     font-size: 0.95rem;
   }
 
-  /* Dropdown behaves as normal stacked items */
+  /* On mobile we don't open on hover; dropdown is inline + scrollable */
   .dropdown:hover .dropdownContent {
     display: none;
   }
 
   .navMenuActive .dropdownContent {
-    display: flex;
-    position: static;
+    display: block;
+    position: static;              /* flow within menu */
     background: transparent;
     box-shadow: none;
-    padding: 0;
+    border: 0;
+    padding: 6px 0 0 0;
+    max-height: 60vh;              /* scrollable within menu */
+    overflow-y: auto;
   }
 
-  .dropdownContent li a {
-    padding: 10px 12px;
+  .dropdownContent li a,
+  .dropdownContent li > * {
+    padding: 12px 14px;            /* extra comfy tap targets */
+    border-radius: 8px;
   }
 }
 
