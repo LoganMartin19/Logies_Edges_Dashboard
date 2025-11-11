@@ -264,6 +264,7 @@ export default function TipsterDetailPage() {
 
       <h3>Recent Picks</h3>
       <div className="tableWrap">
+        <div className="tableTopMask" />
         <table className="picks">
           <thead>
             <tr>
@@ -345,6 +346,7 @@ export default function TipsterDetailPage() {
         <>
           <h3 style={{ marginTop: 24 }}>Accas</h3>
           <div className="tableWrap">
+            <div className="tableTopMask" />
             <table className="picks">
               <thead>
                 <tr>
@@ -426,60 +428,55 @@ export default function TipsterDetailPage() {
         </>
       )}
 
-<style jsx="true">{`
-  .profile { display:flex; gap:16px; align-items:center; margin-bottom:20px; }
-  .avatar { width:80px; height:80px; border-radius:50%; }
-  .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; }
+      <style jsx="true">{`
+        .profile { display:flex; gap:16px; align-items:center; margin-bottom:20px; }
+        .avatar { width:80px; height:80px; border-radius:50%; }
+        .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; }
 
-  /* ✅ Tables + sticky header (Safari/iPad safe, no white bar) */
-  .tableWrap {
-    position: relative;
-    background:#0c331f;      /* solid behind the header */
-    overflow-x:auto;
-    border-radius:6px;
-  }
+        /* ✅ Tables + sticky header (Safari/iPad safe, no white bar) */
+        .tableWrap {
+          position: relative;
+          background:#0c331f;         /* solid behind header */
+          overflow-x:auto;
+          border-radius:6px;
+        }
+        /* sticky mask above header to cover Safari seam */
+        .tableTopMask {
+          position: sticky;
+          top: 0;
+          height: 10px;               /* small strip above the thead */
+          background:#0c331f;
+          z-index: 2;
+        }
 
-  table { width:100%; border-collapse:separate; border-spacing:0; margin-top:12px; }
-  th, td { border-bottom:1px solid #1e2b21; padding:10px; vertical-align:top; }
-  .picks { background:#0a0f0c; }
+        table { width:100%; border-collapse:separate; border-spacing:0; margin-top:0; }
+        thead { position: sticky; top: 0; z-index: 3; background:#0c331f; }
+        th, td { border-bottom:1px solid #1e2b21; padding:10px; vertical-align:top; }
+        th { text-align:left; background:#0c331f; color:#fff; }
+        .picks { background:#0a0f0c; }
 
-  /* Make EACH TH sticky and overlap the top by 1px to hide the seam */
-  th {
-    position: sticky;
-    top: -1px;               /* <— hides the white line on Safari */
-    z-index: 3;
-    background:#0c331f;      /* must be solid */
-    color:#fff;
-    text-align:left;
-  }
+        .btnSmall { padding:6px 10px; border-radius:8px; background:#2e7d32; color:#fff; border:0; cursor:pointer; }
+        .btnGhost { background:transparent; border:1px solid #2e7d32; color:#2e7d32; }
+        .btnDanger { background:#a52727; }
+        .btnSmall[disabled] { opacity:.6; cursor:not-allowed; }
 
-  /* optional subtle bottom divider for the header */
-  thead tr { background:#0c331f; }  /* some Safari versions look at the row bg */
+        .actionsCell { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .settleRow { display:flex; gap:6px; flex-wrap:wrap; }
 
-  .picks { background:#0a0f0c; }
+        .btnTag { padding:4px 8px; border-radius:999px; font-size:.8rem; border:0; cursor:pointer; }
+        .btnTag.win { background:#124b27; color:#b6f2c6; }
+        .btnTag.lose { background:#4b1212; color:#f2b6b6; }
+        .btnTag.push { background:#1f2a44; color:#c8d7ff; }
+        .btnTag.void { background:#3b3b3b; color:#e7e7e7; }
+        .btnTag:disabled { opacity:.6; cursor:not-allowed; }
 
-  .btnSmall { padding:6px 10px; border-radius:8px; background:#2e7d32; color:#fff; border:0; cursor:pointer; }
-  .btnGhost { background:transparent; border:1px solid #2e7d32; color:#2e7d32; }
-  .btnDanger { background:#a52727; }
-  .btnSmall[disabled] { opacity:.6; cursor:not-allowed; }
-
-  .actionsCell { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .settleRow { display:flex; gap:6px; flex-wrap:wrap; }
-
-  .btnTag { padding:4px 8px; border-radius:999px; font-size:.8rem; border:0; cursor:pointer; }
-  .btnTag.win { background:#124b27; color:#b6f2c6; }
-  .btnTag.lose { background:#4b1212; color:#f2b6b6; }
-  .btnTag.push { background:#1f2a44; color:#c8d7ff; }
-  .btnTag.void { background:#3b3b3b; color:#e7e7e7; }
-  .btnTag:disabled { opacity:.6; cursor:not-allowed; }
-
-  .badge { padding:2px 8px; border-radius:999px; font-size:.75rem; }
-  .badge.win { background:#124b27; color:#b6f2c6; }
-  .badge.lose { background:#4b1212; color:#f2b6b6; }
-  .badge.push { background:#1f2a44; color:#c8d7ff; }
-  .badge.void { background:#3b3b3b; color:#e7e7e7; }
-  .badge.neutral { background:#263238; color:#e0e0e0; }
-`}</style>
+        .badge { padding:2px 8px; border-radius:999px; font-size:.75rem; }
+        .badge.win { background:#124b27; color:#b6f2c6; }
+        .badge.lose { background:#4b1212; color:#f2b6b6; }
+        .badge.push { background:#1f2a44; color:#c8d7ff; }
+        .badge.void { background:#3b3b3b; color:#e7e7e7; }
+        .badge.neutral { background:#263238; color:#e0e0e0; }
+      `}</style>
     </div>
   );
 }
