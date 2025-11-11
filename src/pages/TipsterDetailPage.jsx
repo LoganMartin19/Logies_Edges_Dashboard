@@ -431,31 +431,30 @@ export default function TipsterDetailPage() {
   .avatar { width:80px; height:80px; border-radius:50%; }
   .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; }
 
-  /* ✅ Tables + sticky header (Safari/iPad safe) */
+  /* ✅ Tables + sticky header (Safari/iPad safe, no white bar) */
   .tableWrap {
     position: relative;
-    background:#0c331f;     /* solid behind the header */
+    background:#0c331f;      /* solid behind the header */
     overflow-x:auto;
     border-radius:6px;
   }
+
   table { width:100%; border-collapse:separate; border-spacing:0; margin-top:12px; }
   th, td { border-bottom:1px solid #1e2b21; padding:10px; vertical-align:top; }
-  /* Make EACH TH sticky instead of thead */
+  .picks { background:#0a0f0c; }
+
+  /* Make EACH TH sticky and overlap the top by 1px to hide the seam */
   th {
     position: sticky;
-    top: 0;
+    top: -1px;               /* <— hides the white line on Safari */
     z-index: 3;
-    background:#0c331f;     /* ensure no white bar */
+    background:#0c331f;      /* must be solid */
     color:#fff;
     text-align:left;
   }
-  /* subtle divider under the sticky header while scrolling */
-  thead th::after {
-    content:"";
-    position:absolute;
-    left:0; right:0; bottom:-1px; height:1px;
-    background:#1e2b21;
-  }
+
+  /* optional subtle bottom divider for the header */
+  thead tr { background:#0c331f; }  /* some Safari versions look at the row bg */
 
   .picks { background:#0a0f0c; }
 
