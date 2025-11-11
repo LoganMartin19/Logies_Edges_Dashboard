@@ -10,7 +10,7 @@ const COMP_NAMES = {
   EPL: "Premier League", CHAMP: "EFL Championship", LG1: "EFL League One", LG2: "EFL League Two",
   ENG_FA: "FA Cup", ENG_EFL: "EFL Cup",
   SCO_PREM: "Scottish Premiership", SCO_CHAMP: "Scottish Championship", SCO_1: "Scottish League One",
-  SCO_2: "Scottish League Two", SCO_SC: "Scottish Cup", SCO_LC: "Scottish League Cup",
+  SCO_2: "Scottish League Two", SCO_SC: "Scottish Cup", SCO_LC: "Scottish League Cup", SCO_CHAL: "Scottish Challenge Cup",
   LIGUE1: "Ligue 1", LIGUE2: "Ligue 2", FRA_CDF: "Coupe de France",
   BUNDES: "Bundesliga", BUNDES2: "2. Bundesliga", GER_POKAL: "DFB-Pokal",
   LA_LIGA: "La Liga", LA_LIGA2: "La Liga 2",
