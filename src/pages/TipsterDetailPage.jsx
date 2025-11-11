@@ -1,3 +1,4 @@
+// src/pages/TipsterDetailPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
@@ -18,7 +19,14 @@ const number = (x, d = 2) =>
 const percent = (x, d = 1) =>
   typeof x === "number" && isFinite(x) ? (x * 100).toFixed(d) : "—";
 
-/** Compute 30d-style rolling stats from the loaded picks as a fallback. */
+/** Normalize a rate that might be sent as 50 (percent) instead of 0.5 (fraction) */
+const normalizeRate = (v) => {
+  if (typeof v !== "number" || !isFinite(v)) return 0;
+  if (v > 1 || v < -1) return v / 100; // treat as already percent
+  return v;
+};
+
+/** Compute 30d-style rolling stats from picks as a fallback */
 const useLocalRollingFromPicks = (picks) =>
   useMemo(() => {
     if (!Array.isArray(picks) || picks.length === 0) {
@@ -38,27 +46,18 @@ const useLocalRollingFromPicks = (picks) =>
         settled += 1;
         if (res === "WIN") {
           wins += 1;
-          // Profit is denormalised on BE, but we recompute to be safe:
           profit += stake * (price - 1.0);
           stakeSum += stake;
         } else if (res === "LOSE") {
           profit -= stake;
           stakeSum += stake;
-        } else {
-          // PUSH/VOID: 0 profit, 0 extra stake toward ROI
         }
       }
     }
 
     const roi = stakeSum > 0 ? profit / stakeSum : 0;
     const winrate = settled > 0 ? wins / settled : 0;
-    return {
-      roi,
-      winrate,
-      profit,
-      picksCount: picks.length,
-      settled,
-    };
+    return { roi, winrate, profit, picksCount: picks.length, settled };
   }, [picks]);
 
 /* --------------- data helpers --------------- */
@@ -84,24 +83,29 @@ const useFixturesMap = (picks) => {
 };
 
 /* --------------- small UI bits --------------- */
-const TeamCell = ({ fixture }) => {
-  if (!fixture) return <>Fixture</>;
-  const h = fixture.home || {};
-  const a = fixture.away || {};
+const TeamCell = ({ fixture, homeName, awayName }) => {
+  const h = fixture?.home ?? { name: homeName };
+  const a = fixture?.away ?? { name: awayName };
+
   const Logo = ({ src, name }) => (
     <img
       src={src || "/badge.png"}
-      alt={name}
+      alt={name || ""}
       style={{ width: 18, height: 18, borderRadius: 4, objectFit: "contain" }}
+      onError={(e) => (e.currentTarget.style.visibility = "hidden")}
     />
   );
+
+  const left = h.name || "Home";
+  const right = a.name || "Away";
+
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <Logo src={h.logo} name={h.name} />
-      <span style={{ fontWeight: 600 }}>{h.name}</span>
+      <Logo src={h.logo} name={left} />
+      <span style={{ fontWeight: 600 }}>{left}</span>
       <span style={{ opacity: 0.7 }}>vs</span>
-      <span style={{ fontWeight: 600 }}>{a.name}</span>
-      <Logo src={a.logo} name={a.name} />
+      <span style={{ fontWeight: 600 }}>{right}</span>
+      <Logo src={a.logo} name={right} />
     </div>
   );
 };
@@ -123,18 +127,16 @@ const ResultBadge = ({ result }) => {
 
 const SettleButtons = ({ onSettle, disabled }) => (
   <div className="settleRow">
-    <button className="btnTag win" disabled={disabled} onClick={() => onSettle("WIN")}>
-      WIN
-    </button>
-    <button className="btnTag lose" disabled={disabled} onClick={() => onSettle("LOSE")}>
-      LOSE
-    </button>
-    <button className="btnTag push" disabled={disabled} onClick={() => onSettle("PUSH")}>
-      PUSH
-    </button>
-    <button className="btnTag void" disabled={disabled} onClick={() => onSettle("VOID")}>
-      VOID
-    </button>
+    {["WIN", "LOSE", "PUSH", "VOID"].map((r) => (
+      <button
+        key={r}
+        className={`btnTag ${r.toLowerCase()}`}
+        disabled={disabled}
+        onClick={() => onSettle(r)}
+      >
+        {r}
+      </button>
+    ))}
   </div>
 );
 
@@ -146,8 +148,6 @@ export default function TipsterDetailPage() {
   const [tipster, setTipster] = useState(null);
   const [picks, setPicks] = useState([]);
   const [accas, setAccas] = useState([]);
-
-  // busy flags (so we can disable a specific row while acting)
   const [busyPickId, setBusyPickId] = useState(null);
   const [busyAccaId, setBusyAccaId] = useState(null);
 
@@ -159,35 +159,24 @@ export default function TipsterDetailPage() {
 
   const fxMap = useFixturesMap(picks);
   const localStats = useLocalRollingFromPicks(picks);
-
   if (!tipster) return <div>Loading…</div>;
   const isOwner = !!tipster.is_owner;
 
-  // Prefer API metrics if they’re positive; otherwise use local fallback.
   const roiVal =
-    typeof tipster.roi_30d === "number" && tipster.roi_30d > 0
-      ? tipster.roi_30d
-      : localStats.roi;
-
+    tipster.roi_30d != null ? normalizeRate(tipster.roi_30d) : localStats.roi;
   const wrVal =
-    typeof tipster.winrate_30d === "number" && tipster.winrate_30d > 0
-      ? tipster.winrate_30d
-      : localStats.winrate;
-
+    tipster.winrate_30d != null ? normalizeRate(tipster.winrate_30d) : localStats.winrate;
   const profitVal =
     typeof tipster.profit_30d === "number" && tipster.profit_30d !== 0
       ? tipster.profit_30d
       : localStats.profit;
 
-  // --- Handlers: Picks ---
+  // ---------- handlers ----------
   const handleSettlePick = async (pick, result) => {
     try {
       setBusyPickId(pick.id);
       const updated = await settleTipsterPick(pick.id, result);
       setPicks((prev) => prev.map((p) => (p.id === pick.id ? { ...p, ...updated } : p)));
-    } catch (e) {
-      console.error(e);
-      alert("Failed to settle pick.");
     } finally {
       setBusyPickId(null);
     }
@@ -195,28 +184,21 @@ export default function TipsterDetailPage() {
 
   const handleDeletePick = async (pick) => {
     if (!pick?.can_delete) return;
-    if (!window.confirm("Delete this pick? This cannot be undone.")) return;
+    if (!window.confirm("Delete this pick?")) return;
     try {
       setBusyPickId(pick.id);
       await deleteTipsterPick(pick.id);
       setPicks((prev) => prev.filter((p) => p.id !== pick.id));
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete pick.");
     } finally {
       setBusyPickId(null);
     }
   };
 
-  // --- Handlers: Accas ---
   const handleSettleAcca = async (acca, result) => {
     try {
       setBusyAccaId(acca.id);
       const updated = await settleTipsterAcca(acca.id, result);
       setAccas((prev) => prev.map((a) => (a.id === acca.id ? { ...a, ...updated } : a)));
-    } catch (e) {
-      console.error(e);
-      alert("Failed to settle acca.");
     } finally {
       setBusyAccaId(null);
     }
@@ -224,14 +206,11 @@ export default function TipsterDetailPage() {
 
   const handleDeleteAcca = async (acca) => {
     if (!acca?.can_delete) return;
-    if (!window.confirm("Delete this acca? This cannot be undone.")) return;
+    if (!window.confirm("Delete this acca?")) return;
     try {
       setBusyAccaId(acca.id);
       await deleteTipsterAcca(acca.id);
       setAccas((prev) => prev.filter((a) => a.id !== acca.id));
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete acca.");
     } finally {
       setBusyAccaId(null);
     }
@@ -245,7 +224,9 @@ export default function TipsterDetailPage() {
         <img
           src={
             tipster.avatar_url ||
-            `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(tipster.name)}`
+            `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+              tipster.name || tipster.username
+            )}`
           }
           alt={tipster.name}
           className="avatar"
@@ -307,7 +288,7 @@ export default function TipsterDetailPage() {
                     to={`/fixture/${p.fixture_id}`}
                     style={{ textDecoration: "none", color: "inherit" }}
                   >
-                    <TeamCell fixture={fx} />
+                    <TeamCell fixture={fx} homeName={p.home_name} awayName={p.away_name} />
                   </Link>
                 </td>
                 <td>{p.market}</td>
@@ -323,7 +304,9 @@ export default function TipsterDetailPage() {
                     color: (p.model_edge ?? 0) >= 0 ? "#1db954" : "#d23b3b",
                   }}
                 >
-                  {p.model_edge == null ? "—" : number(p.model_edge * 100, 1) + "%"}
+                  {p.model_edge == null
+                    ? "—"
+                    : number(p.model_edge * 100, 1) + "%"}
                 </td>
                 <td
                   style={{
@@ -347,7 +330,6 @@ export default function TipsterDetailPage() {
                           className="btnSmall btnDanger"
                           disabled={busyPickId === p.id}
                           onClick={() => handleDeletePick(p)}
-                          title="Delete pick"
                         >
                           Delete
                         </button>
@@ -431,7 +413,6 @@ export default function TipsterDetailPage() {
                               className="btnSmall btnDanger"
                               disabled={busyAccaId === a.id}
                               onClick={() => handleDeleteAcca(a)}
-                              title="Delete acca"
                             >
                               Delete
                             </button>
@@ -453,22 +434,19 @@ export default function TipsterDetailPage() {
         .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; }
         table { width:100%; border-collapse:collapse; margin-top:12px; }
         th, td { border-bottom:1px solid #1e2b21; padding:10px; vertical-align:top; }
-        th { text-align:left; background:#0c331f; color:#fff; position:sticky; top:0; z-index:1; }
+        th { text-align:left; background:#0c331f; color:#fff; position:sticky; top:0; z-index:2; }
         .btnSmall { padding:6px 10px; border-radius:8px; background:#2e7d32; color:#fff; border:0; cursor:pointer; }
         .btnGhost { background:transparent; border:1px solid #2e7d32; color:#2e7d32; }
         .btnDanger { background:#a52727; }
         .btnSmall[disabled] { opacity:.6; cursor:not-allowed; }
-
         .actionsCell { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
         .settleRow { display:flex; gap:6px; flex-wrap:wrap; }
-
         .btnTag { padding:4px 8px; border-radius:999px; font-size:.8rem; border:0; cursor:pointer; }
         .btnTag.win { background:#124b27; color:#b6f2c6; }
         .btnTag.lose { background:#4b1212; color:#f2b6b6; }
         .btnTag.push { background:#1f2a44; color:#c8d7ff; }
         .btnTag.void { background:#3b3b3b; color:#e7e7e7; }
         .btnTag:disabled { opacity:.6; cursor:not-allowed; }
-
         .badge { padding:2px 8px; border-radius:999px; font-size:.75rem; }
         .badge.win { background:#124b27; color:#b6f2c6; }
         .badge.lose { background:#4b1212; color:#f2b6b6; }
