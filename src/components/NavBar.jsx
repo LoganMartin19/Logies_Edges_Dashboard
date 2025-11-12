@@ -159,18 +159,12 @@ export default function NavBar() {
           {!initializing &&
             (user ? (
               <li className={styles.dropdown}>
-                {/* Avatar button instead of "Account" text */}
-                <button
-                  type="button"
-                  className={styles.avatarButton}
-                  onClick={(e) => e.preventDefault()}
-                >
+                {/* ✅ same structure as Sports: span trigger + ul */}
+                <span>
                   <span className={styles.avatarCircle}>{displayInitial}</span>
                   <span className={styles.caret}>▾</span>
-                </button>
-
+                </span>
                 <ul className={styles.dropdownContent} onClick={closeMenu}>
-                  {/* General profile/settings, regardless of tipster status */}
                   <li>
                     <NavLink
                       to="/account"
