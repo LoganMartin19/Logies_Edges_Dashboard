@@ -2,7 +2,6 @@
 import axios from "axios";
 import { auth } from "./firebase"; // <-- to read current user token
 
-// CRA envs:
 export const API_BASE =
   process.env.REACT_APP_API_BASE || "https://logies-edges-api.onrender.com";
 
@@ -20,7 +19,7 @@ api.interceptors.request.use(async (config) => {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     } catch {
-      // ignore
+      // ignore token errors
     }
   }
   return config;
@@ -52,25 +51,21 @@ export const fetchDailyFixtures = (day, sport = "all") =>
 // Tipsters Platform
 // -----------------------------
 
-// ✅ "Me" helper – returns your tipster profile or null
-export const fetchMyTipster = () =>
-  api
-    .get("/api/tipsters/me")
-    .then((r) => {
-      const data = r.data;
-      // Support either { tipster: {...} } or plain object
-      return data && data.tipster ? data.tipster : data || null;
-    })
-    .catch((err) => {
-      if (err?.response?.status === 404) {
-        // Not a tipster yet
-        return null;
-      }
-      throw err;
-    });
-
 export const fetchTipsters = ({ sort = "roi_30d_desc", sport } = {}) =>
   api.get("/api/tipsters", { params: { sort, sport } }).then((r) => r.data);
+
+// ✅ Helper: find the current user’s tipster by scanning the list
+export const fetchMyTipster = async () => {
+  const data = await fetchTipsters();
+  const list = Array.isArray(data?.tipsters)
+    ? data.tipsters
+    : Array.isArray(data)
+    ? data
+    : [];
+
+  const mine = list.find((t) => t.is_owner);
+  return mine || null;
+};
 
 export const fetchTipster = (username) =>
   api
@@ -98,7 +93,7 @@ export const settleTipsterPick = (pickId, result) =>
     .post(`/api/tipsters/picks/${pickId}/settle`, { result })
     .then((r) => r.data);
 
-// ✅ delete a pick (only before kickoff / if not settled)
+// delete a pick (only before kickoff / if not settled)
 export const deleteTipsterPick = (pickId) =>
   api.delete(`/api/tipsters/picks/${pickId}`).then((r) => r.data);
 
@@ -122,6 +117,6 @@ export const settleTipsterAcca = (accaId, result) =>
     .post(`/api/tipsters/accas/${accaId}/settle`, { result })
     .then((r) => r.data);
 
-// ✅ delete an acca (only before earliest leg kicks off / if not settled)
+// delete an acca (only before earliest leg kicks off / if not settled)
 export const deleteTipsterAcca = (accaId) =>
   api.delete(`/api/tipsters/accas/${accaId}`).then((r) => r.data);
