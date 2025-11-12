@@ -22,7 +22,7 @@ const percent = (x, d = 1) =>
 /** Normalize a rate that might be sent as 50 (percent) instead of 0.5 (fraction) */
 const normalizeRate = (v) => {
   if (typeof v !== "number" || !isFinite(v)) return 0;
-  if (v > 1 || v < -1) return v / 100; // treat as already percent
+  if (v > 1 || v < -1) return v / 100;
   return v;
 };
 
@@ -264,7 +264,6 @@ export default function TipsterDetailPage() {
 
       <h3>Recent Picks</h3>
       <div className="tableWrap">
-        <div className="tableTopMask" />
         <table className="picks">
           <thead>
             <tr>
@@ -346,7 +345,6 @@ export default function TipsterDetailPage() {
         <>
           <h3 style={{ marginTop: 24 }}>Accas</h3>
           <div className="tableWrap">
-            <div className="tableTopMask" />
             <table className="picks">
               <thead>
                 <tr>
@@ -433,27 +431,24 @@ export default function TipsterDetailPage() {
         .avatar { width:80px; height:80px; border-radius:50%; }
         .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; }
 
-        /* ✅ Tables + sticky header (Safari/iPad safe, no white bar) */
-        .tableWrap {
-          position: relative;
-          background:#0c331f;         /* solid behind header */
-          overflow-x:auto;
-          border-radius:6px;
+        /* ▶ Match PublicDashboard table look (no sticky header = no white seam) */
+        .tableWrap { background:#0a0f0c; border-radius:12px; overflow-x:auto; }
+        table.picks { width:100%; border-collapse:collapse; }
+        .picks thead th {
+          text-align:left;
+          padding:8px 6px;
+          border-bottom:1px solid rgba(255,255,255,.12);
+          font-size:14px;
+          color:#eaf4ed;
+          background:rgba(255,255,255,.06);
+          white-space:nowrap;
         }
-        /* sticky mask above header to cover Safari seam */
-        .tableTopMask {
-          position: sticky;
-          top: 0;
-          height: 10px;               /* small strip above the thead */
-          background:#0c331f;
-          z-index: 2;
+        .picks td {
+          padding:10px 6px;
+          border-bottom:1px solid rgba(255,255,255,.08);
+          font-size:14px;
+          color:#eaf4ed;
         }
-
-        table { width:100%; border-collapse:separate; border-spacing:0; margin-top:0; }
-        thead { position: sticky; top: 0; z-index: 3; background:#0c331f; }
-        th, td { border-bottom:1px solid #1e2b21; padding:10px; vertical-align:top; }
-        th { text-align:left; background:#0c331f; color:#fff; }
-        .picks { background:#0a0f0c; }
 
         .btnSmall { padding:6px 10px; border-radius:8px; background:#2e7d32; color:#fff; border:0; cursor:pointer; }
         .btnGhost { background:transparent; border:1px solid #2e7d32; color:#2e7d32; }
