@@ -55,16 +55,11 @@ export const fetchTipsters = ({ sort = "roi_30d_desc", sport } = {}) =>
   api.get("/api/tipsters", { params: { sort, sport } }).then((r) => r.data);
 
 // ✅ Helper: find the current user’s tipster by scanning the list
+// ✅ Get the current user’s tipster profile directly
 export const fetchMyTipster = async () => {
-  const data = await fetchTipsters();
-  const list = Array.isArray(data?.tipsters)
-    ? data.tipsters
-    : Array.isArray(data)
-    ? data
-    : [];
-
-  const mine = list.find((t) => t.is_owner);
-  return mine || null;
+  const res = await api.get("/api/tipsters/me");
+  // when not a tipster yet, backend returns null
+  return res.data || null;
 };
 
 export const fetchTipster = (username) =>
