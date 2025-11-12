@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import styles from "../styles/NavBar.module.css";
 import { useAuth } from "../components/AuthGate";
-import { fetchTipster } from "../api";
+import { fetchMyTipster } from "../api";
 
 export default function NavBar() {
   const [menuOpen, setMenuOpen] = useState(false);
