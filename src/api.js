@@ -104,3 +104,14 @@ export const settleTipsterAcca = (accaId, result) =>
 // ✅ NEW: delete an acca (only before earliest leg kicks off / if not settled)
 export const deleteTipsterAcca = (accaId) =>
   api.delete(`/api/tipsters/accas/${accaId}`).then((r) => r.data);
+
+// -----------------------------
+// Tipster "Me"
+// -----------------------------
+export const fetchMyTipster = () =>
+  api.get("/api/tipsters/me")
+     .then((r) => r.data)
+     .catch((err) => {
+       if (err?.response?.status === 404) return null;
+       throw err;
+     });

@@ -11,13 +11,11 @@ export default function NavBar() {
   const { user, initializing, logout } = useAuth();
 
   useEffect(() => {
-    if (!user) {
+    if (user) {
+      fetchMyTipster().then(setMyTipster);
+    } else {
       setMyTipster(null);
-      return;
     }
-    fetchTipster()
-      .then(setMyTipster)
-      .catch(() => setMyTipster(null));
   }, [user]);
 
   const toggleMenu = () => setMenuOpen((p) => !p);
