@@ -10,6 +10,8 @@ import {
   deleteTipsterPick,
   settleTipsterAcca,
   deleteTipsterAcca,
+  followTipster,
+  unfollowTipster,
 } from "../api";
 
 /* ---------------- helpers ---------------- */
@@ -59,10 +61,6 @@ const useLocalRollingFromPicks = (picks) =>
     const winrate = settled > 0 ? wins / settled : 0;
     return { roi, winrate, profit, picksCount: picks.length, settled };
   }, [picks]);
-
-/* handle helpers */
-const cleanHandle = (h = "") =>
-  (h || "").trim().replace(/^@/, "");
 
 /* --------------- data helpers --------------- */
 const useFixturesMap = (picks) => {
@@ -154,6 +152,7 @@ export default function TipsterDetailPage() {
   const [accas, setAccas] = useState([]);
   const [busyPickId, setBusyPickId] = useState(null);
   const [busyAccaId, setBusyAccaId] = useState(null);
+  const [busyFollow, setBusyFollow] = useState(false);
 
   useEffect(() => {
     fetchTipster(username).then(setTipster).catch(() => setTipster(null));
@@ -162,9 +161,11 @@ export default function TipsterDetailPage() {
   }, [username]);
 
   const fxMap = useFixturesMap(picks);
-  const localStats = useLocalRollingFromPicks(picks);
   if (!tipster) return <div>Loading…</div>;
+
+  const localStats = useLocalRollingFromPicks(picks);
   const isOwner = !!tipster.is_owner;
+  const socials = tipster.social_links || {};
 
   const roiVal =
     tipster.roi_30d != null ? normalizeRate(tipster.roi_30d) : localStats.roi;
@@ -174,13 +175,6 @@ export default function TipsterDetailPage() {
     typeof tipster.profit_30d === "number" && tipster.profit_30d !== 0
       ? tipster.profit_30d
       : localStats.profit;
-
-  // --- social links (from backend social_links dict) ---
-  const socials = tipster.social_links || {};
-  const xHandle = socials.x || socials.twitter || null;
-  const igHandle = socials.instagram || socials.ig || null;
-  const xClean = xHandle ? cleanHandle(xHandle) : null;
-  const igClean = igHandle ? cleanHandle(igHandle) : null;
 
   // ---------- handlers ----------
   const handleSettlePick = async (pick, result) => {
@@ -227,6 +221,47 @@ export default function TipsterDetailPage() {
     }
   };
 
+  const handleToggleFollow = async () => {
+    if (!tipster || isOwner || busyFollow) return;
+    try {
+      setBusyFollow(true);
+      if (tipster.is_following) {
+        const res = await unfollowTipster(tipster.username);
+        setTipster((prev) =>
+          prev
+            ? {
+                ...prev,
+                is_following: false,
+                follower_count:
+                  typeof res.follower_count === "number"
+                    ? res.follower_count
+                    : Math.max(0, (prev.follower_count || 0) - 1),
+              }
+            : prev
+        );
+      } else {
+        const res = await followTipster(tipster.username);
+        setTipster((prev) =>
+          prev
+            ? {
+                ...prev,
+                is_following: true,
+                follower_count:
+                  typeof res.follower_count === "number"
+                    ? res.follower_count
+                    : (prev.follower_count || 0) + 1,
+              }
+            : prev
+        );
+      }
+    } catch (e) {
+      console.error("Follow toggle failed", e);
+      // errors (401/403) are already handled globally in api interceptor
+    } finally {
+      setBusyFollow(false);
+    }
+  };
+
   return (
     <div className="page">
       <Link to="/tipsters">← Back</Link>
@@ -243,8 +278,17 @@ export default function TipsterDetailPage() {
           className="avatar"
         />
         <div>
-          <h2 style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <h2 style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             {tipster.name} {tipster.is_verified && "✅"}
+            {!isOwner && (
+              <button
+                onClick={handleToggleFollow}
+                className="btnSmall btnFollow"
+                disabled={busyFollow}
+              >
+                {tipster.is_following ? "Following" : "Follow"}
+              </button>
+            )}
             {isOwner && (
               <>
                 <button
@@ -265,22 +309,31 @@ export default function TipsterDetailPage() {
           <p>@{tipster.username}</p>
           <p>{tipster.bio}</p>
 
-          {(xClean || igClean) && (
+          {/* socials row */}
+          {(socials.twitter || socials.instagram) && (
             <div className="socialRow">
-              {xClean && (
+              {socials.twitter && (
                 <a
-                  href={`https://x.com/${encodeURIComponent(xClean)}`}
+                  href={
+                    socials.twitter.startsWith("http")
+                      ? socials.twitter
+                      : `https://x.com/${socials.twitter.replace(/^@/, "")}`
+                  }
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noreferrer"
                 >
                   X / Twitter
                 </a>
               )}
-              {igClean && (
+              {socials.instagram && (
                 <a
-                  href={`https://instagram.com/${encodeURIComponent(igClean)}`}
+                  href={
+                    socials.instagram.startsWith("http")
+                      ? socials.instagram
+                      : `https://instagram.com/${socials.instagram.replace(/^@/, "")}`
+                  }
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noreferrer"
                 >
                   Instagram
                 </a>
@@ -292,6 +345,7 @@ export default function TipsterDetailPage() {
             <span>ROI: {percent(roiVal)}%</span>
             <span>Profit: {number(profitVal)}</span>
             <span>Winrate: {percent(wrVal)}%</span>
+            <span>Followers: {tipster.follower_count ?? 0}</span>
           </div>
         </div>
       </div>
@@ -463,21 +517,20 @@ export default function TipsterDetailPage() {
       <style jsx="true">{`
         .profile { display:flex; gap:16px; align-items:center; margin-bottom:20px; }
         .avatar { width:80px; height:80px; border-radius:50%; }
-        .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; }
+        .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; flex-wrap:wrap; }
+
         .socialRow {
           display:flex;
-          gap:10px;
+          gap:12px;
           margin-top:6px;
           font-size:0.9rem;
         }
         .socialRow a {
-          color:#d7e6db;
+          color:#9be7ff;
           text-decoration:none;
-          opacity:0.9;
         }
         .socialRow a:hover {
           text-decoration:underline;
-          opacity:1;
         }
 
         /* ▶ Match PublicDashboard table look (no sticky header = no white seam) */
@@ -503,6 +556,15 @@ export default function TipsterDetailPage() {
         .btnGhost { background:transparent; border:1px solid #2e7d32; color:#2e7d32; }
         .btnDanger { background:#a52727; }
         .btnSmall[disabled] { opacity:.6; cursor:not-allowed; }
+
+        .btnFollow {
+          background:#1c2933;
+          border:1px solid #9be7ff;
+          color:#9be7ff;
+        }
+        .btnFollow:hover:enabled {
+          background:#163040;
+        }
 
         .actionsCell { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
         .settleRow { display:flex; gap:6px; flex-wrap:wrap; }
