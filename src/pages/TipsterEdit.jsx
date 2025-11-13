@@ -16,6 +16,9 @@ export default function TipsterEdit() {
   const nav = useNavigate();
   const { username } = useParams();
 
+  // ------------------------------
+  // Hooks must always run FIRST
+  // ------------------------------
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -33,32 +36,16 @@ export default function TipsterEdit() {
   const [loading, setLoading] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
 
-  // If not logged in, block
-  if (!user) {
-    return (
-      <div className={styles.wrapper}>
-        <div className={styles.card}>
-          <div className={styles.header}>
-            <div className={styles.title}>Edit Tipster Profile</div>
-            <div className={styles.subtitle}>Please log in first.</div>
-          </div>
-          <Link to="/login" className={styles.btn}>
-            Log in
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Load existing tipster data
+  // Load the existing tipster
   useEffect(() => {
+    if (!user) return; // user not ready yet
+
     let cancelled = false;
     (async () => {
       try {
         const data = await fetchTipster(username);
         if (cancelled || !data) return;
 
-        // We’ll support both "twitter" and "x" keys if backend changes later
         const socials = data.social_links || {};
         const twitter = socials.twitter || socials.x || "";
         const instagram = socials.instagram || "";
@@ -75,69 +62,34 @@ export default function TipsterEdit() {
           },
         });
       } catch (e) {
-        console.error("Failed to load tipster", e);
         setErr("Could not load tipster profile.");
       } finally {
         if (!cancelled) setLoadingInitial(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [username, user]);
 
-  const update = (k) => (e) =>
-    setForm((prev) => ({
-      ...prev,
-      [k]: e.target.value,
-    }));
+  // ------------------------------
+  // SAFE CONDITIONAL UI RETURNS
+  // ------------------------------
 
-  const updateSocial = (key) => (e) =>
-    setForm((prev) => ({
-      ...prev,
-      social_links: {
-        ...prev.social_links,
-        [key]: e.target.value,
-      },
-    }));
-
-  const submit = async (e) => {
-    e.preventDefault();
-    setErr("");
-    setLoading(true);
-    setOk(false);
-    try {
-      // Clean up social links (drop empty ones)
-      const social_links = {};
-      if (form.social_links?.twitter?.trim()) {
-        social_links.twitter = form.social_links.twitter.trim();
-      }
-      if (form.social_links?.instagram?.trim()) {
-        social_links.instagram = form.social_links.instagram.trim();
-      }
-
-      const payload = {
-        ...form,
-        username: sanitise(form.username || username),
-        bio: form.bio || null,
-        avatar_url: form.avatar_url || null,
-        social_links,
-      };
-
-      const res = await tipstersCreate(payload); // backend will "update" if same email+username
-      setOk(true);
-      setTimeout(() => nav(`/tipsters/${res.username}`), 600);
-    } catch (e) {
-      const msg = e?.response?.data?.detail || e.message;
-      setErr(
-        msg === "username already exists"
-          ? "That username is taken."
-          : msg
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!user) {
+    return (
+      <div className={styles.wrapper}>
+        <div className={styles.card}>
+          <div className={styles.header}>
+            <div className={styles.title}>Edit Tipster Profile</div>
+            <div className={styles.subtitle}>Please log in first.</div>
+          </div>
+          <Link to="/login" className={styles.btn}>Log in</Link>
+        </div>
+      </div>
+    );
+  }
 
   if (loadingInitial) {
     return (
@@ -152,14 +104,67 @@ export default function TipsterEdit() {
     );
   }
 
+  // ------------------------------
+  // EDIT FORM
+  // ------------------------------
+
+  const update = (k) => (e) =>
+    setForm((prev) => ({ ...prev, [k]: e.target.value }));
+
+  const updateSocial = (key) => (e) =>
+    setForm((prev) => ({
+      ...prev,
+      social_links: { ...prev.social_links, [key]: e.target.value },
+    }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr("");
+    setLoading(true);
+    setOk(false);
+
+    try {
+      const cleanedSocials = {};
+      if (form.social_links.twitter.trim())
+        cleanedSocials.twitter = form.social_links.twitter.trim();
+      if (form.social_links.instagram.trim())
+        cleanedSocials.instagram = form.social_links.instagram.trim();
+
+      const payload = {
+        ...form,
+        username: sanitise(form.username || username),
+        bio: form.bio || null,
+        avatar_url: form.avatar_url || null,
+        social_links: cleanedSocials,
+      };
+
+      const res = await tipstersCreate(payload);
+      setOk(true);
+
+      setTimeout(() => nav(`/tipsters/${res.username}`), 600);
+    } catch (e) {
+      const msg = e?.response?.data?.detail || e.message;
+      setErr(
+        msg === "username already exists"
+          ? "That username is taken."
+          : msg
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ------------------------------
+  // Render form
+  // ------------------------------
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.card}>
         <header className={styles.header}>
           <div className={styles.title}>Edit Tipster Profile</div>
           <div className={styles.subtitle}>
-            Update your public profile and social links. Changes will be
-            reflected on your CSB tipster page.
+            Update your public profile and social links.
           </div>
         </header>
 
@@ -185,9 +190,6 @@ export default function TipsterEdit() {
               onChange={update("username")}
               required
             />
-            <div className={styles.hint}>
-              lowercase letters / numbers / _ (max 20)
-            </div>
           </div>
 
           <div className={styles.row}>
@@ -207,7 +209,7 @@ export default function TipsterEdit() {
           </div>
 
           <div className={styles.row}>
-            <label className={styles.label}>Avatar URL (optional)</label>
+            <label className={styles.label}>Avatar URL</label>
             <input
               className={styles.input}
               value={form.avatar_url}
@@ -222,22 +224,17 @@ export default function TipsterEdit() {
               rows={4}
               value={form.bio}
               onChange={update("bio")}
-              placeholder="Tell people what you specialise in, staking style, leagues, etc."
             />
           </div>
 
-          {/* 🔗 Socials */}
           <div className={styles.row}>
             <label className={styles.label}>X (Twitter)</label>
             <input
               className={styles.input}
               value={form.social_links.twitter}
               onChange={updateSocial("twitter")}
-              placeholder="@yourhandle or full URL"
+              placeholder="@yourhandle or URL"
             />
-            <div className={styles.hint}>
-              We’ll show this on your tipster page so followers can find you on X.
-            </div>
           </div>
 
           <div className={styles.row}>
@@ -246,13 +243,13 @@ export default function TipsterEdit() {
               className={styles.input}
               value={form.social_links.instagram}
               onChange={updateSocial("instagram")}
-              placeholder="@yourhandle or full URL"
+              placeholder="@yourhandle or URL"
             />
           </div>
 
           <div className={styles.actions}>
             <button className={styles.btn} type="submit" disabled={loading}>
-              {loading ? "Saving changes…" : "Save changes"}
+              {loading ? "Saving…" : "Save"}
             </button>
             <Link
               to={`/tipsters/${username}`}
