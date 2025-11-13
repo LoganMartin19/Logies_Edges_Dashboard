@@ -28,6 +28,7 @@ import SignupPage from "./pages/SignupPage";
 import TipsterApply from "./pages/TipsterApply";
 import TipsterAddPick from "./pages/TipsterAddPick";
 import TipsterAddAcca from "./pages/TipsterAddAcca";
+import TipsterEdit from "./pages/TipsterEdit";
 
 import NavBar from "./components/NavBar";
 
@@ -66,6 +67,7 @@ function App() {
           <Route path="/tipsters/become" element={<TipsterApply />} />
           <Route path="/tipsters/:username/new-pick" element={<TipsterAddPick />} />
           <Route path="/tipsters/:username/new-acca" element={<TipsterAddAcca />} />
+          <Route path="/tipsters/:username/edit" element={<TipsterEdit />} />
         </Routes>
       </main>
     </Router>
