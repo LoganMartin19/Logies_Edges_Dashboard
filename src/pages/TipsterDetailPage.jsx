@@ -124,6 +124,7 @@ const ResultBadge = ({ result }) => {
       : result === "VOID"
       ? "void"
       : "neutral";
+
   return <span className={`badge ${cls}`}>{result}</span>;
 };
 
@@ -160,10 +161,12 @@ export default function TipsterDetailPage() {
     fetchTipsterAccas(username).then(setAccas).catch(() => setAccas([]));
   }, [username]);
 
+  // 🔑 All hooks BEFORE any early return
   const fxMap = useFixturesMap(picks);
+  const localStats = useLocalRollingFromPicks(picks);
+
   if (!tipster) return <div>Loading…</div>;
 
-  const localStats = useLocalRollingFromPicks(picks);
   const isOwner = !!tipster.is_owner;
   const socials = tipster.social_links || {};
 
@@ -256,7 +259,6 @@ export default function TipsterDetailPage() {
       }
     } catch (e) {
       console.error("Follow toggle failed", e);
-      // errors (401/403) are already handled globally in api interceptor
     } finally {
       setBusyFollow(false);
     }
@@ -309,7 +311,6 @@ export default function TipsterDetailPage() {
           <p>@{tipster.username}</p>
           <p>{tipster.bio}</p>
 
-          {/* socials row */}
           {(socials.twitter || socials.instagram) && (
             <div className="socialRow">
               {socials.twitter && (
@@ -533,7 +534,6 @@ export default function TipsterDetailPage() {
           text-decoration:underline;
         }
 
-        /* ▶ Match PublicDashboard table look (no sticky header = no white seam) */
         .tableWrap { background:#0a0f0c; border-radius:12px; overflow-x:auto; }
         table.picks { width:100%; border-collapse:collapse; }
         .picks thead th {
