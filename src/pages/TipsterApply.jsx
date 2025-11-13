@@ -1,7 +1,6 @@
 // src/pages/TipsterApply.jsx
 import React, { useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { tipstersCreate } from "../api";
 import { useAuth } from "../components/AuthGate";
 import styles from "../styles/Auth.module.css";
 
@@ -52,7 +51,8 @@ export default function TipsterApply() {
     );
   }
 
-  const update = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const update = (k) => (e) =>
+    setForm({ ...form, [k]: e.target.value });
 
   const updateSocial = (key) => (e) =>
     setForm({
@@ -66,32 +66,48 @@ export default function TipsterApply() {
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
+    setOk(false);
     setLoading(true);
+
     try {
-      // Clean up social links (drop empty ones)
-      const social_links = {};
-      if (form.social_links?.twitter?.trim()) {
-        social_links.twitter = form.social_links.twitter.trim();
-      }
-      if (form.social_links?.instagram?.trim()) {
-        social_links.instagram = form.social_links.instagram.trim();
-      }
+      const cleanedUsername = sanitise(form.username);
+      const socials = form.social_links || {};
+      const twitter = socials.twitter?.trim() || "";
+      const instagram = socials.instagram?.trim() || "";
 
-      const payload = {
-        ...form,
-        username: sanitise(form.username),
-        bio: form.bio || null,
-        avatar_url: form.avatar_url || null,
-        social_links,
-      };
+      const adminEmail = "logan.martin1905@gmail.com"; // 🔁 TODO: change to your real CSB admin email
 
-      const res = await tipstersCreate(payload);
+      const subject = `New CSB Tipster Application – @${cleanedUsername || "unknown"}`;
+
+      const lines = [
+        "New tipster application for CSB:",
+        "",
+        `From: ${user.email || "unknown email"}`,
+        "",
+        `Display name: ${form.name}`,
+        `Requested username: ${cleanedUsername}`,
+        `Sport focus: ${form.sport_focus}`,
+        "",
+        `Avatar URL: ${form.avatar_url || "(none)"}`,
+        "",
+        "Bio:",
+        form.bio || "(none)",
+        "",
+        "Socials:",
+        `X / Twitter: ${twitter || "(none)"}`,
+        `Instagram: ${instagram || "(none)"}`,
+      ];
+
+      const body = encodeURIComponent(lines.join("\n"));
+
+      // Open mail client with pre-filled email
+      window.location.href = `mailto:${adminEmail}?subject=${encodeURIComponent(
+        subject
+      )}&body=${body}`;
+
       setOk(true);
-      // On success, go straight to their tipster profile
-      setTimeout(() => nav(`/tipsters/${res.username}`), 600);
     } catch (e) {
-      const msg = e?.response?.data?.detail || e.message;
-      setErr(msg === "username already exists" ? "That username is taken." : msg);
+      setErr("Something went wrong sending your application. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -103,13 +119,18 @@ export default function TipsterApply() {
         <header className={styles.header}>
           <div className={styles.title}>Apply to become a Tipster</div>
           <div className={styles.subtitle}>
-            Create your public profile. We’ll use this to review and verify
-            tipsters for the CSB platform.
+            Fill this in to apply for a verified tipster profile on CSB.
+            Applications are reviewed manually – creating this does{" "}
+            <strong>not</strong> automatically list you.
           </div>
         </header>
 
         {err && <div className={styles.error}>{err}</div>}
-        {ok && <div className={styles.success}>Profile created!</div>}
+        {ok && (
+          <div className={styles.success}>
+            Application prepared in your email client. Send the email to complete your application.
+          </div>
+        )}
 
         <form className={styles.form} onSubmit={submit}>
           <div className={styles.row}>
@@ -197,7 +218,7 @@ export default function TipsterApply() {
 
           <div className={styles.actions}>
             <button className={styles.btn} type="submit" disabled={loading}>
-              {loading ? "Sending application…" : "Submit application"}
+              {loading ? "Preparing email…" : "Send application"}
             </button>
             <Link to="/tipsters" className={`${styles.btn} ${styles.btnGhost}`}>
               Cancel
@@ -205,8 +226,8 @@ export default function TipsterApply() {
           </div>
 
           <p className={styles.hint} style={{ marginTop: 12 }}>
-            We reserve the right to approve / verify tipsters manually. Verified
-            tipsters will be highlighted on the leaderboard.
+            Once reviewed, we’ll manually create and verify your tipster profile.
+            Verified tipsters will be highlighted on the leaderboard.
           </p>
         </form>
       </div>
