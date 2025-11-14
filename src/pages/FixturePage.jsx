@@ -195,30 +195,29 @@ const FixturePage = () => {
   // --- PLACE BET BUTTON -----------------------------------------------------
   // --- PLACE BET BUTTON -----------------------------------------------------
   const handlePlaceEdge = async (edge, key) => {
-    alert("DEBUG: handlePlaceEdge triggered");  // 🔥 ALWAYS fires
-  
     if (!user) {
       navigate("/login");
       return;
     }
   
+    // --- popup must open immediately on click ---
     const bmUrl = getBookmakerUrl(edge.bookmaker);
+    const openUrl = bmUrl
+      ? bmUrl
+      : "https://google.com/search?q=" + encodeURIComponent(edge.bookmaker);
   
-    // 🔥 Always tell us exactly what bookmaker string is
-    alert(`Bookmaker raw string: "${edge.bookmaker}" → URL: ${bmUrl}`);
+    // 🔥 open tab BEFORE any async code
+    window.open(openUrl, "_blank", "noopener");
   
-    if (bmUrl) {
-      window.open(bmUrl, "_blank", "noopener");
-    } else {
-      window.open("https://google.com/search?q=" + edge.bookmaker, "_blank");
-    }
-  
+    // now place the bet
     try {
       setPlacingKey(key);
+  
       await placeAndTrackEdge(
         { ...edge, fixture_id: fixtureIdNum },
         { stake: 1 }
       );
+  
       navigate("/bets");
     } catch (err) {
       console.error("Failed to place bet:", err);
