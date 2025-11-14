@@ -31,7 +31,9 @@ export default function NavBar() {
       <div className={styles.navbarContainer}>
         <Link to="/" className={styles.navbarLogo} onClick={closeMenu}>
           <img src="/logo.png" alt="Logo" className={styles.logo} />
-          CSB
+          Chartered
+          Sports
+          Betting
         </Link>
 
         <button
