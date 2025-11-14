@@ -197,7 +197,7 @@ const FixturePage = () => {
       navigate("/login");
       return;
     }
-
+  
     try {
       setPlacingKey(key);
       await placeAndTrackEdge(
@@ -207,7 +207,11 @@ const FixturePage = () => {
       navigate("/bets");
     } catch (err) {
       console.error("Failed to place bet:", err);
-      alert("Could not place this bet. Try again.");
+      const msg =
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Could not place this bet. Try again.";
+      alert(msg);
     } finally {
       setPlacingKey(null);
     }

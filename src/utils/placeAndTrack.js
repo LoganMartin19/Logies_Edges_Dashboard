@@ -2,38 +2,27 @@
 import { api } from "../api";
 import { getBookmakerUrl } from "../bookmakers";
 
-/**
- * 1) Creates a UserBet row for the logged-in user
- * 2) Opens the bookmaker site in a new tab
- */
-export async function placeAndTrackEdge(edge, opts = {}) {
-  const {
-    stake = 1,
-    sourceTipsterId = null,   // if this came from a tipster pick
-    openBookmaker = true,
-  } = opts;
-
-  if (!edge) throw new Error("No edge supplied");
+export async function placeAndTrackEdge(edge, options = {}) {
+  const { stake = 1, openBookmaker = false, sourceTipsterId = null } = options;
 
   const payload = {
-    fixture_id: edge.fixture_id,
+    fixture_id: Number(edge.fixture_id) || null,
     market: edge.market,
-    bookmaker: edge.bookmaker,
+    bookmaker: edge.bookmaker || null,
     price: Number(edge.price),
     stake: Number(stake),
     source_tipster_id: sourceTipsterId,
   };
 
-  // hits POST /user-bets.json (per-user bet log)
-  const res = await api.post("/user-bets.json", payload);
-  const bet = res.data;
+  // 🔐 Uses axios instance so Firebase token is attached
+  const { data } = await api.post("/api/user-bets", payload);
 
   if (openBookmaker) {
     const url = getBookmakerUrl(edge.bookmaker);
     if (url) {
-      window.open(url, "_blank", "noopener,noreferrer");
+      window.open(url, "_blank", "noopener");
     }
   }
 
-  return bet;
+  return data; // UserBetOut from backend
 }
