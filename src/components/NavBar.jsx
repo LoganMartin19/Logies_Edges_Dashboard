@@ -143,6 +143,7 @@ export default function NavBar() {
               Bets
             </NavLink>
           </li>
+
           <li>
             <NavLink
               to="/tipsters"
@@ -153,11 +154,21 @@ export default function NavBar() {
             </NavLink>
           </li>
 
+          {/* 🔥 New: Following feed top-level link */}
+          <li>
+            <NavLink
+              to="/following"
+              onClick={closeMenu}
+              className={({ isActive }) => (isActive ? styles.active : "")}
+            >
+              Following
+            </NavLink>
+          </li>
+
           {/* Right side auth */}
           {!initializing &&
             (user ? (
               <li className={styles.dropdown}>
-                {/* ✅ same structure as Sports: span trigger + ul */}
                 <span>
                   <span className={styles.avatarCircle}>{displayInitial}</span>
                   <span className={styles.caret}>▾</span>
@@ -171,6 +182,18 @@ export default function NavBar() {
                       }
                     >
                       Profile &amp; Settings
+                    </NavLink>
+                  </li>
+
+                  {/* 🔥 New: quick link to following feed */}
+                  <li>
+                    <NavLink
+                      to="/following"
+                      className={({ isActive }) =>
+                        isActive ? styles.active : ""
+                      }
+                    >
+                      Following feed
                     </NavLink>
                   </li>
 

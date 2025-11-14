@@ -131,3 +131,10 @@ export const unfollowTipster = async (username) => {
   );
   return res.data; // { ok, status, follower_count }
 };
+
+// --- Following Feed ---
+export const fetchFollowingList = async () =>
+  api.get("/api/tipsters/following/list").then((r) => r.data);
+
+export const fetchFollowingFeed = async () =>
+  api.get("/api/tipsters/following/feed").then((r) => r.data);
