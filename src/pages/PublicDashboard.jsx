@@ -373,7 +373,7 @@ export default function PublicDashboard() {
   const [showAll, setShowAll] = useState(false);
 
   // following feed (mini widget)
-  const [followingPicks, setFollowingPicks] = useState([]);
+  const [followingFeed, setFollowingFeed] = useState([]);
   const [followingErr, setFollowingErr] = useState("");
 
   const isMobile = useIsMobile(700);
@@ -407,26 +407,26 @@ export default function PublicDashboard() {
   // load mini following feed
   useEffect(() => {
     if (!user) {
-      setFollowingPicks([]);
+      setFollowingFeed([]);
       setFollowingErr("");
       return;
     }
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await api.get("/api/tipsters/following/picks", {
+        const { data } = await api.get("/api/tipsters/following/feed", {
           params: { limit: 5 },
         });
         if (!cancelled) {
           // backend might return { picks: [...] } or direct array
           const rows = Array.isArray(data) ? data : data.picks || [];
-          setFollowingPicks(rows);
+          setFollowingFeed(rows);
           setFollowingErr("");
         }
       } catch (e) {
         if (e?.response?.status === 401) {
           if (!cancelled) {
-            setFollowingPicks([]);
+            setFollowingFeed([]);
             setFollowingErr("");
           }
         } else if (!cancelled) {
@@ -674,7 +674,7 @@ export default function PublicDashboard() {
           </div>
         )}
 
-        {user && !followingErr && followingPicks.length === 0 && (
+        {user && !followingErr && followingFeed.length === 0 && (
           <div style={{ fontSize: 13, color: "#d7e6db" }}>
             You’re not following any tipsters yet.{" "}
             <Link
@@ -686,7 +686,7 @@ export default function PublicDashboard() {
           </div>
         )}
 
-        {user && followingPicks.length > 0 && (
+        {user && followingFeed.length > 0 && (
           <div style={{ overflowX: "auto" }}>
             <table style={{ ...S.tbl, marginTop: 4 }}>
               <thead>
@@ -702,7 +702,7 @@ export default function PublicDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {followingPicks.map((p) => (
+                {followingFeed.map((p) => (
                   <tr key={p.id}>
                     <td style={S.td}>
                       <Link
