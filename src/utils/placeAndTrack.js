@@ -1,6 +1,6 @@
 // src/utils/placeAndTrack.js
 import { api } from "../api";
-import { getBookmakerUrl } from "./bookmakers";
+import { getBookmakerUrl } from "../bookmakers";
 
 export async function placeAndTrackEdge(edge, options = {}) {
   const { stake = 1, openBookmaker = false, sourceTipsterId = null } = options;
