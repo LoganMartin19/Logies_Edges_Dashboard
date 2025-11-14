@@ -1,6 +1,6 @@
 // src/pages/FollowingFeed.jsx
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";   // 👈 add useNavigate
 import { useAuth } from "../components/AuthGate";
 import { fetchFollowingFeed } from "../api";
 
@@ -12,6 +12,7 @@ export default function FollowingFeed() {
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const navigate = useNavigate();                       // 👈
 
   useEffect(() => {
     if (!user) {
@@ -31,7 +32,6 @@ export default function FollowingFeed() {
         }
       } catch (e) {
         console.error("Failed to load following feed", e);
-        // If backend ever returns 404, just treat as "no feed yet"
         const status = e?.response?.status;
         if (!cancelled) {
           if (status === 404) {
@@ -75,6 +75,22 @@ export default function FollowingFeed() {
 
   const isEmpty = !loading && !err && (!feed || feed.length === 0);
 
+  // 👇 new helper: send pick to BetTracker with prefilled fields
+  const handleTrackBet = (item) => {
+    const params = new URLSearchParams({
+      fixture_id: item.fixture_id ? String(item.fixture_id) : "",
+      teams: item.fixture_label || "",
+      market: item.market || "",
+      bookmaker: item.bookmaker || "",
+      price: item.price != null ? String(item.price) : "",
+      // if tipster stake is missing, default to 1 unit
+      stake: item.stake != null ? String(item.stake) : "1",
+      notes: `From @${item.tipster_username}`,
+    });
+
+    navigate(`/bets?${params.toString()}`);
+  };
+
   return (
     <div className="page">
       <h2>Following Feed</h2>
@@ -111,6 +127,7 @@ export default function FollowingFeed() {
                 <th>Stake</th>
                 <th>Result</th>
                 <th style={{ textAlign: "right" }}>Profit</th>
+                <th style={{ textAlign: "right" }}>Track</th> {/* 👈 new */}
               </tr>
             </thead>
             <tbody>
@@ -137,6 +154,15 @@ export default function FollowingFeed() {
                     }}
                   >
                     {number(item.profit)}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <button
+                      type="button"
+                      className="btnTrack"
+                      onClick={() => handleTrackBet(item)}
+                    >
+                      Track bet
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -179,7 +205,7 @@ export default function FollowingFeed() {
           border-bottom: 1px solid rgba(255, 255, 255, 0.12);
           font-size: 14px;
           color: #eaf4ed;
-          background: rgba(255, 255, 255, 0.06); /* 👈 dark header */
+          background: rgba(255, 255, 255, 0.06);
           white-space: nowrap;
         }
         .picks td {
@@ -187,6 +213,20 @@ export default function FollowingFeed() {
           border-bottom: 1px solid rgba(255, 255, 255, 0.08);
           font-size: 14px;
           color: #eaf4ed;
+        }
+        .btnTrack {
+          padding: 6px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(46, 125, 50, 0.2);
+          color: #eaf4ed;
+          font-size: 12px;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .btnTrack:hover {
+          border-color: rgba(46, 125, 50, 0.7);
+          background: rgba(46, 125, 50, 0.35);
         }
       `}</style>
     </div>
