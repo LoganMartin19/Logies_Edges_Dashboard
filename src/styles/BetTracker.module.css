@@ -194,6 +194,36 @@
   margin-left: auto;
 }
 
+/* --- Fix header + banner colours ---------------------------------------- */
+
+.wrap h2 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  color: #eaf4ed;
+}
+
+.banner {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(234, 244, 237, 0.9);
+  font-size: 0.82rem;
+}
+
+/* --- Hard-override the white table header ------------------------------- */
+
+.table thead,
+.table thead tr,
+.table thead th {
+  background: rgba(0, 0, 0, 0.78) !important;
+}
+
+.table th {
+  border-bottom-color: rgba(255, 255, 255, 0.14);
+}
+
 
 /* --- Mobile -------------------------------------------------------------- */
 
