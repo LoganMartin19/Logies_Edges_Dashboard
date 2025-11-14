@@ -116,15 +116,18 @@ export const settleTipsterAcca = (accaId, result) =>
 export const deleteTipsterAcca = (accaId) =>
   api.delete(`/api/tipsters/accas/${accaId}`).then((r) => r.data);
 
-
 // --- Tipsters follow/unfollow ---
 
 export const followTipster = async (username) => {
-  const res = await api.post(`/tipsters/${username}/follow`);
+  const res = await api.post(
+    `/api/tipsters/${encodeURIComponent(username)}/follow`
+  );
   return res.data; // { ok, status, follower_count }
 };
 
 export const unfollowTipster = async (username) => {
-  const res = await api.delete(`/tipsters/${username}/follow`);
+  const res = await api.delete(
+    `/api/tipsters/${encodeURIComponent(username)}/follow`
+  );
   return res.data; // { ok, status, follower_count }
 };
