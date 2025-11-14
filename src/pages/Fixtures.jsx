@@ -26,6 +26,7 @@ const COMP_NAMES = {
   MLS: "Major League Soccer",
   NFL: "NFL (American Football)", NBA: "NBA (Basketball)", NHL: "NHL (Hockey)",
   NCAA: "College Football", CFB: "College Football",
+  WCQ_EUR: "World Cup Qualifiers (Europe)",
   DEFAULT: "Football",
 };
 const prettyComp = (code) => COMP_NAMES[code] || code || "—";
