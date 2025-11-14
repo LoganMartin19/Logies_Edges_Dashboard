@@ -14,27 +14,21 @@ export async function placeAndTrackEdge(edge, options = {}) {
     source_tipster_id: sourceTipsterId,
   };
 
-  let bmWindow = null;
-  let bmUrl = null;
-
+  // 🔗 Open bookmaker first, as part of the click event
   if (openBookmaker) {
-    bmUrl = getBookmakerUrl(edge.bookmaker);
+    const bmUrl = getBookmakerUrl(edge.bookmaker);
+    console.log("placeAndTrackEdge bookmaker:", edge.bookmaker, "→", bmUrl);
+
     if (bmUrl) {
-      // open immediately so browser treats it as user-initiated
-      bmWindow = window.open("about:blank", "_blank", "noopener");
+      window.open(bmUrl, "_blank", "noopener");
+    } else {
+      // optional: tell us in console when there’s no mapping
+      console.warn("No URL mapping for bookmaker:", edge.bookmaker);
     }
   }
 
-  // create the user_bets row (Firebase token is attached via api.js)
+  // 📝 Then log the bet to the backend (user_bets)
+  // (Firebase auth header is attached in api.js)
   const { data } = await api.post("/api/user-bets", payload);
-
-  // now navigate the pre-opened tab
-  if (bmWindow && bmUrl) {
-    bmWindow.location.href = bmUrl;
-  } else if (bmUrl) {
-    // fallback if window didn't open for some reason
-    window.open(bmUrl, "_blank", "noopener");
-  }
-
   return data;
 }
