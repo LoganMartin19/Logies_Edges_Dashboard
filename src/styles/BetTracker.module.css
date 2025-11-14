@@ -1,102 +1,215 @@
-.wrap {
-    border: 1px solid #eee;
-    background: #fff;
-    padding: 16px;
-    border-radius: 8px;
-    margin-top: 16px;
-  }
-  
-  .kpis {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-    font-size: 14px;
-  }
-  
-  .form {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  
-  .form input {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-  }
-  
-  .form button {
-    padding: 10px;
-    background: #222;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  
-  .filter {
-    margin: 8px 0 12px;
-  }
-  
-  .table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  
-  .table th,
-  .table td {
-    border-bottom: 1px solid #f0f0f0;
-    padding: 8px;
-    text-align: left;
-  }
-  
-  .table td button {
-    margin-right: 4px;
-    padding: 4px 8px;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  
-  .r_pending {
-    color: #666;
-  }
-  .r_won {
-    color: #0a7a0a;
-    font-weight: 600;
-  }
-  .r_lost {
-    color: #b00020;
-    font-weight: 600;
-  }
-  .r_void {
-    color: #555;
-    font-weight: 600;
-  }
+/* --- Wrapper ------------------------------------------------------------- */
 
-  .rightSide {
-    display: flex;
-    gap: 8px;
-    align-items: center;
+.wrap {
+  margin-top: 16px;
+  padding: 16px 18px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: radial-gradient(circle at top left, #16271b 0, #050708 48%, #050708 100%);
+  color: #eaf4ed;
+  font-size: 0.9rem;
+}
+
+
+/* --- KPI Section --------------------------------------------------------- */
+
+.kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.kpis > div {
+  min-width: 130px;
+}
+
+
+/* --- Add Form ------------------------------------------------------------ */
+
+.form {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 0.9fr 0.9fr 1.4fr auto;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.form input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.55);
+  color: #eaf4ed;
+  font-size: 0.85rem;
+}
+
+.form input::placeholder {
+  color: rgba(234, 244, 237, 0.6);
+}
+
+.form button {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: none;
+  background: #34a853;
+  color: #030503;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.form button:disabled {
+  opacity: 0.6;
+}
+
+
+/* --- Filter -------------------------------------------------------------- */
+
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.filter select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.55);
+  color: #eaf4ed;
+  font-size: 0.85rem;
+}
+
+
+/* --- Table --------------------------------------------------------------- */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.table thead {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.table th,
+.table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.table th {
+  text-align: left;
+  font-weight: 600;
+  color: rgba(234, 244, 237, 0.85);
+}
+
+.table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.table tbody tr:hover {
+  background: rgba(23, 45, 30, 0.75);
+}
+
+
+/* Buttons inside table ---------------------------------------------------- */
+
+.table button {
+  margin-right: 3px;
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #eaf4ed;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.table button:last-child {
+  margin-right: 0;
+}
+
+
+/* --- Result Colours ------------------------------------------------------ */
+
+.r_pending {
+  color: rgba(234, 244, 237, 0.7);
+}
+
+.r_won {
+  color: #b5ffd0;
+}
+
+.r_lost {
+  color: #ffb3b3;
+}
+
+.r_void {
+  color: #f5e6b8;
+}
+
+
+/* --- Toolbar (CSV, refresh, cleanup) ------------------------------------ */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.toolbar button {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.55);
+  color: #eaf4ed;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.btnSoft {
+  border-color: rgba(166, 167, 60, 0.5);
+}
+
+.btnWarn {
+  border-color: rgba(215, 141, 39, 0.6);
+}
+
+.btnDanger {
+  border-color: rgba(198, 40, 40, 0.7);
+}
+
+.rightSide {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+
+/* --- Mobile -------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .form {
+    grid-template-columns: 1fr 1fr;
   }
-  
-  .cleanBtn {
-    border: 1px solid #ddd;
-    background: #f7f7f7;
-    padding: 6px 10px;
-    border-radius: 6px;
-    cursor: pointer;
+  .form button {
+    grid-column: 1 / -1;
+    margin-top: 6px;
   }
-  .cleanBtn:hover { background: #efefef; }
-  
-  .nukeBtn {
-    border: 1px solid #d66;
-    background: #ffecec;
-    color: #b00;
-    padding: 6px 10px;
-    border-radius: 6px;
-    cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .table th:nth-child(3),
+  .table td:nth-child(3) {
+    display: none; /* hides bookmaker column */
   }
-  .nukeBtn:hover { background: #ffdede; }
+}
