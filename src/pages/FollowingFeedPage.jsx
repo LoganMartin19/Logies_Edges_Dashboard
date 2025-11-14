@@ -13,41 +13,52 @@ export default function FollowingFeed() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // Only load feed once user is logged in
   useEffect(() => {
     if (!user) {
       setFeed([]);
+      setErr("");
       return;
     }
+
     let cancelled = false;
     (async () => {
       setLoading(true);
       setErr("");
       try {
         const data = await fetchFollowingFeed();
-        if (!cancelled) setFeed(Array.isArray(data) ? data : []);
+        if (!cancelled) {
+          setFeed(Array.isArray(data) ? data : []);
+        }
       } catch (e) {
         console.error("Failed to load following feed", e);
-        if (!cancelled) setErr("Could not load feed.");
+        // If backend ever returns 404, just treat as "no feed yet"
+        const status = e?.response?.status;
+        if (!cancelled) {
+          if (status === 404) {
+            setFeed([]);
+            setErr("");
+          } else {
+            setErr("Could not load feed.");
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
   }, [user]);
 
-  if (initializing) {
-    return null; // or a small spinner if you like
-  }
+  if (initializing) return null;
 
   // 1️⃣ Not logged in → prompt to log in
   if (!user) {
     return (
       <div className="page">
         <div className="card">
-          <h2>Following</h2>
+          <h2>Following Feed</h2>
           <p>You need to be logged in to see your following feed.</p>
           <Link to="/login" className="btnPrimary">
             Log in
@@ -62,12 +73,14 @@ export default function FollowingFeed() {
     );
   }
 
-  // 2️⃣ Logged in but no follows / no feed
   const isEmpty = !loading && !err && (!feed || feed.length === 0);
 
   return (
     <div className="page">
-      <h2>Following</h2>
+      <h2>Following Feed</h2>
+      <p style={{ marginBottom: 12, fontSize: "0.9rem", opacity: 0.9 }}>
+        Latest picks from tipsters you follow.
+      </p>
 
       {loading && <p>Loading your feed…</p>}
       {err && <p style={{ color: "#f66" }}>{err}</p>}
@@ -151,7 +164,7 @@ export default function FollowingFeed() {
           cursor: pointer;
         }
         .tableWrap {
-          margin-top: 16px;
+          margin-top: 12px;
           background: #0a0f0c;
           border-radius: 12px;
           overflow-x: auto;
@@ -166,7 +179,7 @@ export default function FollowingFeed() {
           border-bottom: 1px solid rgba(255, 255, 255, 0.12);
           font-size: 14px;
           color: #eaf4ed;
-          background: rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.06); /* 👈 dark header */
           white-space: nowrap;
         }
         .picks td {
