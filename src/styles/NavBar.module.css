@@ -54,46 +54,70 @@
 }
 
 .navMenu li a:hover,
-.navMenu li a.active {
+.navMenu li a.active,
+.navMenu li a.active:link {
   background-color: #0f5828;
 }
 
-/* --- Dropdown --- */
+/* --- Dropdown base --- */
 .dropdown {
   position: relative;
-  cursor: pointer;
 }
 
-.dropdown > span {
+/* buttons that toggle dropdowns (Sports + avatar) */
+.dropdownToggle,
+.dropdownToggleUser {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 0.93rem;
-  padding: 10px 12px;              /* bigger tap target */
+  padding: 10px 12px;
   border-radius: 8px;
 }
 
-.dropdown:hover > span {
+.dropdownToggle:hover,
+.dropdownToggleUser:hover {
   background-color: #0f5828;
 }
 
+/* avatar button shares same look */
+.avatarButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* dropdown panel */
 .dropdownContent {
   display: none;
   position: absolute;
   background-color: #00260f;
-  min-width: 220px;                /* wider panel */
+  min-width: 220px;
   top: calc(100% + 6px);
   left: 0;
   z-index: 1000;
-  padding: 8px;                    /* comfy padding */
+  padding: 8px;
   border-radius: 10px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-
-  /* scrollable & touch friendly */
   max-height: 70vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* when React adds .dropdownOpen */
+.dropdownOpen .dropdownContent {
+  display: block;
 }
 
 .dropdownContent li {
@@ -105,7 +129,7 @@
   display: block;
   color: #fff;
   font-size: 0.92rem;
-  padding: 10px 12px;              /* bigger tap target */
+  padding: 10px 12px;
   border-radius: 8px;
   text-decoration: none;
 }
@@ -115,8 +139,11 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-.dropdown:hover .dropdownContent {
-  display: block;
+/* Desktop-only: also open on hover if menu is not in mobile mode */
+@media (min-width: 769px) {
+  .navMenu:not(.navMenuActive) .dropdown:hover .dropdownContent {
+    display: block;
+  }
 }
 
 /* --- Hamburger icon --- */
@@ -154,7 +181,7 @@
   overflow-y: auto;
 }
 
-/* --- Backdrop (click outside to close) --- */
+/* --- Backdrop (if you ever use it) --- */
 .backdrop {
   position: fixed;
   inset: 0;
@@ -172,7 +199,6 @@
     display: none;
   }
 
-  /* ensure active menu displays on mobile */
   .navMenu.navMenuActive {
     display: flex;
   }
@@ -193,30 +219,38 @@
     font-size: 0.95rem;
   }
 
-  /* On mobile we don't open on hover; dropdown is inline + scrollable */
+  /* disable hover-open on touch */
   .dropdown:hover .dropdownContent {
     display: none;
   }
 
+  /* dropdown panel inside mobile menu */
   .navMenuActive .dropdownContent {
-    display: block;
-    position: static;              /* flow within menu */
+    position: static;
     background: transparent;
     box-shadow: none;
     border: 0;
     padding: 6px 0 0 0;
-    max-height: 60vh;              /* scrollable within menu */
+    max-height: 60vh;
     overflow-y: auto;
+  }
+
+  /* still only visible when dropdownOpen */
+  .navMenuActive .dropdownContent {
+    display: none;
+  }
+  .navMenuActive .dropdownOpen .dropdownContent {
+    display: block;
   }
 
   .dropdownContent li a,
   .dropdownContent li > * {
-    padding: 12px 14px;            /* extra comfy tap targets */
+    padding: 12px 14px;
     border-radius: 8px;
   }
 }
 
-/* --- Utility Buttons --- */
+/* --- Utility Buttons / badges --- */
 .linkButton {
   background: transparent;
   border: none;
@@ -233,17 +267,6 @@
   border-radius: 8px;
   background: #2e7d32;
   color: #fff;
-}
-
-.avatarButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: none;
-  padding: 4px 6px;
-  cursor: pointer;
-  color: inherit;
 }
 
 .avatarCircle {

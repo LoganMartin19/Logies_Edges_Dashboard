@@ -7,6 +7,8 @@ import { fetchMyTipster } from "../api";
 
 export default function NavBar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sportsOpen, setSportsOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [myTipster, setMyTipster] = useState(null);
   const { user, initializing, logout } = useAuth();
 
@@ -18,8 +20,25 @@ export default function NavBar() {
     }
   }, [user]);
 
-  const toggleMenu = () => setMenuOpen((p) => !p);
-  const closeMenu = () => setMenuOpen(false);
+  const toggleMenu = () =>
+    setMenuOpen((p) => {
+      const next = !p;
+      if (!next) {
+        // closing burger -> close submenus too
+        setSportsOpen(false);
+        setUserMenuOpen(false);
+      }
+      return next;
+    });
+
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setSportsOpen(false);
+    setUserMenuOpen(false);
+  };
+
+  const toggleSports = () => setSportsOpen((p) => !p);
+  const toggleUserMenu = () => setUserMenuOpen((p) => !p);
 
   const displayInitial =
     (user?.displayName && user.displayName[0]) ||
@@ -32,7 +51,9 @@ export default function NavBar() {
         <Link to="/" className={styles.navbarLogo} onClick={closeMenu}>
           <img src="/logo.png" alt="Logo" className={styles.logo} />
           Chartered
+          <br />
           Sports
+          <br />
           Betting
         </Link>
 
@@ -71,8 +92,19 @@ export default function NavBar() {
             </NavLink>
           </li>
 
-          <li className={styles.dropdown}>
-            <span>Sports ▾</span>
+          {/* SPORTS DROPDOWN (click to toggle) */}
+          <li
+            className={`${styles.dropdown} ${
+              sportsOpen ? styles.dropdownOpen : ""
+            }`}
+          >
+            <button
+              type="button"
+              className={styles.dropdownToggle}
+              onClick={toggleSports}
+            >
+              Sports ▾
+            </button>
             <ul className={styles.dropdownContent} onClick={closeMenu}>
               <li>
                 <NavLink
@@ -156,7 +188,6 @@ export default function NavBar() {
             </NavLink>
           </li>
 
-          {/* 🔥 New: Following feed top-level link */}
           <li>
             <NavLink
               to="/following"
@@ -170,11 +201,19 @@ export default function NavBar() {
           {/* Right side auth */}
           {!initializing &&
             (user ? (
-              <li className={styles.dropdown}>
-                <span>
+              <li
+                className={`${styles.dropdown} ${
+                  userMenuOpen ? styles.dropdownOpen : ""
+                }`}
+              >
+                <button
+                  type="button"
+                  className={styles.dropdownToggleUser}
+                  onClick={toggleUserMenu}
+                >
                   <span className={styles.avatarCircle}>{displayInitial}</span>
                   <span className={styles.caret}>▾</span>
-                </span>
+                </button>
                 <ul className={styles.dropdownContent} onClick={closeMenu}>
                   <li>
                     <NavLink
@@ -187,7 +226,6 @@ export default function NavBar() {
                     </NavLink>
                   </li>
 
-                  {/* 🔥 New: quick link to following feed */}
                   <li>
                     <NavLink
                       to="/following"
@@ -274,7 +312,9 @@ export default function NavBar() {
                   <NavLink
                     to="/login"
                     onClick={closeMenu}
-                    className={({ isActive }) => (isActive ? styles.active : "")}
+                    className={({ isActive }) =>
+                      isActive ? styles.active : ""
+                    }
                   >
                     Login
                   </NavLink>
@@ -283,7 +323,9 @@ export default function NavBar() {
                   <NavLink
                     to="/signup"
                     onClick={closeMenu}
-                    className={({ isActive }) => (isActive ? styles.active : "")}
+                    className={({ isActive }) =>
+                      isActive ? styles.active : ""
+                    }
                   >
                     Sign Up
                   </NavLink>
