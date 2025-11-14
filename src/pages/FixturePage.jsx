@@ -195,22 +195,24 @@ const FixturePage = () => {
   // --- PLACE BET BUTTON -----------------------------------------------------
   // --- PLACE BET BUTTON -----------------------------------------------------
   const handlePlaceEdge = async (edge, key) => {
+    alert("DEBUG: handlePlaceEdge triggered");  // 🔥 ALWAYS fires
+  
     if (!user) {
       navigate("/login");
       return;
     }
   
-    // 1) Work out the bookmaker URL
     const bmUrl = getBookmakerUrl(edge.bookmaker);
   
-    if (!bmUrl) {
-      // 🔍 TEMP DEBUG: show exactly what the API is sending
-      alert(`No bookmaker mapping for: "${edge.bookmaker}"`);
-    } else {
+    // 🔥 Always tell us exactly what bookmaker string is
+    alert(`Bookmaker raw string: "${edge.bookmaker}" → URL: ${bmUrl}`);
+  
+    if (bmUrl) {
       window.open(bmUrl, "_blank", "noopener");
+    } else {
+      window.open("https://google.com/search?q=" + edge.bookmaker, "_blank");
     }
   
-    // 2) Log bet in your own DB
     try {
       setPlacingKey(key);
       await placeAndTrackEdge(
