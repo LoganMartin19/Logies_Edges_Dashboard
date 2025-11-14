@@ -136,5 +136,7 @@ export const unfollowTipster = async (username) => {
 export const fetchFollowingList = async () =>
   api.get("/api/tipsters/following/list").then((r) => r.data);
 
-export const fetchFollowingFeed = async () =>
-  api.get("/api/tipsters/following/feed").then((r) => r.data);
+export const fetchFollowingFeed = async () => {
+  const res = await api.get("/api/tipsters/following-feed");
+  return res.data; // [] when not following anyone / no picks
+};
