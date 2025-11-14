@@ -143,6 +143,59 @@ const SettleButtons = ({ onSettle, disabled }) => (
   </div>
 );
 
+/* --------------- mini performance chart --------------- */
+
+const MiniChart = ({ points }) => {
+  if (!points || points.length === 0) {
+    return (
+      <div className="miniChartWrapper">
+        <div className="miniChartEmpty">Not enough settled picks yet.</div>
+      </div>
+    );
+  }
+
+  const width = 260;
+  const height = 80;
+
+  const min = Math.min(...points, 0);
+  const max = Math.max(...points, 0);
+  const range = max - min || 1;
+
+  const stepX = points.length > 1 ? width / (points.length - 1) : width;
+
+  const coords = points
+    .map((v, i) => {
+      const x = i * stepX;
+      const y = height - ((v - min) / range) * height;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  // baseline at profit = 0
+  const zeroY = height - ((0 - min) / range) * height;
+
+  return (
+    <div className="miniChartWrapper">
+      <svg viewBox={`0 0 ${width} ${height}`} className="miniChartSvg">
+        {/* baseline */}
+        <line
+          x1="0"
+          y1={zeroY}
+          x2={width}
+          y2={zeroY}
+          className="miniChartBaseline"
+        />
+        {/* profit line */}
+        <polyline
+          points={coords}
+          className="miniChartLine"
+          fill="none"
+        />
+      </svg>
+    </div>
+  );
+};
+
 /* --------------- main page --------------- */
 export default function TipsterDetailPage() {
   const { username } = useParams();
@@ -165,6 +218,23 @@ export default function TipsterDetailPage() {
   const fxMap = useFixturesMap(picks);
   const localStats = useLocalRollingFromPicks(picks);
 
+  const perfSeries = useMemo(() => {
+    if (!Array.isArray(picks) || picks.length === 0) return [];
+    const ordered = [...picks].sort((a, b) => {
+      const ta = new Date(a.created_at || 0).getTime();
+      const tb = new Date(b.created_at || 0).getTime();
+      return ta - tb;
+    });
+    let cumulative = 0;
+    const series = [];
+    for (const p of ordered) {
+      const profit = Number(p.profit ?? 0) || 0;
+      cumulative += profit;
+      series.push(cumulative);
+    }
+    return series;
+  }, [picks]);
+
   if (!tipster) return <div>Loading…</div>;
 
   const isOwner = !!tipster.is_owner;
@@ -178,6 +248,12 @@ export default function TipsterDetailPage() {
     typeof tipster.profit_30d === "number" && tipster.profit_30d !== 0
       ? tipster.profit_30d
       : localStats.profit;
+  const picks30d =
+    typeof tipster.picks_30d === "number" && tipster.picks_30d > 0
+      ? tipster.picks_30d
+      : localStats.settled;
+
+  const verified = !!tipster.is_verified;
 
   // ---------- handlers ----------
   const handleSettlePick = async (pick, result) => {
@@ -281,7 +357,8 @@ export default function TipsterDetailPage() {
         />
         <div>
           <h2 style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            {tipster.name} {tipster.is_verified && "✅"}
+            <span>{tipster.name}</span>
+            {verified && <span className="verifiedBadge">VERIFIED</span>}
             {!isOwner && (
               <button
                 onClick={handleToggleFollow}
@@ -347,6 +424,20 @@ export default function TipsterDetailPage() {
             <span>Profit: {number(profitVal)}</span>
             <span>Winrate: {percent(wrVal)}%</span>
             <span>Followers: {tipster.follower_count ?? 0}</span>
+            {tipster.sport_focus && (
+              <span className="sportFocus">{(tipster.sport_focus || "").toUpperCase()}</span>
+            )}
+          </div>
+
+          {/* Performance card with mini graph */}
+          <div className="perfCard">
+            <div className="perfHeader">
+              <span>Last 30 days</span>
+              <span className="perfSummary">
+                ROI {percent(roiVal)}% • Profit {number(profitVal)} • {picks30d} picks
+              </span>
+            </div>
+            <MiniChart points={perfSeries} />
           </div>
         </div>
       </div>
@@ -385,7 +476,9 @@ export default function TipsterDetailPage() {
                   <td>{p.bookmaker || "—"}</td>
                   <td>{number(p.price)}</td>
                   <td>{number(p.stake)}</td>
-                  <td><ResultBadge result={p.result} /></td>
+                  <td>
+                    <ResultBadge result={p.result} />
+                  </td>
                   <td
                     style={{
                       textAlign: "right",
@@ -476,7 +569,9 @@ export default function TipsterDetailPage() {
                       </td>
                       <td>{number(a.combined_price)}</td>
                       <td>{number(a.stake)}</td>
-                      <td><ResultBadge result={a.result} /></td>
+                      <td>
+                        <ResultBadge result={a.result} />
+                      </td>
                       <td
                         style={{
                           textAlign: "right",
@@ -516,9 +611,86 @@ export default function TipsterDetailPage() {
       )}
 
       <style jsx="true">{`
-        .profile { display:flex; gap:16px; align-items:center; margin-bottom:20px; }
+        .profile { display:flex; gap:16px; align-items:flex-start; margin-bottom:20px; }
         .avatar { width:80px; height:80px; border-radius:50%; }
         .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; flex-wrap:wrap; }
+
+        .verifiedBadge {
+          padding: 3px 8px;
+          border-radius: 999px;
+          font-size: 0.72rem;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          border: 1px solid #9be7ff;
+          background: rgba(155,231,255,0.1);
+          color: #9be7ff;
+        }
+
+        .sportFocus {
+          padding: 3px 8px;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          border: 1px solid rgba(255,255,255,.2);
+          background: rgba(255,255,255,.06);
+        }
+
+        .perfCard {
+          margin-top: 12px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          background: #071710;
+          border: 1px solid rgba(155,231,255,0.18);
+        }
+
+        .perfHeader {
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:8px;
+          font-size:0.8rem;
+          color: rgba(255,255,255,.8);
+          margin-bottom:4px;
+        }
+
+        .perfHeader span:first-child {
+          font-weight:600;
+          text-transform:uppercase;
+          letter-spacing:0.06em;
+          font-size:0.72rem;
+        }
+
+        .perfSummary {
+          font-size:0.78rem;
+          opacity:0.85;
+        }
+
+        .miniChartWrapper {
+          margin-top:4px;
+          width:100%;
+          max-width:320px;
+        }
+
+        .miniChartSvg {
+          width:100%;
+          height:80px;
+          overflow:visible;
+        }
+
+        .miniChartBaseline {
+          stroke: rgba(255,255,255,.15);
+          stroke-width:1;
+          stroke-dasharray:3 3;
+        }
+
+        .miniChartLine {
+          stroke: #4caf50;
+          stroke-width:2;
+        }
+
+        .miniChartEmpty {
+          font-size:0.8rem;
+          color:rgba(255,255,255,.7);
+        }
 
         .socialRow {
           display:flex;
