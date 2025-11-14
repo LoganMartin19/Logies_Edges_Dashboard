@@ -2,10 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import styles from "../styles/BetTracker.module.css";
-
-const API_BASE =
-  process.env.REACT_APP_API_BASE || "https://logies-edges-api.onrender.com";
-const apiUrl = (p) => `${API_BASE}${p}`;
+import { api, API_BASE } from "../api"; // <-- use axios instance with auth
 
 const fmt = (n, d = 2) => (n == null || Number.isNaN(+n) ? "—" : (+n).toFixed(d));
 const asNum = (v) => (Number.isFinite(+v) ? +v : 0);
@@ -30,11 +27,12 @@ export default function BetTracker() {
   const location = useLocation();
   const navigate = useNavigate();
   const prefilledOnce = useRef(false);
+
   useEffect(() => {
     if (prefilledOnce.current) return;
     const sp = new URLSearchParams(location.search);
     const patch = {};
-    ["fixture_id","teams","market","bookmaker","price","stake","notes"].forEach((k) => {
+    ["fixture_id", "teams", "market", "bookmaker", "price", "stake", "notes"].forEach((k) => {
       const v = sp.get(k);
       if (v != null && v !== "") patch[k] = v;
     });
@@ -45,26 +43,24 @@ export default function BetTracker() {
     }
   }, [location.search, navigate]);
 
-  const loadBets = () => {
+  const loadBets = async () => {
     setLoading(true);
     setApiError("");
-    fetch(apiUrl("/bets.json"), { cache: "no-store" })
-      .then((r) => {
-        if (!r.ok) {
-          if (r.status === 401 || r.status === 403) {
-            throw new Error("Not authorized (auth coming soon)");
-          }
-          throw new Error(`HTTP ${r.status}`);
-        }
-        return r.json();
-      })
-      .then((data) => setBets(Array.isArray(data) ? data : []))
-      .catch((err) => {
-        console.error("Error loading bets:", err);
+    try {
+      const { data } = await api.get("/api/user-bets"); // 👈 per-user bets
+      setBets(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error loading bets:", err);
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        setApiError("Please log in to use your bet tracker.");
+      } else {
         setApiError(err.message || "Failed to load bets");
-        setBets([]);
-      })
-      .finally(() => setLoading(false));
+      }
+      setBets([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -83,19 +79,14 @@ export default function BetTracker() {
     try {
       const body = {
         fixture_id: form.fixture_id ? Number(form.fixture_id) : null,
-        teams: form.teams || null,
+        // ⚠️ 'teams' is UI-only; backend derives from fixture if present
         market: form.market,
-        bookmaker: form.bookmaker,
+        bookmaker: form.bookmaker || null,
         price: Number(form.price),
         stake: Number(form.stake),
         notes: form.notes || null,
       };
-      const r = await fetch(apiUrl("/bets.json"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      await api.post("/api/user-bets", body);
       setForm({
         fixture_id: "",
         teams: "",
@@ -108,49 +99,48 @@ export default function BetTracker() {
       loadBets();
     } catch (err) {
       console.error("Error adding bet:", err);
-      setApiError(err.message || "Failed to add bet");
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        setApiError("Please log in to add bets to your tracker.");
+      } else {
+        setApiError(err.message || "Failed to add bet");
+      }
     } finally {
       setSaving(false);
     }
   };
 
   const settleBet = async (id, result) => {
+    setApiError("");
     try {
-      const r = await fetch(apiUrl(`/bets/${id}.json`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ result }),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      await api.patch(`/api/user-bets/${id}`, { result }); // result: "won" | "lost" | "void"
       loadBets();
-    } catch (e) {
-      setApiError(e.message || "Failed to settle bet");
+    } catch (err) {
+      console.error("Error settling bet:", err);
+      setApiError(err.message || "Failed to settle bet");
     }
   };
 
   const deleteBet = async (id) => {
     if (!window.confirm("Delete this bet?")) return;
+    setApiError("");
     try {
-      const r = await fetch(apiUrl(`/bets/${id}.json`), { method: "DELETE" });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      await api.delete(`/api/user-bets/${id}`);
       loadBets();
-    } catch (e) {
-      setApiError(e.message || "Failed to delete bet");
+    } catch (err) {
+      console.error("Error deleting bet:", err);
+      setApiError(err.message || "Failed to delete bet");
     }
   };
 
   const cleanup = async (action, confirmText) => {
     if (!window.confirm(confirmText)) return;
+    setApiError("");
     try {
-      const r = await fetch(apiUrl(`/bets/cleanup`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    } catch (e) {
-      console.error("Cleanup failed:", e);
-      setApiError(e.message || "Cleanup failed");
+      await api.post("/api/user-bets/cleanup", { action }); // "delete_zero_pending" | "delete_pending" | "delete_all"
+    } catch (err) {
+      console.error("Cleanup failed:", err);
+      setApiError(err.message || "Cleanup failed");
     } finally {
       loadBets();
     }
@@ -181,16 +171,26 @@ export default function BetTracker() {
   }, [bets]);
 
   const exportCSV = () => {
-    const header = ["id","teams","market","bookmaker","price","stake","result","notes"];
-    const rows = filtered.map(b => [
-      b.id, b.teams || "", b.market || "", b.bookmaker || "",
-      asNum(b.price), asNum(b.stake), b.result || "", (b.notes || "").replace(/[\r\n]+/g, " ")
+    const header = ["id", "teams", "market", "bookmaker", "price", "stake", "result", "notes"];
+    const rows = filtered.map((b) => [
+      b.id,
+      b.teams || "",
+      b.market || "",
+      b.bookmaker || "",
+      asNum(b.price),
+      asNum(b.stake),
+      b.result || "",
+      (b.notes || "").replace(/[\r\n]+/g, " "),
     ]);
-    const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const csv = [header, ...rows]
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "bets.csv"; a.click();
+    a.href = url;
+    a.download = "bets.csv";
+    a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -202,19 +202,29 @@ export default function BetTracker() {
 
       {/* WIP / Auth banner */}
       <div className={styles.banner}>
-        <b>Work in progress:</b> personal accounts & sign-in coming soon.{" "}
+        <b>Per-account tracker:</b>{" "}
         {isRemote
-          ? "On the hosted site, add/edit may be disabled until auth is live."
-          : "In local dev, you can test create/update/delete freely."}
+          ? "Log in to start tracking your own bets – they’re tied to your account."
+          : "In local dev, make sure Firebase auth is configured so per-user bets work."}
       </div>
 
       {/* KPI Summary */}
       <div className={styles.kpis}>
-        <div><b>Staked:</b> £{fmt(stats.staked)}</div>
-        <div><b>Returned:</b> £{fmt(stats.returned)}</div>
-        <div><b>P/L:</b> £{fmt(stats.pnl)}</div>
-        <div><b>ROI:</b> {fmt(stats.roi)}%</div>
-        <div><b>Record:</b> {stats.won}W / {stats.lost}L / {stats.voided}V / {stats.pending}P</div>
+        <div>
+          <b>Staked:</b> £{fmt(stats.staked)}
+        </div>
+        <div>
+          <b>Returned:</b> £{fmt(stats.returned)}
+        </div>
+        <div>
+          <b>P/L:</b> £{fmt(stats.pnl)}
+        </div>
+        <div>
+          <b>ROI:</b> {fmt(stats.roi)}%
+        </div>
+        <div>
+          <b>Record:</b> {stats.won}W / {stats.lost}L / {stats.voided}V / {stats.pending}P
+        </div>
       </div>
 
       {/* 🧰 Toolbar */}
@@ -224,20 +234,22 @@ export default function BetTracker() {
         <span className={styles.sep} />
         <button
           className={styles.btnSoft}
-          onClick={() => cleanup("delete_zero_pending", "Delete ALL pending bets with £0 stake?")}
+          onClick={() =>
+            cleanup("delete_zero_pending", "Delete ALL pending bets with £0 stake from your account?")
+          }
           title="Remove test/fake rows with stake £0 and Pending"
         >
           🧽 Clean £0 Pending
         </button>
         <button
           className={styles.btnWarn}
-          onClick={() => cleanup("delete_pending", "Delete ALL pending bets?")}
+          onClick={() => cleanup("delete_pending", "Delete ALL pending bets from your account?")}
         >
           ❌ Delete Pending
         </button>
         <button
           className={styles.btnDanger}
-          onClick={() => cleanup("delete_all", "⚠️ Delete ALL bets (this cannot be undone)?")}
+          onClick={() => cleanup("delete_all", "⚠️ Delete ALL bets in your tracker (cannot be undone)?")}
         >
           💣 Nuke All
         </button>
@@ -245,12 +257,46 @@ export default function BetTracker() {
 
       {/* Add new bet */}
       <form onSubmit={addBet} className={styles.form}>
-        <input name="teams" value={form.teams} onChange={handleChange} placeholder="Teams" required />
-        <input name="market" value={form.market} onChange={handleChange} placeholder="Market" required />
-        <input name="bookmaker" value={form.bookmaker} onChange={handleChange} placeholder="Bookmaker" required />
-        <input name="price" value={form.price} onChange={handleChange} placeholder="Odds" required />
-        <input name="stake" value={form.stake} onChange={handleChange} placeholder="Stake" required />
-        <input name="notes" value={form.notes} onChange={handleChange} placeholder="Notes (optional)" />
+        {/* teams is UI-only for now */}
+        <input
+          name="teams"
+          value={form.teams}
+          onChange={handleChange}
+          placeholder="Teams (for your reference)"
+        />
+        <input
+          name="market"
+          value={form.market}
+          onChange={handleChange}
+          placeholder="Market"
+          required
+        />
+        <input
+          name="bookmaker"
+          value={form.bookmaker}
+          onChange={handleChange}
+          placeholder="Bookmaker"
+        />
+        <input
+          name="price"
+          value={form.price}
+          onChange={handleChange}
+          placeholder="Odds"
+          required
+        />
+        <input
+          name="stake"
+          value={form.stake}
+          onChange={handleChange}
+          placeholder="Stake"
+          required
+        />
+        <input
+          name="notes"
+          value={form.notes}
+          onChange={handleChange}
+          placeholder="Notes (optional)"
+        />
         <button disabled={saving}>{saving ? "Saving…" : "Add Bet"}</button>
       </form>
 
@@ -293,7 +339,13 @@ export default function BetTracker() {
                 <td>{b.bookmaker}</td>
                 <td>{fmt(b.price)}</td>
                 <td>£{fmt(b.stake)}</td>
-                <td className={b.result ? styles[`r_${(b.result || "").toLowerCase()}`] : styles.r_pending}>
+                <td
+                  className={
+                    b.result
+                      ? styles[`r_${(b.result || "").toLowerCase()}`]
+                      : styles.r_pending
+                  }
+                >
                   {b.result || "Pending"}
                 </td>
                 <td>
@@ -306,7 +358,9 @@ export default function BetTracker() {
             ))}
             {!filtered.length && (
               <tr>
-                <td colSpan="7" style={{ opacity: 0.6 }}>No bets found.</td>
+                <td colSpan="7" style={{ opacity: 0.6 }}>
+                  No bets found.
+                </td>
               </tr>
             )}
           </tbody>
