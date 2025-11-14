@@ -68,7 +68,9 @@ const useFixturesMap = (picks) => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const ids = [...new Set((picks || []).map((p) => p.fixture_id))].filter(Boolean);
+      const ids = [...new Set((picks || []).map((p) => p.fixture_id))].filter(
+        Boolean
+      );
       const out = {};
       for (const id of ids) {
         try {
@@ -93,7 +95,12 @@ const TeamCell = ({ fixture, homeName, awayName }) => {
     <img
       src={src || "/badge.png"}
       alt={name || ""}
-      style={{ width: 18, height: 18, borderRadius: 4, objectFit: "contain" }}
+      style={{
+        width: 18,
+        height: 18,
+        borderRadius: 4,
+        objectFit: "contain",
+      }}
       onError={(e) => (e.currentTarget.style.visibility = "hidden")}
     />
   );
@@ -143,58 +150,263 @@ const SettleButtons = ({ onSettle, disabled }) => (
   </div>
 );
 
-/* --------------- mini performance chart --------------- */
+/* ------------ stats + chart helpers ----------- */
 
-const MiniChart = ({ points }) => {
-  if (!points || points.length === 0) {
-    return (
-      <div className="miniChartWrapper">
-        <div className="miniChartEmpty">Not enough settled picks yet.</div>
-      </div>
-    );
+const RANGE_OPTIONS = [
+  { id: "30d", label: "Last 30 days", days: 30 },
+  { id: "60d", label: "Last 60 days", days: 60 },
+  { id: "all", label: "All time", days: null },
+];
+
+const dateFromISO = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+/**
+ * Compute stats for a tipster from picks (and fixtures map for comps).
+ * All frontend-only so we don't touch the API right now.
+ */
+function computeTipsterStats(picks = [], fxMap = {}, rangeId = "30d") {
+  if (!picks.length) {
+    return {
+      filtered: [],
+      equity: [],
+      summary: {
+        picks: 0,
+        staked: 0,
+        returned: 0,
+        profit: 0,
+        roi: 0,
+        winrate: 0,
+      },
+      streak: {
+        longestWin: 0,
+      },
+      byMarket: [],
+      byLeague: [],
+    };
   }
 
+  const rangeCfg = RANGE_OPTIONS.find((r) => r.id === rangeId) ?? RANGE_OPTIONS[0];
+  const now = new Date();
+  let cutoff = null;
+  if (rangeCfg.days != null) {
+    cutoff = new Date(now);
+    cutoff.setDate(now.getDate() - rangeCfg.days);
+  }
+
+  const withDates = picks
+    .map((p) => ({ ...p, createdAt: dateFromISO(p.created_at) }))
+    .filter((p) => p.createdAt); // drop bad dates
+
+  const filtered = cutoff
+    ? withDates.filter((p) => p.createdAt >= cutoff)
+    : withDates.slice();
+
+  // Sort ascending for equity + streak
+  filtered.sort((a, b) => a.createdAt - b.createdAt);
+
+  let staked = 0;
+  let returned = 0;
+  let profit = 0;
+  let wins = 0;
+  let settled = 0;
+
+  // equity curve (cumulative profit)
+  const equity = [];
+  let running = 0;
+
+  for (const p of filtered) {
+    const stake = Number(p.stake || 0);
+    const res = (p.result || "").toUpperCase();
+    const pProfit = Number(p.profit || 0);
+
+    if (res) {
+      settled++;
+      staked += stake;
+      profit += pProfit;
+      if (res === "WIN") {
+        wins++;
+        returned += stake + pProfit;
+      } else if (res === "LOSE") {
+        returned += 0;
+      } else {
+        // PUSH/VOID: stake back
+        returned += stake;
+      }
+      running += pProfit;
+    }
+
+    equity.push({
+      t: p.createdAt,
+      value: running,
+    });
+  }
+
+  const roi = staked > 0 ? profit / staked : 0;
+  const winrate = settled > 0 ? wins / settled : 0;
+
+  // longest winning streak (all-time, irrespective of range)
+  let longest = 0;
+  let current = 0;
+  const allSorted = withDates.slice().sort((a, b) => a.createdAt - b.createdAt);
+  for (const p of allSorted) {
+    const res = (p.result || "").toUpperCase();
+    if (res === "WIN") {
+      current += 1;
+      if (current > longest) longest = current;
+    } else if (res) {
+      current = 0;
+    }
+  }
+
+  // group by market
+  const markets = {};
+  for (const p of filtered) {
+    const res = (p.result || "").toUpperCase();
+    const key = p.market || "Other";
+    const entry = (markets[key] = markets[key] || {
+      market: key,
+      picks: 0,
+      wins: 0,
+      losses: 0,
+      pushes: 0,
+      staked: 0,
+      profit: 0,
+    });
+    const stake = Number(p.stake || 0);
+    const pProfit = Number(p.profit || 0);
+
+    if (!res) continue;
+
+    entry.picks += 1;
+    entry.staked += stake;
+    entry.profit += pProfit;
+    if (res === "WIN") entry.wins += 1;
+    else if (res === "LOSE") entry.losses += 1;
+    else entry.pushes += 1;
+  }
+
+  const byMarket = Object.values(markets)
+    .filter((m) => m.picks > 0)
+    .map((m) => ({
+      ...m,
+      roi: m.staked > 0 ? m.profit / m.staked : 0,
+    }))
+    .sort((a, b) => b.picks - a.picks || (b.roi || 0) - (a.roi || 0));
+
+  // group by league / competition (from fixtures)
+  const leagues = {};
+  for (const p of filtered) {
+    const fx = fxMap[p.fixture_id];
+    const comp = fx?.comp || fx?.league || "Other";
+    const key = comp || "Other";
+
+    const res = (p.result || "").toUpperCase();
+    if (!res) continue;
+
+    const entry = (leagues[key] = leagues[key] || {
+      league: key,
+      picks: 0,
+      wins: 0,
+      losses: 0,
+      pushes: 0,
+      staked: 0,
+      profit: 0,
+    });
+
+    const stake = Number(p.stake || 0);
+    const pProfit = Number(p.profit || 0);
+    entry.picks += 1;
+    entry.staked += stake;
+    entry.profit += pProfit;
+    if (res === "WIN") entry.wins += 1;
+    else if (res === "LOSE") entry.losses += 1;
+    else entry.pushes += 1;
+  }
+
+  const byLeague = Object.values(leagues)
+    .filter((l) => l.picks > 0)
+    .map((l) => ({
+      ...l,
+      roi: l.staked > 0 ? l.profit / l.staked : 0,
+    }))
+    .sort((a, b) => b.picks - a.picks || (b.roi || 0) - (a.roi || 0));
+
+  return {
+    filtered,
+    equity,
+    summary: {
+      picks: filtered.length,
+      staked,
+      returned,
+      profit,
+      roi,
+      winrate,
+    },
+    streak: {
+      longestWin: longest,
+    },
+    byMarket,
+    byLeague,
+  };
+}
+
+/** Simple inline sparkline */
+function EquityChart({ points }) {
+  if (!points || points.length < 2) return null;
+
   const width = 260;
-  const height = 80;
+  const height = 90;
+  const xs = points.map((_, i) => i);
+  const ys = points.map((p) => p.value);
+  const minY = Math.min(0, ...ys);
+  const maxY = Math.max(0, ...ys);
+  const spanY = maxY - minY || 1;
+  const spanX = xs[xs.length - 1] || 1;
 
-  const min = Math.min(...points, 0);
-  const max = Math.max(...points, 0);
-  const range = max - min || 1;
-
-  const stepX = points.length > 1 ? width / (points.length - 1) : width;
-
-  const coords = points
-    .map((v, i) => {
-      const x = i * stepX;
-      const y = height - ((v - min) / range) * height;
-      return `${x},${y}`;
+  const path = points
+    .map((p, i) => {
+      const x = (i / spanX) * (width - 20) + 10;
+      const y = height - ((p.value - minY) / spanY) * (height - 20) - 10;
+      return `${i === 0 ? "M" : "L"}${x},${y}`;
     })
     .join(" ");
 
-  // baseline at profit = 0
-  const zeroY = height - ((0 - min) / range) * height;
+  const lastVal = points[points.length - 1]?.value || 0;
 
   return (
-    <div className="miniChartWrapper">
-      <svg viewBox={`0 0 ${width} ${height}`} className="miniChartSvg">
-        {/* baseline */}
-        <line
-          x1="0"
-          y1={zeroY}
-          x2={width}
-          y2={zeroY}
-          className="miniChartBaseline"
-        />
-        {/* profit line */}
-        <polyline
-          points={coords}
-          className="miniChartLine"
-          fill="none"
-        />
-      </svg>
-    </div>
+    <svg width={width} height={height}>
+      <defs>
+        <linearGradient id="equityStroke" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#4caf50" />
+          <stop offset="100%" stopColor="#1b5e20" />
+        </linearGradient>
+      </defs>
+      <path
+        d={path}
+        fill="none"
+        stroke="url(#equityStroke)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <circle
+        r="4"
+        fill={lastVal >= 0 ? "#4caf50" : "#ef5350"}
+        cx={
+          ((points.length - 1) / (xs[xs.length - 1] || 1)) * (width - 20) + 10
+        }
+        cy={
+          height -
+          ((lastVal - minY) / spanY) * (height - 20) -
+          10
+        }
+      />
+    </svg>
   );
-};
+}
 
 /* --------------- main page --------------- */
 export default function TipsterDetailPage() {
@@ -207,6 +419,7 @@ export default function TipsterDetailPage() {
   const [busyPickId, setBusyPickId] = useState(null);
   const [busyAccaId, setBusyAccaId] = useState(null);
   const [busyFollow, setBusyFollow] = useState(false);
+  const [range, setRange] = useState("30d");
 
   useEffect(() => {
     fetchTipster(username).then(setTipster).catch(() => setTipster(null));
@@ -217,23 +430,10 @@ export default function TipsterDetailPage() {
   // 🔑 All hooks BEFORE any early return
   const fxMap = useFixturesMap(picks);
   const localStats = useLocalRollingFromPicks(picks);
-
-  const perfSeries = useMemo(() => {
-    if (!Array.isArray(picks) || picks.length === 0) return [];
-    const ordered = [...picks].sort((a, b) => {
-      const ta = new Date(a.created_at || 0).getTime();
-      const tb = new Date(b.created_at || 0).getTime();
-      return ta - tb;
-    });
-    let cumulative = 0;
-    const series = [];
-    for (const p of ordered) {
-      const profit = Number(p.profit ?? 0) || 0;
-      cumulative += profit;
-      series.push(cumulative);
-    }
-    return series;
-  }, [picks]);
+  const stats = useMemo(
+    () => computeTipsterStats(picks, fxMap, range),
+    [picks, fxMap, range]
+  );
 
   if (!tipster) return <div>Loading…</div>;
 
@@ -243,24 +443,22 @@ export default function TipsterDetailPage() {
   const roiVal =
     tipster.roi_30d != null ? normalizeRate(tipster.roi_30d) : localStats.roi;
   const wrVal =
-    tipster.winrate_30d != null ? normalizeRate(tipster.winrate_30d) : localStats.winrate;
+    tipster.winrate_30d != null
+      ? normalizeRate(tipster.winrate_30d)
+      : localStats.winrate;
   const profitVal =
     typeof tipster.profit_30d === "number" && tipster.profit_30d !== 0
       ? tipster.profit_30d
       : localStats.profit;
-  const picks30d =
-    typeof tipster.picks_30d === "number" && tipster.picks_30d > 0
-      ? tipster.picks_30d
-      : localStats.settled;
-
-  const verified = !!tipster.is_verified;
 
   // ---------- handlers ----------
   const handleSettlePick = async (pick, result) => {
     try {
       setBusyPickId(pick.id);
       const updated = await settleTipsterPick(pick.id, result);
-      setPicks((prev) => prev.map((p) => (p.id === pick.id ? { ...p, ...updated } : p)));
+      setPicks((prev) =>
+        prev.map((p) => (p.id === pick.id ? { ...p, ...updated } : p))
+      );
     } finally {
       setBusyPickId(null);
     }
@@ -282,7 +480,9 @@ export default function TipsterDetailPage() {
     try {
       setBusyAccaId(acca.id);
       const updated = await settleTipsterAcca(acca.id, result);
-      setAccas((prev) => prev.map((a) => (a.id === acca.id ? { ...a, ...updated } : a)));
+      setAccas((prev) =>
+        prev.map((a) => (a.id === acca.id ? { ...a, ...updated } : a))
+      );
     } finally {
       setBusyAccaId(null);
     }
@@ -344,6 +544,7 @@ export default function TipsterDetailPage() {
     <div className="page">
       <Link to="/tipsters">← Back</Link>
 
+      {/* PROFILE HEADER */}
       <div className="profile">
         <img
           src={
@@ -356,9 +557,15 @@ export default function TipsterDetailPage() {
           className="avatar"
         />
         <div>
-          <h2 style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <span>{tipster.name}</span>
-            {verified && <span className="verifiedBadge">VERIFIED</span>}
+          <h2
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            {tipster.name} {tipster.is_verified && "✅"}
             {!isOwner && (
               <button
                 onClick={handleToggleFollow}
@@ -408,7 +615,10 @@ export default function TipsterDetailPage() {
                   href={
                     socials.instagram.startsWith("http")
                       ? socials.instagram
-                      : `https://instagram.com/${socials.instagram.replace(/^@/, "")}`
+                      : `https://instagram.com/${socials.instagram.replace(
+                          /^@/,
+                          ""
+                        )}`
                   }
                   target="_blank"
                   rel="noreferrer"
@@ -419,29 +629,178 @@ export default function TipsterDetailPage() {
             </div>
           )}
 
-          <div className="metrics">
+          <div className="metricsRow">
             <span>ROI: {percent(roiVal)}%</span>
             <span>Profit: {number(profitVal)}</span>
             <span>Winrate: {percent(wrVal)}%</span>
             <span>Followers: {tipster.follower_count ?? 0}</span>
             {tipster.sport_focus && (
-              <span className="sportFocus">{(tipster.sport_focus || "").toUpperCase()}</span>
+              <span className="focusPill">{tipster.sport_focus}</span>
             )}
-          </div>
-
-          {/* Performance card with mini graph */}
-          <div className="perfCard">
-            <div className="perfHeader">
-              <span>Last 30 days</span>
-              <span className="perfSummary">
-                ROI {percent(roiVal)}% • Profit {number(profitVal)} • {picks30d} picks
-              </span>
-            </div>
-            <MiniChart points={perfSeries} />
           </div>
         </div>
       </div>
 
+      {/* STATS + CHART PANEL */}
+      {picks.length > 0 && (
+        <div className="statsPanel">
+          <div className="statsHeader">
+            <div>
+              <div className="statsTitle">Performance</div>
+              <div className="statsSubtitle">
+                {RANGE_OPTIONS.find((r) => r.id === range)?.label ||
+                  "Last 30 days"}
+              </div>
+            </div>
+            <div className="rangeTabs">
+              {RANGE_OPTIONS.map((r) => (
+                <button
+                  key={r.id}
+                  className={
+                    r.id === range ? "rangeBtn rangeBtnActive" : "rangeBtn"
+                  }
+                  onClick={() => setRange(r.id)}
+                >
+                  {r.id === "all" ? "All time" : r.label.replace("Last ", "")}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="statsGrid">
+            <div className="statsLeft">
+              <div className="cardsRow">
+                <div className="statCard">
+                  <div className="label">Picks</div>
+                  <div className="value">{stats.summary.picks}</div>
+                </div>
+                <div className="statCard">
+                  <div className="label">Staked</div>
+                  <div className="value">{number(stats.summary.staked)}</div>
+                </div>
+                <div className="statCard">
+                  <div className="label">Returned</div>
+                  <div className="value">{number(stats.summary.returned)}</div>
+                </div>
+                <div className="statCard">
+                  <div className="label">P/L</div>
+                  <div
+                    className={
+                      stats.summary.profit >= 0 ? "value good" : "value bad"
+                    }
+                  >
+                    {number(stats.summary.profit)}
+                  </div>
+                </div>
+                <div className="statCard">
+                  <div className="label">ROI</div>
+                  <div
+                    className={
+                      stats.summary.roi >= 0 ? "value good" : "value bad"
+                    }
+                  >
+                    {percent(stats.summary.roi)}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="streakRow">
+                <span>Longest winning streak</span>
+                <strong>{stats.streak.longestWin} bets</strong>
+              </div>
+            </div>
+
+            <div className="statsRight">
+              <div className="chartLabel">
+                Equity (P/L) over time • {stats.summary.picks} picks
+              </div>
+              <EquityChart points={stats.equity} />
+            </div>
+          </div>
+
+          <div className="splitTables">
+            <div className="tableBlock">
+              <div className="tableTitle">By market</div>
+              {stats.byMarket.length === 0 ? (
+                <div className="tableEmpty">Not enough settled bets yet.</div>
+              ) : (
+                <table className="miniTable">
+                  <thead>
+                    <tr>
+                      <th>Market</th>
+                      <th>Picks</th>
+                      <th>Record</th>
+                      <th style={{ textAlign: "right" }}>ROI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.byMarket.map((m) => (
+                      <tr key={m.market}>
+                        <td>{m.market}</td>
+                        <td>{m.picks}</td>
+                        <td>
+                          {m.wins}W-{m.losses}L
+                          {m.pushes ? `-${m.pushes}P` : ""}
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <span
+                            className={
+                              m.roi >= 0 ? "roiBadge roiGood" : "roiBadge roiBad"
+                            }
+                          >
+                            {percent(m.roi)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="tableBlock">
+              <div className="tableTitle">By league / competition</div>
+              {stats.byLeague.length === 0 ? (
+                <div className="tableEmpty">Not enough settled bets yet.</div>
+              ) : (
+                <table className="miniTable">
+                  <thead>
+                    <tr>
+                      <th>League</th>
+                      <th>Picks</th>
+                      <th>Record</th>
+                      <th style={{ textAlign: "right" }}>ROI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.byLeague.map((l) => (
+                      <tr key={l.league}>
+                        <td>{l.league}</td>
+                        <td>{l.picks}</td>
+                        <td>
+                          {l.wins}W-{l.losses}L
+                          {l.pushes ? `-${l.pushes}P` : ""}
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <span
+                            className={
+                              l.roi >= 0 ? "roiBadge roiGood" : "roiBadge roiBad"
+                            }
+                          >
+                            {percent(l.roi)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RECENT PICKS TABLE */}
       <h3>Recent Picks</h3>
       <div className="tableWrap">
         <table className="picks">
@@ -469,7 +828,11 @@ export default function TipsterDetailPage() {
                       to={`/fixture/${p.fixture_id}`}
                       style={{ textDecoration: "none", color: "inherit" }}
                     >
-                      <TeamCell fixture={fx} homeName={p.home_name} awayName={p.away_name} />
+                      <TeamCell
+                        fixture={fx}
+                        homeName={p.home_name}
+                        awayName={p.away_name}
+                      />
                     </Link>
                   </td>
                   <td>{p.market}</td>
@@ -485,7 +848,9 @@ export default function TipsterDetailPage() {
                       color: (p.model_edge ?? 0) >= 0 ? "#1db954" : "#d23b3b",
                     }}
                   >
-                    {p.model_edge == null ? "—" : number(p.model_edge * 100, 1) + "%"}
+                    {p.model_edge == null
+                      ? "—"
+                      : number(p.model_edge * 100, 1) + "%"}
                   </td>
                   <td
                     style={{
@@ -523,6 +888,7 @@ export default function TipsterDetailPage() {
         </table>
       </div>
 
+      {/* ACCAS TABLE */}
       {accas.length > 0 && (
         <>
           <h3 style={{ marginTop: 24 }}>Accas</h3>
@@ -551,15 +917,40 @@ export default function TipsterDetailPage() {
                             <Link
                               key={`${a.id}-${i}`}
                               to={`/fixture/${leg.fixture_id}`}
-                              style={{ textDecoration: "none", color: "inherit" }}
+                              style={{
+                                textDecoration: "none",
+                                color: "inherit",
+                              }}
                             >
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                }}
+                              >
                                 <span style={{ opacity: 0.7 }}>{i + 1}.</span>
-                                <span style={{ fontWeight: 600 }}>{leg.home_name}</span>
+                                <span style={{ fontWeight: 600 }}>
+                                  {leg.home_name}
+                                </span>
                                 <span style={{ opacity: 0.7 }}>vs</span>
-                                <span style={{ fontWeight: 600 }}>{leg.away_name}</span>
-                                <span style={{ marginLeft: 8, opacity: 0.75 }}>{leg.market}</span>
-                                <span style={{ marginLeft: "auto", opacity: 0.85 }}>
+                                <span style={{ fontWeight: 600 }}>
+                                  {leg.away_name}
+                                </span>
+                                <span
+                                  style={{
+                                    marginLeft: 8,
+                                    opacity: 0.75,
+                                  }}
+                                >
+                                  {leg.market}
+                                </span>
+                                <span
+                                  style={{
+                                    marginLeft: "auto",
+                                    opacity: 0.85,
+                                  }}
+                                >
                                   {number(leg.price)}
                                 </span>
                               </div>
@@ -611,149 +1002,335 @@ export default function TipsterDetailPage() {
       )}
 
       <style jsx="true">{`
-        .profile { display:flex; gap:16px; align-items:flex-start; margin-bottom:20px; }
-        .avatar { width:80px; height:80px; border-radius:50%; }
-        .metrics { display:flex; gap:12px; font-size:.9rem; margin-top:8px; flex-wrap:wrap; }
+        .page {
+          padding: 16px;
+          color: #eaf4ed;
+          max-width: 1100px;
+          margin: 0 auto;
+        }
 
-        .verifiedBadge {
-          padding: 3px 8px;
+        .profile {
+          display: flex;
+          gap: 16px;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+        .avatar {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+        }
+        .metricsRow {
+          display: flex;
+          gap: 12px;
+          font-size: 0.9rem;
+          margin-top: 8px;
+          flex-wrap: wrap;
+        }
+        .focusPill {
+          padding: 2px 10px;
           border-radius: 999px;
-          font-size: 0.72rem;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-          border: 1px solid #9be7ff;
-          background: rgba(155,231,255,0.1);
-          color: #9be7ff;
-        }
-
-        .sportFocus {
-          padding: 3px 8px;
-          border-radius: 999px;
-          font-size: 0.75rem;
-          border: 1px solid rgba(255,255,255,.2);
-          background: rgba(255,255,255,.06);
-        }
-
-        .perfCard {
-          margin-top: 12px;
-          padding: 10px 12px;
-          border-radius: 12px;
-          background: #071710;
-          border: 1px solid rgba(155,231,255,0.18);
-        }
-
-        .perfHeader {
-          display:flex;
-          justify-content:space-between;
-          align-items:center;
-          gap:8px;
-          font-size:0.8rem;
-          color: rgba(255,255,255,.8);
-          margin-bottom:4px;
-        }
-
-        .perfHeader span:first-child {
-          font-weight:600;
-          text-transform:uppercase;
-          letter-spacing:0.06em;
-          font-size:0.72rem;
-        }
-
-        .perfSummary {
-          font-size:0.78rem;
-          opacity:0.85;
-        }
-
-        .miniChartWrapper {
-          margin-top:4px;
-          width:100%;
-          max-width:320px;
-        }
-
-        .miniChartSvg {
-          width:100%;
-          height:80px;
-          overflow:visible;
-        }
-
-        .miniChartBaseline {
-          stroke: rgba(255,255,255,.15);
-          stroke-width:1;
-          stroke-dasharray:3 3;
-        }
-
-        .miniChartLine {
-          stroke: #4caf50;
-          stroke-width:2;
-        }
-
-        .miniChartEmpty {
-          font-size:0.8rem;
-          color:rgba(255,255,255,.7);
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          font-size: 0.78rem;
+          background: rgba(0, 0, 0, 0.35);
         }
 
         .socialRow {
-          display:flex;
-          gap:12px;
-          margin-top:6px;
-          font-size:0.9rem;
+          display: flex;
+          gap: 12px;
+          margin-top: 6px;
+          font-size: 0.9rem;
         }
         .socialRow a {
-          color:#9be7ff;
-          text-decoration:none;
+          color: #9be7ff;
+          text-decoration: none;
         }
         .socialRow a:hover {
-          text-decoration:underline;
+          text-decoration: underline;
         }
 
-        .tableWrap { background:#0a0f0c; border-radius:12px; overflow-x:auto; }
-        table.picks { width:100%; border-collapse:collapse; }
+        .statsPanel {
+          background: #0a0f0c;
+          border-radius: 14px;
+          padding: 14px 16px 16px;
+          margin-bottom: 22px;
+          border: 1px solid rgba(255, 255, 255, 0.09);
+        }
+        .statsHeader {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .statsTitle {
+          font-weight: 700;
+          font-size: 0.95rem;
+          letter-spacing: 0.02em;
+        }
+        .statsSubtitle {
+          font-size: 0.8rem;
+          opacity: 0.8;
+        }
+        .rangeTabs {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .rangeBtn {
+          padding: 4px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          background: transparent;
+          color: #eaf4ed;
+          font-size: 0.75rem;
+          cursor: pointer;
+        }
+        .rangeBtnActive {
+          background: #145a32;
+          border-color: #1db954;
+        }
+
+        .statsGrid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+          gap: 16px;
+          margin-top: 12px;
+        }
+        @media (max-width: 800px) {
+          .statsGrid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .cardsRow {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+          gap: 8px;
+        }
+        .statCard {
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 10px;
+          padding: 8px 10px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .statCard .label {
+          font-size: 0.72rem;
+          opacity: 0.85;
+          margin-bottom: 2px;
+        }
+        .statCard .value {
+          font-size: 0.95rem;
+          font-weight: 600;
+        }
+        .statCard .value.good {
+          color: #80ffb0;
+        }
+        .statCard .value.bad {
+          color: #ff9a9a;
+        }
+
+        .streakRow {
+          margin-top: 10px;
+          font-size: 0.86rem;
+          display: flex;
+          justify-content: space-between;
+          gap: 8px;
+          opacity: 0.9;
+        }
+
+        .statsRight {
+          background: rgba(3, 20, 10, 0.9);
+          border-radius: 12px;
+          padding: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .chartLabel {
+          font-size: 0.78rem;
+          opacity: 0.85;
+          margin-bottom: 4px;
+        }
+
+        .splitTables {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 14px;
+          margin-top: 14px;
+        }
+        @media (max-width: 900px) {
+          .splitTables {
+            grid-template-columns: 1fr;
+          }
+        }
+        .tableBlock {
+          background: rgba(3, 16, 10, 0.9);
+          border-radius: 10px;
+          padding: 8px 10px 10px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .tableTitle {
+          font-size: 0.8rem;
+          opacity: 0.9;
+          margin-bottom: 4px;
+        }
+        .tableEmpty {
+          font-size: 0.8rem;
+          opacity: 0.75;
+        }
+        .miniTable {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.78rem;
+          margin-top: 4px;
+        }
+        .miniTable th,
+        .miniTable td {
+          padding: 4px 4px;
+        }
+        .miniTable thead th {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          text-align: left;
+          font-weight: 500;
+          opacity: 0.85;
+        }
+        .miniTable tbody tr:nth-child(odd) {
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .roiBadge {
+          padding: 2px 6px;
+          border-radius: 999px;
+          font-size: 0.72rem;
+        }
+        .roiGood {
+          background: #124b27;
+          color: #b6f2c6;
+        }
+        .roiBad {
+          background: #4b1212;
+          color: #f2b6b6;
+        }
+
+        .tableWrap {
+          background: #0a0f0c;
+          border-radius: 12px;
+          overflow-x: auto;
+        }
+        table.picks {
+          width: 100%;
+          border-collapse: collapse;
+        }
         .picks thead th {
-          text-align:left;
-          padding:8px 6px;
-          border-bottom:1px solid rgba(255,255,255,.12);
-          font-size:14px;
-          color:#eaf4ed;
-          background:rgba(255,255,255,.06);
-          white-space:nowrap;
+          text-align: left;
+          padding: 8px 6px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+          font-size: 14px;
+          color: #eaf4ed;
+          background: rgba(255, 255, 255, 0.06);
+          white-space: nowrap;
         }
         .picks td {
-          padding:10px 6px;
-          border-bottom:1px solid rgba(255,255,255,.08);
-          font-size:14px;
-          color:#eaf4ed;
+          padding: 10px 6px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          font-size: 14px;
+          color: #eaf4ed;
         }
 
-        .btnSmall { padding:6px 10px; border-radius:8px; background:#2e7d32; color:#fff; border:0; cursor:pointer; }
-        .btnGhost { background:transparent; border:1px solid #2e7d32; color:#2e7d32; }
-        .btnDanger { background:#a52727; }
-        .btnSmall[disabled] { opacity:.6; cursor:not-allowed; }
+        .btnSmall {
+          padding: 6px 10px;
+          border-radius: 8px;
+          background: #2e7d32;
+          color: #fff;
+          border: 0;
+          cursor: pointer;
+        }
+        .btnGhost {
+          background: transparent;
+          border: 1px solid #2e7d32;
+          color: #2e7d32;
+        }
+        .btnDanger {
+          background: #a52727;
+        }
+        .btnSmall[disabled] {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
 
         .btnFollow {
-          background:#1c2933;
-          border:1px solid #9be7ff;
-          color:#9be7ff;
+          background: #1c2933;
+          border: 1px solid #9be7ff;
+          color: #9be7ff;
         }
         .btnFollow:hover:enabled {
-          background:#163040;
+          background: #163040;
         }
 
-        .actionsCell { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-        .settleRow { display:flex; gap:6px; flex-wrap:wrap; }
+        .actionsCell {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .settleRow {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
 
-        .btnTag { padding:4px 8px; border-radius:999px; font-size:.8rem; border:0; cursor:pointer; }
-        .btnTag.win { background:#124b27; color:#b6f2c6; }
-        .btnTag.lose { background:#4b1212; color:#f2b6b6; }
-        .btnTag.push { background:#1f2a44; color:#c8d7ff; }
-        .btnTag.void { background:#3b3b3b; color:#e7e7e7; }
-        .btnTag:disabled { opacity:.6; cursor:not-allowed; }
+        .btnTag {
+          padding: 4px 8px;
+          border-radius: 999px;
+          font-size: 0.8rem;
+          border: 0;
+          cursor: pointer;
+        }
+        .btnTag.win {
+          background: #124b27;
+          color: #b6f2c6;
+        }
+        .btnTag.lose {
+          background: #4b1212;
+          color: #f2b6b6;
+        }
+        .btnTag.push {
+          background: #1f2a44;
+          color: #c8d7ff;
+        }
+        .btnTag.void {
+          background: #3b3b3b;
+          color: #e7e7e7;
+        }
+        .btnTag:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
 
-        .badge { padding:2px 8px; border-radius:999px; font-size:.75rem; }
-        .badge.win { background:#124b27; color:#b6f2c6; }
-        .badge.lose { background:#4b1212; color:#f2b6b6; }
-        .badge.push { background:#1f2a44; color:#c8d7ff; }
-        .badge.void { background:#3b3b3b; color:#e7e7e7; }
-        .badge.neutral { background:#263238; color:#e0e0e0; }
+        .badge {
+          padding: 2px 8px;
+          border-radius: 999px;
+          font-size: 0.75rem;
+        }
+        .badge.win {
+          background: #124b27;
+          color: #b6f2c6;
+        }
+        .badge.lose {
+          background: #4b1212;
+          color: #f2b6b6;
+        }
+        .badge.push {
+          background: #1f2a44;
+          color: #c8d7ff;
+        }
+        .badge.void {
+          background: #3b3b3b;
+          color: #e7e7e7;
+        }
+        .badge.neutral {
+          background: #263238;
+          color: #e0e0e0;
+        }
       `}</style>
     </div>
   );
