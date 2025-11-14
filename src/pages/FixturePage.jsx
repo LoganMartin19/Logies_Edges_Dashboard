@@ -19,6 +19,7 @@ import { useAuth } from "../components/AuthGate";
 
 // ⭐ NEW
 import { placeAndTrackEdge } from "../utils/placeAndTrack";
+import { getBookmakerUrl } from "../utils/bookmakers";
 
 const FixturePage = () => {
   const { id } = useParams();
@@ -192,26 +193,34 @@ const FixturePage = () => {
   };
 
   // --- PLACE BET BUTTON -----------------------------------------------------
+  // --- PLACE BET BUTTON -----------------------------------------------------
   const handlePlaceEdge = async (edge, key) => {
     if (!user) {
       navigate("/login");
       return;
     }
   
+    // 1) Work out the bookmaker URL
+    const bmUrl = getBookmakerUrl(edge.bookmaker);
+  
+    if (!bmUrl) {
+      // 🔍 TEMP DEBUG: show exactly what the API is sending
+      alert(`No bookmaker mapping for: "${edge.bookmaker}"`);
+    } else {
+      window.open(bmUrl, "_blank", "noopener");
+    }
+  
+    // 2) Log bet in your own DB
     try {
       setPlacingKey(key);
       await placeAndTrackEdge(
         { ...edge, fixture_id: fixtureIdNum },
-        { stake: 1, openBookmaker: true }
+        { stake: 1 }
       );
       navigate("/bets");
     } catch (err) {
       console.error("Failed to place bet:", err);
-      const msg =
-        err?.response?.data?.detail ||
-        err?.message ||
-        "Could not place this bet. Try again.";
-      alert(msg);
+      alert("Could not place this bet. Try again.");
     } finally {
       setPlacingKey(null);
     }
