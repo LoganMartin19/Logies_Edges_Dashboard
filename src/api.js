@@ -137,6 +137,6 @@ export const fetchFollowingList = async () =>
   api.get("/api/tipsters/following/list").then((r) => r.data);
 
 export const fetchFollowingFeed = async () => {
-  const res = await api.get("/api/tipsters/following-feed");
+  const res = await api.get("/api/tipsters/following");
   return res.data; // [] when not following anyone / no picks
 };
