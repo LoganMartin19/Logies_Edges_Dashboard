@@ -1177,22 +1177,28 @@ export default function TipsterDetailPage() {
           font-size: 0.8rem;
           opacity: 0.75;
         }
+        
         .miniTable {
           width: 100%;
           border-collapse: collapse;
           font-size: 0.78rem;
           margin-top: 4px;
         }
-        .miniTable th,
-        .miniTable td {
-          padding: 4px 4px;
-        }
+
         .miniTable thead th {
+          padding: 4px 4px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           text-align: left;
           font-weight: 500;
           opacity: 0.85;
+          background: rgba(0, 0, 0, 0.25); /* 🔧 dark header (kills white) */
+          color: #eaf4ed;
         }
+
+        .miniTable tbody td {
+          padding: 4px 4px;
+        }
+
         .miniTable tbody tr:nth-child(odd) {
           background: rgba(255, 255, 255, 0.02);
         }
