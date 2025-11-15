@@ -391,7 +391,58 @@ const FixturePage = () => {
 
           {activeTab === "table" && (
             <div className="scrollX">
-              {/* league table exactly as before */}
+              <table className={styles.oddsTable}>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Team</th>
+                    <th>P</th>
+                    <th>W</th>
+                    <th>D</th>
+                    <th>L</th>
+                    <th>GF</th>
+                    <th>GA</th>
+                    <th>GD</th>
+                    <th>Pts</th>
+                    <th>Form</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leagueTable.map((row, i) => {
+                    const normalize = (name) =>
+                      name
+                        ?.toLowerCase()
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "")
+                        .replace(/[^a-z0-9]/gi, "")
+                        .trim();
+
+                    const isHome = normalize(row.team) === normalize(fixture.home_team);
+                    const isAway = normalize(row.team) === normalize(fixture.away_team);
+                    const rowClass = isHome || isAway ? styles.highlightRow : "";
+
+                    return (
+                      <tr key={i} className={rowClass}>
+                        <td>{row.position}</td>
+                        <td className={styles.teamName}>
+                          {row.team}
+                          {isHome && <span> 🏠</span>}
+                          {isAway && <span> 🛫</span>}
+                        </td>
+                        <td>{row.played}</td>
+                        <td>{row.win}</td>
+                        <td>{row.draw}</td>
+                        <td>{row.lose}</td>
+                        <td>{row.gf}</td>
+                        <td>{row.ga}</td>
+                        <td>{row.gf - row.ga}</td>
+                        <td>{row.points}</td>
+                        <td>{row.form || "-"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
 
