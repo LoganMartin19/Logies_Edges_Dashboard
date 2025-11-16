@@ -274,6 +274,7 @@ const FixtureCard = ({ f }) => (
 );
 
 /* -------------------- ACCA block ------------------- */
+/* -------------------- ACCA block ------------------- */
 function AccaBlock({ day }) {
   const { user } = useAuth();
   const [accas, setAccas] = useState([]);
@@ -295,23 +296,20 @@ function AccaBlock({ day }) {
     try {
       setTrackingAccaId(t.id);
       const stake = Number(t.stake_units ?? 1);
-      const legs = t.legs || [];
 
-      // Track each leg so the tracker has proper fixture & market rows
-      for (const l of legs) {
-        await placeAndTrackEdge(
-          {
-            fixture_id: Number(l.fixture_id) || null,
-            market: l.market,
-            bookmaker: l.bookmaker || "ACCA",
-            price: Number(l.price),
-          },
-          {
-            stake,
-            sourceTipsterId: t.tipster_id || null,
-          }
-        );
-      }
+      // ⭐ Log ONE combined acca line in the tracker
+      await placeAndTrackEdge(
+        {
+          fixture_id: null,                        // spans multiple games
+          market: t.title || "ACCA",              // e.g. "Saturday Value Acca ~5.85x"
+          bookmaker: "ACCA",
+          price: Number(t.combined_price),
+        },
+        {
+          stake,
+          sourceTipsterId: t.tipster_id || null,
+        }
+      );
 
       setTrackedAccaIds((prev) =>
         prev.includes(t.id) ? prev : [...prev, t.id]
