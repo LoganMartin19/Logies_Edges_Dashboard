@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { api, API_BASE } from "../api";
 import FeaturedRecord from "../components/FeaturedRecord";
 import { useAuth } from "../components/AuthGate";
+import { placeAndTrackEdge } from "../utils/placeAndTrack"; // ⭐ NEW
 
 /* ---------------- utils ---------------- */
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -269,14 +270,54 @@ const FixtureCard = ({ f }) => (
 
 /* -------------------- ACCA block ------------------- */
 function AccaBlock({ day }) {
+  const { user } = useAuth(); // ⭐ NEW
   const [accas, setAccas] = useState([]);
+  const [trackingAccaId, setTrackingAccaId] = useState(null);   // ⭐ NEW
+  const [trackedAccaIds, setTrackedAccaIds] = useState([]);     // ⭐ NEW
+
   useEffect(() => {
     api
       .get("api/public/accas/daily", { params: { day } })
       .then(({ data }) => setAccas(data.accas || []))
       .catch(() => setAccas([]));
   }, [day]);
+
+  const handleTrackAcca = async (t) => {
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+    try {
+      setTrackingAccaId(t.id);
+      const stake = Number(t.stake_units ?? 1);
+
+      // Log the acca as a single bet in the tracker using combined price.
+      await placeAndTrackEdge(
+        {
+          fixture_id: null, // acca spans multiple fixtures
+          market: t.title || "ACCA",
+          bookmaker: "ACCA",
+          price: Number(t.combined_price),
+        },
+        {
+          stake,
+          sourceTipsterId: t.tipster_id || null,
+        }
+      );
+
+      setTrackedAccaIds((prev) =>
+        prev.includes(t.id) ? prev : [...prev, t.id]
+      );
+    } catch (e) {
+      console.error("Failed to track acca", e);
+      alert("Could not add this ACCA to your bet tracker.");
+    } finally {
+      setTrackingAccaId(null);
+    }
+  };
+
   if (!accas.length) return null;
+
   return (
     <div
       style={{
@@ -354,6 +395,30 @@ function AccaBlock({ day }) {
               • {t.note}
             </div>
           ) : null}
+
+          {/* ⭐ NEW: Track ACCA button */}
+          <div style={{ marginTop: 8, textAlign: "right" }}>
+            {user ? (
+              <button
+                style={{ ...S.btn, fontSize: 12, padding: "6px 10px" }}
+                onClick={() => handleTrackAcca(t)}
+                disabled={trackingAccaId === t.id}
+              >
+                {trackingAccaId === t.id
+                  ? "Tracking…"
+                  : trackedAccaIds.includes(t.id)
+                  ? "Tracked ✓"
+                  : "Track this ACCA"}
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                style={{ fontSize: 12, color: "#9be7ff", textDecoration: "none" }}
+              >
+                Log in to track →
+              </Link>
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -377,6 +442,10 @@ export default function PublicDashboard() {
   const [followingErr, setFollowingErr] = useState("");
 
   const isMobile = useIsMobile(700);
+
+  // ⭐ NEW: tracking state for featured picks
+  const [trackingPickId, setTrackingPickId] = useState(null);
+  const [trackedPickIds, setTrackedPickIds] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -418,7 +487,6 @@ export default function PublicDashboard() {
           params: { limit: 5 },
         });
         if (!cancelled) {
-          // backend might return { picks: [...] } or direct array
           const rows = Array.isArray(data) ? data : data.picks || [];
           setFollowingFeed(rows);
           setFollowingErr("");
@@ -484,6 +552,46 @@ export default function PublicDashboard() {
 
   const sportOptions = ["all", "football", "nba", "nhl", "nfl", "cfb"];
   const shown = showAll ? picks : picks.slice(0, 3);
+
+  // ⭐ NEW: handler for tracking a featured pick
+  const handleTrackPick = async (p, resolvedPick, evt) => {
+    if (evt) {
+      evt.preventDefault();
+      evt.stopPropagation();
+    }
+
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    try {
+      setTrackingPickId(p.id);
+      const stake = Number(p.stake_units ?? 1);
+
+      await placeAndTrackEdge(
+        {
+          fixture_id: Number(resolvedPick.fixture_id) || null,
+          market: p.market,
+          bookmaker: p.bookmaker || null,
+          price: Number(p.price),
+        },
+        {
+          stake,
+          sourceTipsterId: p.tipster_id || null,
+        }
+      );
+
+      setTrackedPickIds((prev) =>
+        prev.includes(p.id) ? prev : [...prev, p.id]
+      );
+    } catch (e) {
+      console.error("Failed to track featured pick", e);
+      alert("Could not add this pick to your bet tracker.");
+    } finally {
+      setTrackingPickId(null);
+    }
+  };
 
   return (
     <div style={S.page}>
@@ -565,6 +673,9 @@ export default function PublicDashboard() {
           <>
             {shown.map((p, i) => {
               const d = resolvePick(p);
+              const tracked = trackedPickIds.includes(p.id);
+              const tracking = trackingPickId === p.id;
+
               return (
                 <Link
                   key={i}
@@ -607,11 +718,40 @@ export default function PublicDashboard() {
                         }
                       />
                     </div>
+
                     <div
-                      style={{ gridColumn: "1 / -1", ...S.pickSub }}
+                      style={{
+                        gridColumn: "1 / -1",
+                        ...S.pickSub,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
                     >
-                      {p.market} • {p.bookmaker} •{" "}
-                      {p.edge && `${(p.edge * 100).toFixed(1)}%`}
+                      <span>
+                        {p.market} • {p.bookmaker} •{" "}
+                        {p.edge && `${(p.edge * 100).toFixed(1)}%`}
+                      </span>
+                      {user && (
+                        <button
+                          style={{
+                            ...S.btn,
+                            fontSize: 12,
+                            padding: "4px 10px",
+                          }}
+                          onClick={(evt) =>
+                            handleTrackPick(p, d, evt)
+                          }
+                          disabled={tracking}
+                        >
+                          {tracking
+                            ? "Tracking…"
+                            : tracked
+                            ? "Tracked ✓"
+                            : "Track"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </Link>
