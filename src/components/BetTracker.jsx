@@ -170,12 +170,25 @@ export default function BetTracker() {
     return { staked, returned, pnl, roi, won, lost, voided, pending };
   }, [bets]);
 
+  // ---------- helper: detect ACCAs ----------
+  const isAccaBet = (b) => {
+    const noFixture = !b.fixture_id || Number(b.fixture_id) === 0;
+    const bm = (b.bookmaker || "").toUpperCase();
+    const mk = (b.market || "").toUpperCase();
+    const looksAcca =
+      bm === "ACCA" ||
+      mk.includes("ACCA") ||
+      mk.includes("PARLAY") ||
+      mk.includes("MULTI");
+    return noFixture && looksAcca;
+  };
+
   const exportCSV = () => {
     const header = ["id", "teams", "market", "bookmaker", "price", "stake", "result", "notes"];
     const rows = filtered.map((b) => {
-      const isAcca = (b.bookmaker || "").toUpperCase() === "ACCA" && !b.fixture_id;
-      const teamsLabel = isAcca ? (b.market || "ACCA") : (b.teams || "");
-      const marketLabel = isAcca ? "ACCA" : (b.market || "");
+      const acca = isAccaBet(b);
+      const teamsLabel = acca ? (b.market || "ACCA") : (b.teams || "");
+      const marketLabel = acca ? "ACCA" : (b.market || "");
       return [
         b.id,
         teamsLabel,
@@ -338,9 +351,9 @@ export default function BetTracker() {
           </thead>
           <tbody>
             {filtered.map((b) => {
-              const isAcca = (b.bookmaker || "").toUpperCase() === "ACCA" && !b.fixture_id;
-              const teamsLabel = isAcca ? (b.market || "ACCA") : (b.teams || "—");
-              const marketLabel = isAcca ? "ACCA" : (b.market || "—");
+              const acca = isAccaBet(b);
+              const teamsLabel = acca ? (b.market || "ACCA") : (b.teams || "—");
+              const marketLabel = acca ? "ACCA" : (b.market || "—");
 
               return (
                 <tr key={b.id}>
