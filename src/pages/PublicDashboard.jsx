@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { api, API_BASE } from "../api";
 import FeaturedRecord from "../components/FeaturedRecord";
 import { useAuth } from "../components/AuthGate";
-import { placeAndTrackEdge } from "../utils/placeAndTrack"; // ⭐ NEW
+import { placeAndTrackEdge } from "../utils/placeAndTrack"; // ⭐ uses same helper
 
 /* ---------------- utils ---------------- */
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -26,7 +26,12 @@ const toUK = (iso, { withZone = false } = {}) => {
 };
 
 const slug = (s = "") =>
-  s.normalize("NFKD").replace(/[^\w\s.-]/g, "").trim().replace(/\s+/g, "_").toLowerCase();
+  s
+    .normalize("NFKD")
+    .replace(/[^\w\s.-]/g, "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .toLowerCase();
 
 const COMP_NAMES = {
   UCL: "UEFA Champions League",
@@ -270,10 +275,10 @@ const FixtureCard = ({ f }) => (
 
 /* -------------------- ACCA block ------------------- */
 function AccaBlock({ day }) {
-  const { user } = useAuth(); // ⭐ NEW
+  const { user } = useAuth();
   const [accas, setAccas] = useState([]);
-  const [trackingAccaId, setTrackingAccaId] = useState(null);   // ⭐ NEW
-  const [trackedAccaIds, setTrackedAccaIds] = useState([]);     // ⭐ NEW
+  const [trackingAccaId, setTrackingAccaId] = useState(null);
+  const [trackedAccaIds, setTrackedAccaIds] = useState([]);
 
   useEffect(() => {
     api
@@ -290,20 +295,23 @@ function AccaBlock({ day }) {
     try {
       setTrackingAccaId(t.id);
       const stake = Number(t.stake_units ?? 1);
+      const legs = t.legs || [];
 
-      // Log the acca as a single bet in the tracker using combined price.
-      await placeAndTrackEdge(
-        {
-          fixture_id: null, // acca spans multiple fixtures
-          market: t.title || "ACCA",
-          bookmaker: "ACCA",
-          price: Number(t.combined_price),
-        },
-        {
-          stake,
-          sourceTipsterId: t.tipster_id || null,
-        }
-      );
+      // Track each leg so the bet tracker gets proper fixture/market/team names.
+      for (const l of legs) {
+        await placeAndTrackEdge(
+          {
+            fixture_id: Number(l.fixture_id) || null,
+            market: l.market,
+            bookmaker: l.bookmaker || "ACCA",
+            price: Number(l.price),
+          },
+          {
+            stake,
+            sourceTipsterId: t.tipster_id || null,
+          }
+        );
+      }
 
       setTrackedAccaIds((prev) =>
         prev.includes(t.id) ? prev : [...prev, t.id]
@@ -396,7 +404,6 @@ function AccaBlock({ day }) {
             </div>
           ) : null}
 
-          {/* ⭐ NEW: Track ACCA button */}
           <div style={{ marginTop: 8, textAlign: "right" }}>
             {user ? (
               <button
@@ -437,15 +444,14 @@ export default function PublicDashboard() {
   const [err, setErr] = useState("");
   const [showAll, setShowAll] = useState(false);
 
-  // following feed (mini widget)
   const [followingFeed, setFollowingFeed] = useState([]);
   const [followingErr, setFollowingErr] = useState("");
 
   const isMobile = useIsMobile(700);
 
-  // ⭐ NEW: tracking state for featured picks
-  const [trackingPickId, setTrackingPickId] = useState(null);
-  const [trackedPickIds, setTrackedPickIds] = useState([]);
+  // track state with a composite key per pick
+  const [trackingPickKey, setTrackingPickKey] = useState(null);
+  const [trackedPickKeys, setTrackedPickKeys] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -553,8 +559,10 @@ export default function PublicDashboard() {
   const sportOptions = ["all", "football", "nba", "nhl", "nfl", "cfb"];
   const shown = showAll ? picks : picks.slice(0, 3);
 
-  // ⭐ NEW: handler for tracking a featured pick
-  const handleTrackPick = async (p, resolvedPick, evt) => {
+  const makePickKey = (p) =>
+    `${p.id ?? "p"}_${p.fixture_id ?? "fx"}_${p.market}_${p.bookmaker}_${p.price}`;
+
+  const handleTrackPick = async (p, resolvedPick, pickKey, evt) => {
     if (evt) {
       evt.preventDefault();
       evt.stopPropagation();
@@ -566,7 +574,7 @@ export default function PublicDashboard() {
     }
 
     try {
-      setTrackingPickId(p.id);
+      setTrackingPickKey(pickKey);
       const stake = Number(p.stake_units ?? 1);
 
       await placeAndTrackEdge(
@@ -582,14 +590,14 @@ export default function PublicDashboard() {
         }
       );
 
-      setTrackedPickIds((prev) =>
-        prev.includes(p.id) ? prev : [...prev, p.id]
+      setTrackedPickKeys((prev) =>
+        prev.includes(pickKey) ? prev : [...prev, pickKey]
       );
     } catch (e) {
       console.error("Failed to track featured pick", e);
       alert("Could not add this pick to your bet tracker.");
     } finally {
-      setTrackingPickId(null);
+      setTrackingPickKey(null);
     }
   };
 
@@ -673,8 +681,9 @@ export default function PublicDashboard() {
           <>
             {shown.map((p, i) => {
               const d = resolvePick(p);
-              const tracked = trackedPickIds.includes(p.id);
-              const tracking = trackingPickId === p.id;
+              const pickKey = makePickKey(p);
+              const tracked = trackedPickKeys.includes(pickKey);
+              const tracking = trackingPickKey === pickKey;
 
               return (
                 <Link
@@ -696,9 +705,7 @@ export default function PublicDashboard() {
                     </div>
                     <div style={{ textAlign: "center" }}>
                       <div>{toUK(d.ko, { withZone: true })}</div>
-                      <div
-                        style={{ fontSize: 11, opacity: 0.75 }}
-                      >
+                      <div style={{ fontSize: 11, opacity: 0.75 }}>
                         {prettyComp(d.comp)}
                       </div>
                     </div>
@@ -741,7 +748,7 @@ export default function PublicDashboard() {
                             padding: "4px 10px",
                           }}
                           onClick={(evt) =>
-                            handleTrackPick(p, d, evt)
+                            handleTrackPick(p, d, pickKey, evt)
                           }
                           disabled={tracking}
                         >
@@ -763,9 +770,7 @@ export default function PublicDashboard() {
                   style={S.btn}
                   onClick={() => setShowAll((s) => !s)}
                 >
-                  {showAll
-                    ? "Show less"
-                    : `Show all (${picks.length})`}
+                  {showAll ? "Show less" : `Show all (${picks.length})`}
                 </button>
               </div>
             )}
@@ -809,9 +814,7 @@ export default function PublicDashboard() {
         )}
 
         {user && followingErr && (
-          <div style={{ fontSize: 13, color: "#ffb3b3" }}>
-            {followingErr}
-          </div>
+          <div style={{ fontSize: 13, color: "#ffb3b3" }}>{followingErr}</div>
         )}
 
         {user && !followingErr && followingFeed.length === 0 && (
