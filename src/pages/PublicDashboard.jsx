@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { api, API_BASE } from "../api";
 import FeaturedRecord from "../components/FeaturedRecord";
 import { useAuth } from "../components/AuthGate";
-import { placeAndTrackEdge } from "../utils/placeAndTrack"; // ⭐ uses same helper
+import { placeAndTrackEdge } from "../utils/placeAndTrack"; // ⭐ track helper
 
 /* ---------------- utils ---------------- */
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -297,7 +297,7 @@ function AccaBlock({ day }) {
       const stake = Number(t.stake_units ?? 1);
       const legs = t.legs || [];
 
-      // Track each leg so the bet tracker gets proper fixture/market/team names.
+      // Track each leg so the tracker has proper fixture & market rows
       for (const l of legs) {
         await placeAndTrackEdge(
           {
@@ -444,12 +444,13 @@ export default function PublicDashboard() {
   const [err, setErr] = useState("");
   const [showAll, setShowAll] = useState(false);
 
+  // following feed (mini widget)
   const [followingFeed, setFollowingFeed] = useState([]);
   const [followingErr, setFollowingErr] = useState("");
 
   const isMobile = useIsMobile(700);
 
-  // track state with a composite key per pick
+  // tracking state for featured picks (per-row key)
   const [trackingPickKey, setTrackingPickKey] = useState(null);
   const [trackedPickKeys, setTrackedPickKeys] = useState([]);
 
@@ -559,9 +560,7 @@ export default function PublicDashboard() {
   const sportOptions = ["all", "football", "nba", "nhl", "nfl", "cfb"];
   const shown = showAll ? picks : picks.slice(0, 3);
 
-  const makePickKey = (p) =>
-    `${p.id ?? "p"}_${p.fixture_id ?? "fx"}_${p.market}_${p.bookmaker}_${p.price}`;
-
+  // handler for tracking a featured pick
   const handleTrackPick = async (p, resolvedPick, pickKey, evt) => {
     if (evt) {
       evt.preventDefault();
@@ -681,7 +680,9 @@ export default function PublicDashboard() {
           <>
             {shown.map((p, i) => {
               const d = resolvePick(p);
-              const pickKey = makePickKey(p);
+
+              // unique visual key per row per day/sport
+              const pickKey = `${day}_${sport}_${i}`;
               const tracked = trackedPickKeys.includes(pickKey);
               const tracking = trackingPickKey === pickKey;
 
@@ -814,7 +815,9 @@ export default function PublicDashboard() {
         )}
 
         {user && followingErr && (
-          <div style={{ fontSize: 13, color: "#ffb3b3" }}>{followingErr}</div>
+          <div style={{ fontSize: 13, color: "#ffb3b3" }}>
+            {followingErr}
+          </div>
         )}
 
         {user && !followingErr && followingFeed.length === 0 && (
