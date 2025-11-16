@@ -172,16 +172,21 @@ export default function BetTracker() {
 
   const exportCSV = () => {
     const header = ["id", "teams", "market", "bookmaker", "price", "stake", "result", "notes"];
-    const rows = filtered.map((b) => [
-      b.id,
-      b.teams || "",
-      b.market || "",
-      b.bookmaker || "",
-      asNum(b.price),
-      asNum(b.stake),
-      b.result || "",
-      (b.notes || "").replace(/[\r\n]+/g, " "),
-    ]);
+    const rows = filtered.map((b) => {
+      const isAcca = (b.bookmaker || "").toUpperCase() === "ACCA" && !b.fixture_id;
+      const teamsLabel = isAcca ? (b.market || "ACCA") : (b.teams || "");
+      const marketLabel = isAcca ? "ACCA" : (b.market || "");
+      return [
+        b.id,
+        teamsLabel,
+        marketLabel,
+        b.bookmaker || "",
+        asNum(b.price),
+        asNum(b.stake),
+        b.result || "",
+        (b.notes || "").replace(/[\r\n]+/g, " "),
+      ];
+    });
     const csv = [header, ...rows]
       .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
       .join("\n");
@@ -332,30 +337,36 @@ export default function BetTracker() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((b) => (
-              <tr key={b.id}>
-                <td>{b.teams || "—"}</td>
-                <td>{b.market}</td>
-                <td>{b.bookmaker}</td>
-                <td>{fmt(b.price)}</td>
-                <td>£{fmt(b.stake)}</td>
-                <td
-                  className={
-                    b.result
-                      ? styles[`r_${(b.result || "").toLowerCase()}`]
-                      : styles.r_pending
-                  }
-                >
-                  {b.result || "Pending"}
-                </td>
-                <td>
-                  <button onClick={() => settleBet(b.id, "won")}>Won</button>
-                  <button onClick={() => settleBet(b.id, "lost")}>Lost</button>
-                  <button onClick={() => settleBet(b.id, "void")}>Void</button>
-                  <button onClick={() => deleteBet(b.id)}>🗑</button>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((b) => {
+              const isAcca = (b.bookmaker || "").toUpperCase() === "ACCA" && !b.fixture_id;
+              const teamsLabel = isAcca ? (b.market || "ACCA") : (b.teams || "—");
+              const marketLabel = isAcca ? "ACCA" : (b.market || "—");
+
+              return (
+                <tr key={b.id}>
+                  <td>{teamsLabel}</td>
+                  <td>{marketLabel}</td>
+                  <td>{b.bookmaker}</td>
+                  <td>{fmt(b.price)}</td>
+                  <td>£{fmt(b.stake)}</td>
+                  <td
+                    className={
+                      b.result
+                        ? styles[`r_${(b.result || "").toLowerCase()}`]
+                        : styles.r_pending
+                    }
+                  >
+                    {b.result || "Pending"}
+                  </td>
+                  <td>
+                    <button onClick={() => settleBet(b.id, "won")}>Won</button>
+                    <button onClick={() => settleBet(b.id, "lost")}>Lost</button>
+                    <button onClick={() => settleBet(b.id, "void")}>Void</button>
+                    <button onClick={() => deleteBet(b.id)}>🗑</button>
+                  </td>
+                </tr>
+              );
+            })}
             {!filtered.length && (
               <tr>
                 <td colSpan="7" style={{ opacity: 0.6 }}>
