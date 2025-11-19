@@ -12,7 +12,7 @@ import {
   signOut,
 } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
-import { fetchCurrentUser } from "../api"; // <- /auth/me wrapper
+import { fetchCurrentUser } from "../api";
 
 const AuthContext = createContext(null);
 export function useAuth() {
@@ -21,7 +21,7 @@ export function useAuth() {
 
 export default function AuthGate({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null);
-  const [profile, setProfile] = useState(null); // backend user row (incl is_premium)
+  const [profile, setProfile] = useState(null); // backend user row
   const [initializing, setInitializing] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
@@ -29,10 +29,9 @@ export default function AuthGate({ children }) {
     const loadProfile = async () => {
       setLoadingProfile(true);
       try {
-        const p = await fetchCurrentUser(); // calls /auth/me
+        const p = await fetchCurrentUser(); // GET /auth/me
         setProfile(p);
-      } catch (err) {
-        // 401 or other error => treat as no backend profile yet
+      } catch {
         setProfile(null);
       } finally {
         setLoadingProfile(false);
@@ -47,18 +46,16 @@ export default function AuthGate({ children }) {
         setInitializing(false);
         return;
       }
-      // firebase user present -> fetch backend profile
       loadProfile();
     });
 
-    // If Firebase rotates the ID token, reload profile (optional but nice)
     const unsubToken = onIdTokenChanged(auth, (u) => {
       if (!u) {
         setFirebaseUser(null);
         setProfile(null);
         return;
       }
-      // we already have user, but token changed – you *can* refresh profile here
+      // Optional: refresh profile
       // loadProfile();
     });
 
@@ -77,9 +74,15 @@ export default function AuthGate({ children }) {
   };
 
   const value = {
+    // NEW Stripe/Firebase data
     firebaseUser,
     profile,
+    backendUser: profile,
     isPremium: !!profile?.is_premium,
+
+    // BACKWARDS COMPAT — this fixes your Tipsters/Follows/Bets/NavBar
+    user: firebaseUser,
+
     initializing: initializing || loadingProfile,
     loginWithGoogle,
     logout,
