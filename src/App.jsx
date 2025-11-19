@@ -31,7 +31,7 @@ import TipsterAddAcca from "./pages/TipsterAddAcca";
 import TipsterEdit from "./pages/TipsterEdit";
 import AccountPage from "./pages/AccountPage";
 import FollowingFeedPage from "./pages/FollowingFeedPage";
-
+import PremiumPage from "./pages/PremiumPage";
 import NavBar from "./components/NavBar";
 
 function App() {
@@ -72,6 +72,7 @@ function App() {
           <Route path="/tipsters/:username/edit" element={<TipsterEdit />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/following" element={<FollowingFeedPage />} />
+          <Route path="/premium" element={<PremiumPage />} />
           
         </Routes>
       </main>

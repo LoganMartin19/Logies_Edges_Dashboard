@@ -10,15 +10,17 @@ export default function NavBar() {
   const [sportsOpen, setSportsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [myTipster, setMyTipster] = useState(null);
-  const { user, initializing, logout } = useAuth();
+
+  // 🔁 updated for new AuthGate shape
+  const { firebaseUser, isPremium, initializing, logout } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      fetchMyTipster().then(setMyTipster);
+    if (firebaseUser) {
+      fetchMyTipster().then(setMyTipster).catch(() => setMyTipster(null));
     } else {
       setMyTipster(null);
     }
-  }, [user]);
+  }, [firebaseUser]);
 
   const toggleMenu = () =>
     setMenuOpen((p) => {
@@ -41,8 +43,8 @@ export default function NavBar() {
   const toggleUserMenu = () => setUserMenuOpen((p) => !p);
 
   const displayInitial =
-    (user?.displayName && user.displayName[0]) ||
-    (user?.email && user.email[0]) ||
+    (firebaseUser?.displayName && firebaseUser.displayName[0]) ||
+    (firebaseUser?.email && firebaseUser.email[0]) ||
     "U";
 
   return (
@@ -82,6 +84,7 @@ export default function NavBar() {
               Dashboard
             </NavLink>
           </li>
+
           <li>
             <NavLink
               to="/fixtures"
@@ -168,6 +171,7 @@ export default function NavBar() {
               Performance
             </NavLink>
           </li>
+
           <li>
             <NavLink
               to="/bets"
@@ -198,9 +202,20 @@ export default function NavBar() {
             </NavLink>
           </li>
 
+          {/* 🔥 Premium top-level nav item */}
+          <li>
+            <NavLink
+              to="/premium"
+              onClick={closeMenu}
+              className={({ isActive }) => (isActive ? styles.active : "")}
+            >
+              {isPremium ? "Premium ✅" : "Premium"}
+            </NavLink>
+          </li>
+
           {/* Right side auth */}
           {!initializing &&
-            (user ? (
+            (firebaseUser ? (
               <li
                 className={`${styles.dropdown} ${
                   userMenuOpen ? styles.dropdownOpen : ""
@@ -234,6 +249,18 @@ export default function NavBar() {
                       }
                     >
                       Following feed
+                    </NavLink>
+                  </li>
+
+                  {/* ⭐ Premium & billing always visible when logged in */}
+                  <li>
+                    <NavLink
+                      to="/premium"
+                      className={({ isActive }) =>
+                        isActive ? styles.active : ""
+                      }
+                    >
+                      Premium &amp; Billing
                     </NavLink>
                   </li>
 

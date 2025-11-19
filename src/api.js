@@ -10,7 +10,9 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// --- Attach Firebase ID token if logged in ---
+// -----------------------------
+// Attach Firebase ID token
+// -----------------------------
 api.interceptors.request.use(async (config) => {
   const u = auth?.currentUser;
   if (u) {
@@ -25,19 +27,28 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// --- Optional: handle expired/invalid tokens globally ---
+// -----------------------------
+// Handle 401 gracefully (NO redirect for public pages)
+// -----------------------------
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err?.response?.status === 401 && window.location.pathname !== "/login") {
-      window.location.href = "/login";
+    if (err?.response?.status === 401) {
+      // Many routes are public; just bubble up the error
+      return Promise.reject(err);
     }
     return Promise.reject(err);
   }
 );
 
 // -----------------------------
-// Public site helpers
+// Auth: /auth/me
+// -----------------------------
+export const fetchCurrentUser = () =>
+  api.get("/auth/me").then((r) => r.data);
+
+// -----------------------------
+// Public helpers
 // -----------------------------
 export const fetchShortlist = () =>
   api.get("/shortlist").then((r) => r.data);
@@ -50,15 +61,12 @@ export const fetchDailyFixtures = (day, sport = "all") =>
 // -----------------------------
 // Tipsters Platform
 // -----------------------------
-
 export const fetchTipsters = ({ sort = "roi_30d_desc", sport } = {}) =>
   api.get("/api/tipsters", { params: { sort, sport } }).then((r) => r.data);
 
-// ✅ Helper: find the current user’s tipster by scanning the list
-// ✅ Get the current user’s tipster profile directly
+// Get logged-in user's own tipster profile
 export const fetchMyTipster = async () => {
   const res = await api.get("/api/tipsters/me");
-  // when not a tipster yet, backend returns null
   return res.data || null;
 };
 
@@ -88,7 +96,6 @@ export const settleTipsterPick = (pickId, result) =>
     .post(`/api/tipsters/picks/${pickId}/settle`, { result })
     .then((r) => r.data);
 
-// delete a pick (only before kickoff / if not settled)
 export const deleteTipsterPick = (pickId) =>
   api.delete(`/api/tipsters/picks/${pickId}`).then((r) => r.data);
 
@@ -112,31 +119,49 @@ export const settleTipsterAcca = (accaId, result) =>
     .post(`/api/tipsters/accas/${accaId}/settle`, { result })
     .then((r) => r.data);
 
-// delete an acca (only before earliest leg kicks off / if not settled)
 export const deleteTipsterAcca = (accaId) =>
   api.delete(`/api/tipsters/accas/${accaId}`).then((r) => r.data);
 
-// --- Tipsters follow/unfollow ---
-
+// ----- Tipsters follow/unfollow -----
 export const followTipster = async (username) => {
   const res = await api.post(
     `/api/tipsters/${encodeURIComponent(username)}/follow`
   );
-  return res.data; // { ok, status, follower_count }
+  return res.data;
 };
 
 export const unfollowTipster = async (username) => {
   const res = await api.delete(
     `/api/tipsters/${encodeURIComponent(username)}/follow`
   );
-  return res.data; // { ok, status, follower_count }
+  return res.data;
 };
 
-// --- Following Feed ---
+// ----- Following feed -----
 export const fetchFollowingList = async () =>
   api.get("/api/tipsters/following/list").then((r) => r.data);
 
-export const fetchFollowingFeed = async () => {
-  const res = await api.get("/api/tipsters/following/feed");
-  return res.data; // [] when not following anyone / no picks
+export const fetchFollowingFeed = async () =>
+  api.get("/api/tipsters/following/feed").then((r) => r.data);
+
+// -----------------------------
+// Billing (Stripe)
+// -----------------------------
+
+// Start Stripe Checkout for premium
+export const startPremiumCheckout = async () => {
+  const res = await api.post("/api/billing/create-checkout-session");
+  return res.data; // { checkout_url }
+};
+
+// Stripe customer billing portal (manage subscription)
+export const fetchBillingPortal = async () => {
+  const res = await api.post("/api/billing/customer-portal");
+  return res.data; // { url }
+};
+
+// Check current billing / premium status from backend
+export const fetchBillingStatus = async () => {
+  const res = await api.get("/api/billing/status");
+  return res.data; // e.g. { is_premium, stripe_customer_id, ... }
 };
