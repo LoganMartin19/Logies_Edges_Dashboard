@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchTipsters, fetchTipster } from "../api";
+import PremiumUpsellBanner from "../components/PremiumUpsellBanner";
 
 const tone = (v = 0) => (v > 0 ? "good" : v < 0 ? "bad" : "muted");
 
@@ -174,6 +175,12 @@ export default function TipstersPage() {
         </div>
       </div>
 
+      {/* ⭐ Premium upsell – gold button linking to /premium for non-premium users */}
+      <PremiumUpsellBanner
+        mode="link"
+        message="Unlock premium-only tipsters, extended records, and model-led picks with CSB Premium."
+      />
+
       {sorted.length === 0 ? (
         <p style={{ color: "#eaf4ed" }}>No tipsters yet.</p>
       ) : (
@@ -311,7 +318,7 @@ export default function TipstersPage() {
           align-items: flex-end;
           gap: 12px;
           flex-wrap: wrap;
-          margin-bottom: 12px;
+          margin-bottom: 8px;
         }
 
         h1 {

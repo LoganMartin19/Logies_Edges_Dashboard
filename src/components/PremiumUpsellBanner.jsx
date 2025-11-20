@@ -1,19 +1,30 @@
 // src/components/PremiumUpsellBanner.jsx
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthGate";
 import { startPremiumCheckout } from "../api";
 
 export default function PremiumUpsellBanner({
   message = "Unlock full CSB model edges, premium tipster picks, and deeper stats with CSB Premium.",
+  mode = "checkout", // "checkout" | "link"
 }) {
   const { firebaseUser, isPremium, loginWithGoogle } = useAuth();
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
+  const navigate = useNavigate();
 
   if (isPremium) return null; // don’t show to premium users
 
   const handleClick = async () => {
     setError("");
+
+    // ✅ Simple navigation mode – just go to Premium page
+    if (mode === "link") {
+      navigate("/premium");
+      return;
+    }
+
+    // ✅ Checkout mode – current behaviour
     try {
       if (!firebaseUser) {
         await loginWithGoogle();
@@ -58,21 +69,30 @@ export default function PremiumUpsellBanner({
           borderRadius: "999px",
           border: "none",
           cursor: "pointer",
-          background: "linear-gradient(135deg, #22c55e, #16a34a)",
+          // 🟡 gold-ish button
+          background: "linear-gradient(135deg, #facc15, #eab308)",
           color: "#020617",
           fontWeight: 600,
           fontSize: "0.85rem",
           whiteSpace: "nowrap",
         }}
       >
-        {firebaseUser
+        {mode === "link"
+          ? "Go Premium"
+          : firebaseUser
           ? loading
             ? "Loading…"
             : "Upgrade"
           : "Sign in & upgrade"}
       </button>
       {error && (
-        <div style={{ fontSize: "0.75rem", color: "#fecaca", marginLeft: "0.75rem" }}>
+        <div
+          style={{
+            fontSize: "0.75rem",
+            color: "#fecaca",
+            marginLeft: "0.75rem",
+          }}
+        >
           {error}
         </div>
       )}

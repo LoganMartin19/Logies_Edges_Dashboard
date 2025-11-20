@@ -5,6 +5,7 @@ import { api, API_BASE } from "../api";
 import FeaturedRecord from "../components/FeaturedRecord";
 import { useAuth } from "../components/AuthGate";
 import { placeAndTrackEdge } from "../utils/placeAndTrack"; // ⭐ track helper
+import PremiumUpsellBanner from "../components/PremiumUpsellBanner"; // ⭐ NEW
 
 /* ---------------- utils ---------------- */
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -274,7 +275,6 @@ const FixtureCard = ({ f }) => (
 );
 
 /* -------------------- ACCA block ------------------- */
-/* -------------------- ACCA block ------------------- */
 function AccaBlock({ day }) {
   const { user } = useAuth();
   const [accas, setAccas] = useState([]);
@@ -300,8 +300,8 @@ function AccaBlock({ day }) {
       // ⭐ Log ONE combined acca line in the tracker
       await placeAndTrackEdge(
         {
-          fixture_id: null,                        // spans multiple games
-          market: t.title || "ACCA",              // e.g. "Saturday Value Acca ~5.85x"
+          fixture_id: null, // spans multiple games
+          market: t.title || "ACCA", // e.g. "Saturday Value Acca ~5.85x"
           bookmaker: "ACCA",
           price: Number(t.combined_price),
         },
@@ -384,8 +384,7 @@ function AccaBlock({ day }) {
                 </div>
                 <div style={{ textAlign: "right" }}>{l.market}</div>
                 <div style={{ textAlign: "right" }}>
-                  {l.price?.toFixed(2)}{" "}
-                  {l.bookmaker ? `(${l.bookmaker})` : ""}
+                  {l.price?.toFixed(2)} {l.bookmaker ? `(${l.bookmaker})` : ""}
                 </div>
               </div>
             ))}
@@ -418,7 +417,11 @@ function AccaBlock({ day }) {
             ) : (
               <Link
                 to="/login"
-                style={{ fontSize: 12, color: "#9be7ff", textDecoration: "none" }}
+                style={{
+                  fontSize: 12,
+                  color: "#9be7ff",
+                  textDecoration: "none",
+                }}
               >
                 Log in to track →
               </Link>
@@ -648,6 +651,12 @@ export default function PublicDashboard() {
           </div>
         )}
       </div>
+
+      {/* ⭐ Premium upsell – links to /premium, hidden for Premium users */}
+      <PremiumUpsellBanner
+        mode="link"
+        message="Go Premium to unlock full CSB model edges, extra featured picks, and deeper stats across today’s card."
+      />
 
       {/* Featured Picks */}
       <div style={S.picksWrap}>
