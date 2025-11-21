@@ -149,8 +149,14 @@ export const fetchFollowingFeed = async () =>
 // -----------------------------
 
 // Start Stripe Checkout for premium
+// -----------------------------
+// Billing (Stripe)
+// -----------------------------
+
+// Start Stripe Checkout for premium
 export const startPremiumCheckout = async () => {
-  const res = await api.post("/api/billing/create-checkout-session");
+  // was: "/api/billing/create-checkout-session"
+  const res = await api.post("/api/billing/premium/checkout");
   return res.data; // { checkout_url }
 };
 
