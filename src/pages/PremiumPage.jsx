@@ -1,13 +1,38 @@
 // src/pages/PremiumPage.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthGate";
-import { startPremiumCheckout, fetchBillingPortal } from "../api";
+import {
+  startPremiumCheckout,
+  fetchBillingPortal,
+  fetchBillingStatus,
+} from "../api";
 
 export default function PremiumPage() {
-  const { firebaseUser, isPremium, loginWithGoogle } = useAuth();
+  const {
+    firebaseUser,
+    isPremium,
+    loginWithGoogle,
+    updatePremiumStatus, // <-- added in AuthGate
+  } = useAuth();
+
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [error, setError] = useState("");
+
+  // Ask backend on page load whether this user is premium
+  useEffect(() => {
+    if (!firebaseUser) return;
+
+    (async () => {
+      try {
+        const data = await fetchBillingStatus(); // GET /api/billing/status
+        // Safely update the auth context if helper exists
+        updatePremiumStatus?.(data.is_premium);
+      } catch (err) {
+        console.error("Billing status fetch failed:", err);
+      }
+    })();
+  }, [firebaseUser, updatePremiumStatus]);
 
   const handleUpgradeClick = async () => {
     setError("");
@@ -243,8 +268,7 @@ export default function PremiumPage() {
             style={{
               borderRadius: "1rem",
               padding: "1.75rem",
-              background:
-                "linear-gradient(145deg, #0F5132, #0B3D2E)",
+              background: "linear-gradient(145deg, #0F5132, #0B3D2E)",
               border: "1px solid rgba(34, 197, 94, 0.6)",
               boxShadow: "0 18px 45px rgba(0, 0, 0, 0.75)",
             }}
@@ -311,8 +335,7 @@ export default function PremiumPage() {
                   cursor: "pointer",
                   fontWeight: 600,
                   fontSize: "0.95rem",
-                  background:
-                    "linear-gradient(135deg, #22C55E, #16A34A)",
+                  background: "linear-gradient(135deg, #22C55E, #16A34A)",
                   color: "#020617",
                   marginBottom: "0.75rem",
                   opacity: loadingCheckout ? 0.8 : 1,

@@ -55,7 +55,7 @@ export default function AuthGate({ children }) {
         setProfile(null);
         return;
       }
-      // Optional: refresh profile
+      // Optional: could refresh profile here
       // loadProfile();
     });
 
@@ -73,19 +73,29 @@ export default function AuthGate({ children }) {
     setProfile(null);
   };
 
+  // 🔥 New: let other components (like PremiumPage) update premium flag
+  const updatePremiumStatus = (isPremiumFlag) => {
+    setProfile((prev) =>
+      prev ? { ...prev, is_premium: !!isPremiumFlag } : prev
+    );
+  };
+
   const value = {
-    // NEW Stripe/Firebase data
+    // Stripe/Firebase data
     firebaseUser,
     profile,
     backendUser: profile,
     isPremium: !!profile?.is_premium,
 
-    // BACKWARDS COMPAT — this fixes your Tipsters/Follows/Bets/NavBar
+    // Backwards compat
     user: firebaseUser,
 
     initializing: initializing || loadingProfile,
     loginWithGoogle,
     logout,
+
+    // NEW
+    updatePremiumStatus,
   };
 
   return (
