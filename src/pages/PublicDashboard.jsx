@@ -406,7 +406,7 @@ function AccaBlock({ day }) {
             {user ? (
               <button
                 style={{ ...S.btn, fontSize: 12, padding: "6px 10px" }}
-                onClick={() => handleTrackAcca(t)}
+                onClick={handleTrackAcca}
                 disabled={trackingAccaId === t.id}
               >
                 {trackingAccaId === t.id
@@ -563,7 +563,6 @@ export default function PublicDashboard() {
   const shown = showAll ? picks : picks.slice(0, 3);
 
   // handler for tracking a featured pick
-
   const handleTrackPick = async (p, resolvedPick, pickKey, evt) => {
     if (evt) {
       evt.preventDefault();
@@ -579,14 +578,15 @@ export default function PublicDashboard() {
     const bmUrl = getBookmakerUrl(p.bookmaker);
     const openUrl = bmUrl
       ? bmUrl
-      : "https://google.com/search?q=" + encodeURIComponent(p.bookmaker || "bet365");
+      : "https://google.com/search?q=" +
+        encodeURIComponent(p.bookmaker || "bet365");
 
     // must happen before any async work so popup blockers allow it
     window.open(openUrl, "_blank", "noopener");
 
     try {
       setTrackingPickKey(pickKey);
-      const stake = Number(p.stake_units ?? 1);
+      const stake = Number(p.stake ?? 1);
 
       await placeAndTrackEdge(
         {
@@ -789,6 +789,7 @@ export default function PublicDashboard() {
                       </span>
                       {user && (
                         <button
+                          type="button"
                           style={{
                             ...S.btn,
                             fontSize: 12,
