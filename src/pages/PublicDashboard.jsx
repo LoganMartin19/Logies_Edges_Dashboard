@@ -435,7 +435,7 @@ function AccaBlock({ day }) {
 
 /* --------------------- main page ------------------- */
 export default function PublicDashboard() {
-  const { user } = useAuth();
+  const { user, isPremium } = useAuth(); // 🔑 grab isPremium too
 
   const [day, setDay] = useState(todayISO());
   const [sport, setSport] = useState("all");
@@ -867,7 +867,7 @@ export default function PublicDashboard() {
           </div>
         )}
 
-        {user && followingFeed.length > 0 && (
+        {user && !followingErr && followingFeed.length > 0 && (
           <div style={{ overflowX: "auto" }}>
             <table style={{ ...S.tbl, marginTop: 4 }}>
               <thead>
@@ -883,65 +883,118 @@ export default function PublicDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {followingFeed.map((p) => (
-                  <tr key={p.id}>
-                    <td style={S.td}>
-                      <Link
-                        to={`/tipsters/${p.tipster_username}`}
-                        style={{
-                          color: "#9be7ff",
-                          textDecoration: "none",
-                        }}
-                      >
-                        {p.tipster_name || p.tipster_username}
-                      </Link>
-                    </td>
-                    <td style={S.td}>{p.fixture_label}</td>
-                    <td style={S.td}>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        {p.market}
-                        {/* 🔒 Premium badge on following feed */}
-                        {p.is_premium_only && (
+                {followingFeed.map((p) => {
+                  const locked = p.is_premium_only && !isPremium; // 🔒 same logic as tipster detail
+
+                  return (
+                    <tr key={p.id}>
+                      <td style={S.td}>
+                        <Link
+                          to={`/tipsters/${p.tipster_username}`}
+                          style={{
+                            color: "#9be7ff",
+                            textDecoration: "none",
+                          }}
+                        >
+                          {p.tipster_name || p.tipster_username}
+                        </Link>
+                      </td>
+                      <td style={S.td}>{p.fixture_label}</td>
+                      <td style={S.td}>
+                        {locked ? (
                           <span
                             style={{
-                              padding: "2px 6px",
-                              borderRadius: 999,
-                              background: "rgba(255,255,255,0.06)",
-                              border:
-                                "1px solid rgba(251,191,36,0.7)",
-                              color: "#FBBF24",
-                              fontSize: 10,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              fontSize: 12,
                             }}
                           >
-                            🔒
+                            <span style={{ opacity: 0.9 }}>Premium pick</span>
+                            <span
+                              style={{
+                                padding: "2px 6px",
+                                borderRadius: 999,
+                                background: "rgba(255,255,255,0.06)",
+                                border:
+                                  "1px solid rgba(251,191,36,0.7)",
+                                color: "#FBBF24",
+                                fontSize: 10,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                              }}
+                            >
+                              🔒
+                            </span>
+                            <Link
+                              to="/premium"
+                              style={{
+                                color: "#FBBF24",
+                                textDecoration: "underline",
+                                fontSize: 11,
+                              }}
+                            >
+                              Unlock +
+                            </Link>
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            {p.market}
+                            {p.is_premium_only && (
+                              <span
+                                style={{
+                                  padding: "2px 6px",
+                                  borderRadius: 999,
+                                  background: "rgba(255,255,255,0.06)",
+                                  border:
+                                    "1px solid rgba(251,191,36,0.7)",
+                                  color: "#FBBF24",
+                                  fontSize: 10,
+                                }}
+                              >
+                                🔒
+                              </span>
+                            )}
                           </span>
                         )}
-                      </span>
-                    </td>
-                    <td style={S.td}>{p.bookmaker || "—"}</td>
-                    <td style={S.td}>{p.price?.toFixed?.(2) ?? p.price}</td>
-                    <td style={S.td}>{p.stake ?? 1}</td>
-                    <td style={S.td}>{p.result || "—"}</td>
-                    <td
-                      style={{
-                        ...S.td,
-                        textAlign: "right",
-                        color:
-                          (p.profit ?? 0) >= 0 ? "#1db954" : "#d23b3b",
-                      }}
-                    >
-                      {typeof p.profit === "number"
-                        ? p.profit.toFixed(2)
-                        : "0.00"}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td style={S.td}>
+                        {locked ? "—" : p.bookmaker || "—"}
+                      </td>
+                      <td style={S.td}>
+                        {locked
+                          ? "—"
+                          : p.price?.toFixed?.(2) ?? p.price ?? "—"}
+                      </td>
+                      <td style={S.td}>{locked ? "—" : p.stake ?? 1}</td>
+                      <td style={S.td}>{locked ? "—" : p.result || "—"}</td>
+                      <td
+                        style={{
+                          ...S.td,
+                          textAlign: "right",
+                          color: locked
+                            ? "#eaf4ed"
+                            : (p.profit ?? 0) >= 0
+                            ? "#1db954"
+                            : "#d23b3b",
+                        }}
+                      >
+                        {locked
+                          ? "—"
+                          : typeof p.profit === "number"
+                          ? p.profit.toFixed(2)
+                          : "0.00"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
