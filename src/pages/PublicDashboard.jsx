@@ -6,6 +6,7 @@ import FeaturedRecord from "../components/FeaturedRecord";
 import { useAuth } from "../components/AuthGate";
 import { placeAndTrackEdge } from "../utils/placeAndTrack"; // ⭐ track helper
 import PremiumUpsellBanner from "../components/PremiumUpsellBanner"; // ⭐ NEW
+import { getBookmakerUrl } from "../utils/bookmakers";
 
 /* ---------------- utils ---------------- */
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -562,6 +563,7 @@ export default function PublicDashboard() {
   const shown = showAll ? picks : picks.slice(0, 3);
 
   // handler for tracking a featured pick
+
   const handleTrackPick = async (p, resolvedPick, pickKey, evt) => {
     if (evt) {
       evt.preventDefault();
@@ -572,6 +574,15 @@ export default function PublicDashboard() {
       window.location.href = "/login";
       return;
     }
+
+    // --- open bookmaker tab immediately (like FixturePage) ---
+    const bmUrl = getBookmakerUrl(p.bookmaker);
+    const openUrl = bmUrl
+      ? bmUrl
+      : "https://google.com/search?q=" + encodeURIComponent(p.bookmaker || "bet365");
+
+    // must happen before any async work so popup blockers allow it
+    window.open(openUrl, "_blank", "noopener");
 
     try {
       setTrackingPickKey(pickKey);
