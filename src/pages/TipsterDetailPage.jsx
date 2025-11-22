@@ -13,6 +13,7 @@ import {
   followTipster,
   unfollowTipster,
 } from "../api";
+import { useAuth } from "../components/AuthGate";
 
 /* ---------------- helpers ---------------- */
 const number = (x, d = 2) =>
@@ -412,6 +413,7 @@ function EquityChart({ points }) {
 export default function TipsterDetailPage() {
   const { username } = useParams();
   const nav = useNavigate();
+  const { isPremium, firebaseUser } = useAuth(); // 🔑 for lock / ownership checks
 
   const [tipster, setTipster] = useState(null);
   const [picks, setPicks] = useState([]);
@@ -427,7 +429,6 @@ export default function TipsterDetailPage() {
     fetchTipsterAccas(username).then(setAccas).catch(() => setAccas([]));
   }, [username]);
 
-  // 🔑 All hooks BEFORE any early return
   const fxMap = useFixturesMap(picks);
   const localStats = useLocalRollingFromPicks(picks);
   const stats = useMemo(
@@ -835,7 +836,34 @@ export default function TipsterDetailPage() {
                       />
                     </Link>
                   </td>
-                  <td>{p.market}</td>
+                  <td>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <span>{p.market}</span>
+                      {p.is_premium_only && (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontSize: 11,
+                            padding: "2px 8px",
+                            borderRadius: 999,
+                            background: "rgba(248, 250, 252, 0.04)",
+                            border: "1px solid rgba(251, 191, 36, 0.7)",
+                            color: "#FBBF24",
+                          }}
+                        >
+                          🔒 Premium
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td>{p.bookmaker || "—"}</td>
                   <td>{number(p.price)}</td>
                   <td>{number(p.stake)}</td>
@@ -1191,7 +1219,7 @@ export default function TipsterDetailPage() {
           text-align: left;
           font-weight: 500;
           opacity: 0.85;
-          background: rgba(0, 0, 0, 0.25); /* 🔧 dark header (kills white) */
+          background: rgba(0, 0, 0, 0.25);
           color: #eaf4ed;
         }
 

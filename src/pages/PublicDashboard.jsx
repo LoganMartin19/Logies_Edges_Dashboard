@@ -744,8 +744,36 @@ export default function PublicDashboard() {
                         gap: 8,
                       }}
                     >
-                      <span>
-                        {p.market} • {p.bookmaker} •{" "}
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        {p.market}
+                        {/* 🔒 Premium badge on featured picks */}
+                        {p.is_premium_only && (
+                          <span
+                            style={{
+                              padding: "2px 8px",
+                              borderRadius: 999,
+                              background: "rgba(255,255,255,0.06)",
+                              border:
+                                "1px solid rgba(251,191,36,0.7)",
+                              color: "#FBBF24",
+                              fontSize: 11,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            🔒 Premium
+                          </span>
+                        )}
+                        {" • "}
+                        {p.bookmaker}
+                        {" • "}
                         {p.edge && `${(p.edge * 100).toFixed(1)}%`}
                       </span>
                       {user && (
@@ -869,7 +897,33 @@ export default function PublicDashboard() {
                       </Link>
                     </td>
                     <td style={S.td}>{p.fixture_label}</td>
-                    <td style={S.td}>{p.market}</td>
+                    <td style={S.td}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        {p.market}
+                        {/* 🔒 Premium badge on following feed */}
+                        {p.is_premium_only && (
+                          <span
+                            style={{
+                              padding: "2px 6px",
+                              borderRadius: 999,
+                              background: "rgba(255,255,255,0.06)",
+                              border:
+                                "1px solid rgba(251,191,36,0.7)",
+                              color: "#FBBF24",
+                              fontSize: 10,
+                            }}
+                          >
+                            🔒
+                          </span>
+                        )}
+                      </span>
+                    </td>
                     <td style={S.td}>{p.bookmaker || "—"}</td>
                     <td style={S.td}>{p.price?.toFixed?.(2) ?? p.price}</td>
                     <td style={S.td}>{p.stake ?? 1}</td>
