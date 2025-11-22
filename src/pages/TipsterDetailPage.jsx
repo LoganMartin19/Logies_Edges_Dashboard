@@ -190,7 +190,8 @@ function computeTipsterStats(picks = [], fxMap = {}, rangeId = "30d") {
     };
   }
 
-  const rangeCfg = RANGE_OPTIONS.find((r) => r.id === rangeId) ?? RANGE_OPTIONS[0];
+  const rangeCfg =
+    RANGE_OPTIONS.find((r) => r.id === rangeId) ?? RANGE_OPTIONS[0];
   const now = new Date();
   let cutoff = null;
   if (rangeCfg.days != null) {
@@ -413,7 +414,7 @@ function EquityChart({ points }) {
 export default function TipsterDetailPage() {
   const { username } = useParams();
   const nav = useNavigate();
-  const { isPremium, firebaseUser } = useAuth(); // 🔑 for lock / ownership checks
+  const { isPremium } = useAuth(); // 🔑 for lock / ownership checks
 
   const [tipster, setTipster] = useState(null);
   const [picks, setPicks] = useState([]);
@@ -439,6 +440,7 @@ export default function TipsterDetailPage() {
   if (!tipster) return <div>Loading…</div>;
 
   const isOwner = !!tipster.is_owner;
+  const viewerCanSeePremium = isOwner || isPremium;
   const socials = tipster.social_links || {};
 
   const roiVal =
@@ -540,6 +542,8 @@ export default function TipsterDetailPage() {
       setBusyFollow(false);
     }
   };
+
+  const hasPremium = picks.some((p) => p.is_premium_only);
 
   return (
     <div className="page">
@@ -803,6 +807,29 @@ export default function TipsterDetailPage() {
 
       {/* RECENT PICKS TABLE */}
       <h3>Recent Picks</h3>
+
+      {/* small banner if there *are* premium picks but viewer can't see them */}
+      {hasPremium && !viewerCanSeePremium && (
+        <div
+          style={{
+            marginBottom: 8,
+            fontSize: 13,
+            padding: "6px 10px",
+            borderRadius: 8,
+            background: "rgba(251,191,36,0.08)",
+            border: "1px solid rgba(251,191,36,0.4)",
+          }}
+        >
+          Some picks are <strong>locked as Premium</strong>.{" "}
+          <Link
+            to="/premium"
+            style={{ color: "#FBBF24", textDecoration: "underline" }}
+          >
+            Unlock full card →
+          </Link>
+        </div>
+      )}
+
       <div className="tableWrap">
         <table className="picks">
           <thead>
@@ -822,6 +849,8 @@ export default function TipsterDetailPage() {
             {picks.map((p) => {
               const fx = fxMap[p.fixture_id];
               const settled = !!p.result;
+              const locked = p.is_premium_only && !viewerCanSeePremium;
+
               return (
                 <tr key={p.id}>
                   <td>
@@ -836,58 +865,112 @@ export default function TipsterDetailPage() {
                       />
                     </Link>
                   </td>
+
+                  {/* Market cell – lock if needed */}
                   <td>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <span>{p.market}</span>
-                      {p.is_premium_only && (
+                    {locked ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
                         <span
                           style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            fontSize: 11,
-                            padding: "2px 8px",
-                            borderRadius: 999,
-                            background: "rgba(248, 250, 252, 0.04)",
-                            border: "1px solid rgba(251, 191, 36, 0.7)",
-                            color: "#FBBF24",
+                            fontSize: 13,
+                            opacity: 0.9,
                           }}
                         >
-                          🔒 Premium
+                          🔒 Premium pick
                         </span>
-                      )}
-                    </div>
+                        <Link
+                          to="/premium"
+                          style={{
+                            fontSize: 11,
+                            color: "#FBBF24",
+                            textDecoration: "underline",
+                            whiteSpace: "nowrap",
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Unlock →
+                        </Link>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <span>{p.market}</span>
+                        {p.is_premium_only && (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              fontSize: 11,
+                              padding: "2px 8px",
+                              borderRadius: 999,
+                              background: "rgba(248, 250, 252, 0.04)",
+                              border:
+                                "1px solid rgba(251, 191, 36, 0.7)",
+                              color: "#FBBF24",
+                            }}
+                          >
+                            🔒 Premium
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </td>
-                  <td>{p.bookmaker || "—"}</td>
-                  <td>{number(p.price)}</td>
-                  <td>{number(p.stake)}</td>
+
+                  {/* Bookmaker */}
+                  <td>{locked ? "—" : p.bookmaker || "—"}</td>
+
+                  {/* Odds */}
+                  <td>{locked ? "—" : number(p.price)}</td>
+
+                  {/* Stake */}
+                  <td>{locked ? "—" : number(p.stake)}</td>
+
+                  {/* Result */}
                   <td>
-                    <ResultBadge result={p.result} />
+                    {locked ? (
+                      <span className="badge neutral">🔒</span>
+                    ) : (
+                      <ResultBadge result={p.result} />
+                    )}
                   </td>
+
+                  {/* EV */}
                   <td
                     style={{
                       textAlign: "right",
-                      color: (p.model_edge ?? 0) >= 0 ? "#1db954" : "#d23b3b",
+                      color:
+                        (p.model_edge ?? 0) >= 0 ? "#1db954" : "#d23b3b",
                     }}
                   >
-                    {p.model_edge == null
+                    {locked
+                      ? "—"
+                      : p.model_edge == null
                       ? "—"
                       : number(p.model_edge * 100, 1) + "%"}
                   </td>
+
+                  {/* Profit */}
                   <td
                     style={{
                       textAlign: "right",
                       color: (p.profit ?? 0) >= 0 ? "#1db954" : "#d23b3b",
                     }}
                   >
-                    {number(p.profit)}
+                    {locked ? "—" : number(p.profit)}
                   </td>
+
                   {isOwner && (
                     <td>
                       <div className="actionsCell">
@@ -1205,7 +1288,7 @@ export default function TipsterDetailPage() {
           font-size: 0.8rem;
           opacity: 0.75;
         }
-        
+
         .miniTable {
           width: 100%;
           border-collapse: collapse;
@@ -1302,7 +1385,7 @@ export default function TipsterDetailPage() {
 
         .actionsCell {
           display: flex;
-          align-items: center;
+          align-items: "center";
           gap: 8px;
           flex-wrap: wrap;
         }
