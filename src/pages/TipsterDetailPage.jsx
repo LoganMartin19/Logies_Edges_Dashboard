@@ -541,8 +541,14 @@ export default function TipsterDetailPage() {
     if (subBusy) return;
     try {
       setSubBusy(true);
-      const { checkout_url } = await startTipsterSubscription(username);
-      window.location.href = checkout_url; // ⬅️ redirect to Stripe
+      const data = await startTipsterSubscription(username);
+  
+      if (data?.checkout_url) {
+        window.location.href = data.checkout_url;  // 👈 send user to Stripe
+      } else {
+        console.error("No checkout_url in response", data);
+        alert("Could not start subscription. Please try again.");
+      }
     } catch (e) {
       if (e?.response?.status === 401) {
         nav("/login");
