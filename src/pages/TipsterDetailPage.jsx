@@ -541,8 +541,8 @@ export default function TipsterDetailPage() {
     if (subBusy) return;
     try {
       setSubBusy(true);
-      const data = await startTipsterSubscription(username);
-      setSubInfo(data);
+      const { checkout_url } = await startTipsterSubscription(username);
+      window.location.href = checkout_url; // ⬅️ redirect to Stripe
     } catch (e) {
       if (e?.response?.status === 401) {
         nav("/login");
