@@ -419,7 +419,7 @@ function EquityChart({ points }) {
 export default function TipsterDetailPage() {
   const { username } = useParams();
   const nav = useNavigate();
-  const { user, isPremium, loading } = useAuth(); // ⬅️ need user + loading
+  const { user, isPremium, loading } = useAuth();
 
   const [tipster, setTipster] = useState(null);
   const [picks, setPicks] = useState([]);
@@ -470,7 +470,6 @@ export default function TipsterDetailPage() {
   useEffect(() => {
     let cancelled = false;
 
-    // wait for Firebase auth to finish initialising
     if (loading) return;
 
     // guest viewer → no subscription info, but don't 401
