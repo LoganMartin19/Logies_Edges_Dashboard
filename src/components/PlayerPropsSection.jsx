@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api"; // ✅ env-based axios client
+import { useAuth } from "../components/AuthGate"; // 🔐 auth + premium
+import PremiumUpsellBanner from "../components/PremiumUpsellBanner"; // 🔒 upsell
 import styles from "../styles/PlayerPropsSection.module.css";
 
 function fmtPct(p) {
@@ -33,6 +35,8 @@ export default function PlayerPropsSection({
   initialSearch = "",
   restrictToPlayer = false,
 }) {
+  const { user, isPremium } = useAuth(); // 🔑 who you are + premium flag
+
   const [raw, setRaw] = useState([]);
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState("All");
@@ -40,6 +44,7 @@ export default function PlayerPropsSection({
   const [search, setSearch] = useState(initialSearch);
   const [expanded, setExpanded] = useState(null);
   const [err, setErr] = useState("");
+  const [locked, setLocked] = useState(false); // 🔒 premium-locked state
 
   // keep search in sync when parent changes (switching player)
   useEffect(() => {
@@ -48,9 +53,20 @@ export default function PlayerPropsSection({
 
   useEffect(() => {
     if (!fixtureId) return;
+
+    // 🔒 If not logged in or not premium → don't even bother calling API
+    if (!user || !isPremium) {
+      setLocked(true);
+      setRaw([]);
+      setLoading(false);
+      setErr("");
+      return;
+    }
+
     let alive = true;
     setLoading(true);
     setErr("");
+    setLocked(false);
 
     api
       .get("/football/player-props/fair", { params: { fixture_id: fixtureId } })
@@ -61,15 +77,23 @@ export default function PlayerPropsSection({
       .catch((e) => {
         if (!alive) return;
         console.error("Failed to load player prop fairs:", e);
-        setErr("Failed to load player props.");
-        setRaw([]);
+        const status = e?.response?.status;
+        if (status === 401 || status === 403) {
+          // backend premium gate → treat as locked
+          setLocked(true);
+          setRaw([]);
+          setErr("");
+        } else {
+          setErr("Failed to load player props.");
+          setRaw([]);
+        }
       })
       .finally(() => alive && setLoading(false));
 
     return () => {
       alive = false;
     };
-  }, [fixtureId]);
+  }, [fixtureId, user, isPremium]);
 
   // Add a nice display name for team
   const enriched = useMemo(
@@ -160,7 +184,7 @@ export default function PlayerPropsSection({
         `Ref cards/match: ${fmtNum(r.ref_cards_per_match, 2)}`
       );
 
-      const marketBlurb =
+    const marketBlurb =
       {
         "shots_over_1.5":
           "We model total shots with a Poisson process using the player's shots per 90. Probability shown is P(X > 1).",
@@ -222,6 +246,7 @@ export default function PlayerPropsSection({
                 <select
                   value={teamFilter}
                   onChange={(e) => setTeamFilter(e.target.value)}
+                  disabled={locked}
                 >
                   {teamOptions.map((t) => (
                     <option key={t} value={t}>
@@ -236,6 +261,7 @@ export default function PlayerPropsSection({
                 <select
                   value={marketFilter}
                   onChange={(e) => setMarketFilter(e.target.value)}
+                  disabled={locked}
                 >
                   {marketOptions.map((m) => (
                     <option key={m} value={m}>
@@ -251,109 +277,209 @@ export default function PlayerPropsSection({
               placeholder="Search player…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              disabled={locked}
             />
           </div>
         </div>
 
-        {loading ? (
-          <p className={styles.loading}>Loading player props…</p>
-        ) : err ? (
-          <p className={styles.empty} style={{ color: "#c00" }}>
-            {err}
-          </p>
-        ) : rows.length === 0 ? (
-          <p className={styles.empty}>No props match your filters.</p>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <colgroup>
-                <col style={{ width: "22%" }} />
-                <col style={{ width: "16%" }} />
-                <col style={{ width: "18%" }} />
-                <col style={{ width: "8%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "8%" }} />
-                <col style={{ width: "6%" }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th>Team</th>
-                  <th>Market</th>
-                  <th className={styles.num}>Min</th>
-                  <th className={styles.num}>Model p</th>
-                  <th className={styles.num}>Fair</th>
-                  <th className={styles.num}>Best</th>
-                  <th className={styles.num}>Edge</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, idx) => {
-                  const isOpen = expanded === idx;
-                  const edgePos = r.edge != null && r.edge > 0;
-                  return (
-                    <React.Fragment key={`${r.player_id}-${r.market}-${idx}`}>
-                      <tr className={styles.row}>
-                        <td className={styles.player}>{r.player || "—"}</td>
-                        <td className={styles.team}>{r.teamDisplay || "—"}</td>
+        {/* ---------- LOCKED / BLURRED STATE ---------- */}
+        {locked && (
+          <div className={styles.lockedWrap}>
+            {/* blurred fake table skeleton */}
+            <div className={styles.blurContainer}>
+              <div className={styles.blurInner}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Player</th>
+                      <th>Team</th>
+                      <th>Market</th>
+                      <th className={styles.num}>Min</th>
+                      <th className={styles.num}>Model p</th>
+                      <th className={styles.num}>Fair</th>
+                      <th className={styles.num}>Best</th>
+                      <th className={styles.num}>Edge</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[1, 2, 3, 4].map((i) => (
+                      <tr key={i} className={styles.skeletonRow}>
+                        <td className={styles.player}>
+                          <div className={styles.skelBar} />
+                        </td>
+                        <td className={styles.team}>
+                          <div className={styles.skelBar} />
+                        </td>
                         <td className={styles.market}>
-                          {MARKET_LABELS[r.market] || r.market}
-                          {r.line != null ? ` (${r.line})` : ""}
+                          <div className={styles.skelBar} />
                         </td>
                         <td className={styles.num}>
-                          {r.proj_minutes ?? "—"}
-                        </td>
-                        <td className={styles.num}>{fmtPct(r.prob)}</td>
-                        <td className={styles.num}>
-                          {fmtOdds(r.fair_odds)}
+                          <div className={styles.skelBarShort} />
                         </td>
                         <td className={styles.num}>
-                          {r.best_price
-                            ? `${r.bookmaker} @ ${fmtOdds(r.best_price)}`
-                            : "—"}
+                          <div className={styles.skelBarShort} />
                         </td>
-                        <td
-                          className={`${styles.num} ${
-                            edgePos ? styles.edgePos : ""
-                          }`}
-                        >
-                          {fmtEdge(r.edge)}
+                        <td className={styles.num}>
+                          <div className={styles.skelBarShort} />
                         </td>
-                        <td className={styles.action}>
-                          <button
-                            className={styles.whyBtn}
-                            onClick={() =>
-                              setExpanded(isOpen ? null : idx)
-                            }
-                            aria-expanded={isOpen}
-                          >
-                            {isOpen ? "Hide" : "Why?"}
-                          </button>
+                        <td className={styles.num}>
+                          <div className={styles.skelBarShort} />
                         </td>
+                        <td className={styles.num}>
+                          <div className={styles.skelBarShort} />
+                        </td>
+                        <td className={styles.action}></td>
                       </tr>
-                      {isOpen && (
-                        <tr className={styles.explainRow}>
-                          <td colSpan={9} className={styles.explainCell}>
-                            {explain(r).map((line, i) => (
-                              <div
-                                key={i}
-                                className={styles.explainLine}
-                              >
-                                • {line}
-                              </div>
-                            ))}
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* overlay */}
+              <div className={styles.blurOverlay}>
+                <PremiumUpsellBanner
+                  mode="inline"
+                  message="CSB player prop fair odds and edges are a Premium feature."
+                />
+                <button
+                  className={styles.unlockBtn}
+                  onClick={() => (window.location.href = "/premium")}
+                >
+                  🔒 Unlock CSB Player Props
+                </button>
+              </div>
+            </div>
+
+            {/* tiny helper text for logged-out users */}
+            {!user && (
+              <div className={styles.lockedHint}>
+                Already a member?{" "}
+                <a href="/login" style={{ color: "#9be7ff" }}>
+                  Log in →
+                </a>
+              </div>
+            )}
           </div>
+        )}
+
+        {/* ---------- PREMIUM USERS: REAL TABLE ---------- */}
+        {!locked && (
+          <>
+            {loading ? (
+              <p className={styles.loading}>Loading player props…</p>
+            ) : err ? (
+              <p className={styles.empty} style={{ color: "#c00" }}>
+                {err}
+              </p>
+            ) : rows.length === 0 ? (
+              <p className={styles.empty}>No props match your filters.</p>
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <colgroup>
+                    <col style={{ width: "22%" }} />
+                    <col style={{ width: "16%" }} />
+                    <col style={{ width: "18%" }} />
+                    <col style={{ width: "8%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "8%" }} />
+                    <col style={{ width: "6%" }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>Player</th>
+                      <th>Team</th>
+                      <th>Market</th>
+                      <th className={styles.num}>Min</th>
+                      <th className={styles.num}>Model p</th>
+                      <th className={styles.num}>Fair</th>
+                      <th className={styles.num}>Best</th>
+                      <th className={styles.num}>Edge</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r, idx) => {
+                      const isOpen = expanded === idx;
+                      const edgePos = r.edge != null && r.edge > 0;
+                      return (
+                        <React.Fragment
+                          key={`${r.player_id}-${r.market}-${idx}`}
+                        >
+                          <tr className={styles.row}>
+                            <td className={styles.player}>
+                              {r.player || "—"}
+                            </td>
+                            <td className={styles.team}>
+                              {r.teamDisplay || "—"}
+                            </td>
+                            <td className={styles.market}>
+                              {MARKET_LABELS[r.market] || r.market}
+                              {r.line != null ? ` (${r.line})` : ""}
+                            </td>
+                            <td className={styles.num}>
+                              {r.proj_minutes ?? "—"}
+                            </td>
+                            <td className={styles.num}>
+                              {fmtPct(r.prob)}
+                            </td>
+                            <td className={styles.num}>
+                              {fmtOdds(r.fair_odds)}
+                            </td>
+                            <td className={styles.num}>
+                              {r.best_price
+                                ? `${r.bookmaker} @ ${fmtOdds(
+                                    r.best_price
+                                  )}`
+                                : "—"}
+                            </td>
+                            <td
+                              className={`${styles.num} ${
+                                edgePos ? styles.edgePos : ""
+                              }`}
+                            >
+                              {fmtEdge(r.edge)}
+                            </td>
+                            <td className={styles.action}>
+                              <button
+                                className={styles.whyBtn}
+                                onClick={() =>
+                                  setExpanded(isOpen ? null : idx)
+                                }
+                                aria-expanded={isOpen}
+                              >
+                                {isOpen ? "Hide" : "Why?"}
+                              </button>
+                            </td>
+                          </tr>
+                          {isOpen && (
+                            <tr className={styles.explainRow}>
+                              <td
+                                colSpan={9}
+                                className={styles.explainCell}
+                              >
+                                {explain(r).map((line, i) => (
+                                  <div
+                                    key={i}
+                                    className={styles.explainLine}
+                                  >
+                                    • {line}
+                                  </div>
+                                ))}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
