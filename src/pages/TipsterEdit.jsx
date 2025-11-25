@@ -29,6 +29,10 @@ export default function TipsterEdit() {
       twitter: "",
       instagram: "",
     },
+    // 💸 local-only fields for editing
+    price_gbp: "", // string, e.g. "15.00"
+    subscriber_limit: "", // string, e.g. "50"
+    is_open_for_new_subs: true,
   });
 
   const [err, setErr] = useState("");
@@ -50,6 +54,18 @@ export default function TipsterEdit() {
         const twitter = socials.twitter || socials.x || "";
         const instagram = socials.instagram || "";
 
+        // convert cents → "xx.xx"
+        const priceCents = data.default_price_cents;
+        const price_gbp =
+          typeof priceCents === "number"
+            ? (priceCents / 100).toFixed(2)
+            : "";
+
+        const limit =
+          typeof data.subscriber_limit === "number"
+            ? String(data.subscriber_limit)
+            : "";
+
         setForm({
           name: data.name || "",
           username: data.username || "",
@@ -60,6 +76,12 @@ export default function TipsterEdit() {
             twitter,
             instagram,
           },
+          price_gbp,
+          subscriber_limit: limit,
+          is_open_for_new_subs:
+            data.is_open_for_new_subs !== undefined
+              ? !!data.is_open_for_new_subs
+              : true,
         });
       } catch (e) {
         setErr("Could not load tipster profile.");
@@ -85,7 +107,9 @@ export default function TipsterEdit() {
             <div className={styles.title}>Edit Tipster Profile</div>
             <div className={styles.subtitle}>Please log in first.</div>
           </div>
-          <Link to="/login" className={styles.btn}>Log in</Link>
+          <Link to="/login" className={styles.btn}>
+            Log in
+          </Link>
         </div>
       </div>
     );
@@ -117,6 +141,9 @@ export default function TipsterEdit() {
       social_links: { ...prev.social_links, [key]: e.target.value },
     }));
 
+  const updateCheckbox = (k) => (e) =>
+    setForm((prev) => ({ ...prev, [k]: e.target.checked }));
+
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
@@ -130,12 +157,38 @@ export default function TipsterEdit() {
       if (form.social_links.instagram.trim())
         cleanedSocials.instagram = form.social_links.instagram.trim();
 
+      // price "xx.xx" → cents int or null
+      let default_price_cents = null;
+      const trimmedPrice = (form.price_gbp || "").trim();
+      if (trimmedPrice) {
+        const numeric = Number(trimmedPrice);
+        if (!Number.isNaN(numeric) && numeric >= 0) {
+          default_price_cents = Math.round(numeric * 100);
+        }
+      }
+
+      // subscriber_limit string → int or null
+      let subscriber_limit = null;
+      const trimmedLimit = (form.subscriber_limit || "").trim();
+      if (trimmedLimit) {
+        const numericLimit = parseInt(trimmedLimit, 10);
+        if (!Number.isNaN(numericLimit) && numericLimit > 0) {
+          subscriber_limit = numericLimit;
+        }
+      }
+
       const payload = {
-        ...form,
+        name: form.name,
         username: sanitise(form.username || username),
         bio: form.bio || null,
         avatar_url: form.avatar_url || null,
+        sport_focus: form.sport_focus || null,
         social_links: cleanedSocials,
+        // 💸 new fields for backend
+        default_price_cents,
+        currency: "GBP",
+        subscriber_limit,
+        is_open_for_new_subs: !!form.is_open_for_new_subs,
       };
 
       const res = await tipstersCreate(payload);
@@ -145,9 +198,7 @@ export default function TipsterEdit() {
     } catch (e) {
       const msg = e?.response?.data?.detail || e.message;
       setErr(
-        msg === "username already exists"
-          ? "That username is taken."
-          : msg
+        msg === "username already exists" ? "That username is taken." : msg
       );
     } finally {
       setLoading(false);
@@ -164,7 +215,7 @@ export default function TipsterEdit() {
         <header className={styles.header}>
           <div className={styles.title}>Edit Tipster Profile</div>
           <div className={styles.subtitle}>
-            Update your public profile and social links.
+            Update your public profile, socials, and subscription settings.
           </div>
         </header>
 
@@ -245,6 +296,45 @@ export default function TipsterEdit() {
               onChange={updateSocial("instagram")}
               placeholder="@yourhandle or URL"
             />
+          </div>
+
+          {/* 💸 Subscription settings */}
+          <div className={styles.row}>
+            <label className={styles.label}>Monthly price (GBP)</label>
+            <input
+              className={styles.input}
+              type="number"
+              min="0"
+              step="0.50"
+              value={form.price_gbp}
+              onChange={update("price_gbp")}
+              placeholder="e.g. 15.00"
+            />
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.label}>Subscriber limit</label>
+            <input
+              className={styles.input}
+              type="number"
+              min="1"
+              step="1"
+              value={form.subscriber_limit}
+              onChange={update("subscriber_limit")}
+              placeholder="Leave blank for unlimited"
+            />
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.label}>
+              <input
+                type="checkbox"
+                checked={form.is_open_for_new_subs}
+                onChange={updateCheckbox("is_open_for_new_subs")}
+                style={{ marginRight: 8 }}
+              />
+              Open for new subscribers
+            </label>
           </div>
 
           <div className={styles.actions}>
