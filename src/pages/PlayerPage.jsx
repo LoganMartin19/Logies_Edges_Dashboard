@@ -3,10 +3,40 @@ import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import styles from "../styles/PlayerPage.module.css";
 import { api } from "../api";
+import PlayerPropsSection from "../components/PlayerPropsSection";
 
 const safe = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
 const fmtDate = (iso) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "2-digit" }) : "—";
+  iso
+    ? new Date(iso).toLocaleDateString(undefined, {
+        month: "short",
+        day: "2-digit",
+      })
+    : "—";
+
+/* -------- helpers for position display ---------- */
+
+function getPositionTag(pmeta = {}, sBlock = {}) {
+  const raw =
+    pmeta.position ||
+    pmeta.pos ||
+    sBlock?.games?.position ||
+    sBlock?.position ||
+    "";
+
+  if (!raw) return "N/A";
+
+  const r = String(raw).toLowerCase();
+
+  if (r.includes("goalkeeper") || r === "gk") return "GK";
+  if (r.includes("defender") || r === "d" || r === "df" || r.includes("back"))
+    return "DF";
+  if (r.includes("midfielder") || r === "m" || r === "mf") return "MF";
+  if (r.includes("forward") || r.includes("wing") || r.includes("striker") || r === "f" || r === "fw")
+    return "FW";
+
+  return raw.toString().slice(0, 3).toUpperCase();
+}
 
 /* ---------------- Small Components ---------------- */
 
@@ -71,10 +101,33 @@ function ShotsChart({ games }) {
     <div className={styles.card}>
       <div className={styles.cardHeader}>Shots (bars) & SoT (dots)</div>
       <div className="scrollX">
-        <svg width={W} height={H} onMouseLeave={() => setTip({ show: false })} className={styles.svg}>
-          <line x1={pad} y1={H - pad} x2={W - pad} y2={H - pad} className={styles.axis} />
-          <line x1={pad} y1={pad} x2={pad} y2={H - pad} className={styles.axis} />
-          <line x1={pad} x2={W - pad} y1={y(avg)} y2={y(avg)} className={styles.avgLine} />
+        <svg
+          width={W}
+          height={H}
+          onMouseLeave={() => setTip({ show: false })}
+          className={styles.svg}
+        >
+          <line
+            x1={pad}
+            y1={H - pad}
+            x2={W - pad}
+            y2={H - pad}
+            className={styles.axis}
+          />
+          <line
+            x1={pad}
+            y1={pad}
+            x2={pad}
+            y2={H - pad}
+            className={styles.axis}
+          />
+          <line
+            x1={pad}
+            x2={W - pad}
+            y1={y(avg)}
+            y2={y(avg)}
+            className={styles.avgLine}
+          />
           {data.map((g, i) => {
             const sh = +g.shots || 0;
             const st = +g.sot || 0;
@@ -91,13 +144,32 @@ function ShotsChart({ games }) {
                     show: true,
                     x: e.nativeEvent.offsetX,
                     y: e.nativeEvent.offsetY,
-                    html: `<strong>${fmtDate(g.date)}</strong><br/>Shots: ${sh}<br/>SoT: ${st}`,
+                    html: `<strong>${fmtDate(
+                      g.date
+                    )}</strong><br/>Shots: ${sh}<br/>SoT: ${st}`,
                   })
                 }
               >
-                <rect x={sx} y={by} width={colW} height={bh} rx="4" className={styles.barPrimary} />
-                <circle cx={cx} cy={cy} r="5" className={styles.dotPrimary} />
-                <text x={cx} y={H - 8} textAnchor="middle" className={styles.tick}>
+                <rect
+                  x={sx}
+                  y={by}
+                  width={colW}
+                  height={bh}
+                  rx="4"
+                  className={styles.barPrimary}
+                />
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r="5"
+                  className={styles.dotPrimary}
+                />
+                <text
+                  x={cx}
+                  y={H - 8}
+                  textAnchor="middle"
+                  className={styles.tick}
+                >
                   {(g.date || "").slice(5, 10)}
                 </text>
               </g>
@@ -119,7 +191,9 @@ function FoulsChart({ games }) {
   const H = 210;
   const pad = 30;
   const colW = (W - pad * 2) / Math.max(1, data.length) - 10;
-  const avg = committed.length ? committed.reduce((a, b) => a + b, 0) / committed.length : 0;
+  const avg = committed.length
+    ? committed.reduce((a, b) => a + b, 0) / committed.length
+    : 0;
   const [tip, setTip] = useState({ show: false });
   const x = (i) => pad + i * (colW + 10);
   const y = (v) => H - pad - (v / maxY) * (H - pad * 2);
@@ -127,12 +201,37 @@ function FoulsChart({ games }) {
 
   return (
     <div className={styles.card}>
-      <div className={styles.cardHeader}>Fouls — committed (bars) & drawn (dots)</div>
+      <div className={styles.cardHeader}>
+        Fouls — committed (bars) & drawn (dots)
+      </div>
       <div className="scrollX">
-        <svg width={W} height={H} onMouseLeave={() => setTip({ show: false })} className={styles.svg}>
-          <line x1={pad} y1={H - pad} x2={W - pad} y2={H - pad} className={styles.axis} />
-          <line x1={pad} y1={pad} x2={pad} y2={H - pad} className={styles.axis} />
-          <line x1={pad} x2={W - pad} y1={y(avg)} y2={y(avg)} className={styles.avgLineAlt} />
+        <svg
+          width={W}
+          height={H}
+          onMouseLeave={() => setTip({ show: false })}
+          className={styles.svg}
+        >
+          <line
+            x1={pad}
+            y1={H - pad}
+            x2={W - pad}
+            y2={H - pad}
+            className={styles.axis}
+          />
+          <line
+            x1={pad}
+            y1={pad}
+            x2={pad}
+            y2={H - pad}
+            className={styles.axis}
+          />
+          <line
+            x1={pad}
+            x2={W - pad}
+            y1={y(avg)}
+            y2={y(avg)}
+            className={styles.avgLineAlt}
+          />
           {data.map((g, i) => {
             const fc = +g.fouls_committed || 0;
             const fd = +g.fouls_drawn || 0;
@@ -149,13 +248,32 @@ function FoulsChart({ games }) {
                     show: true,
                     x: e.nativeEvent.offsetX,
                     y: e.nativeEvent.offsetY,
-                    html: `<strong>${fmtDate(g.date)}</strong><br/>Committed: ${fc}<br/>Drawn: ${fd}`,
+                    html: `<strong>${fmtDate(
+                      g.date
+                    )}</strong><br/>Committed: ${fc}<br/>Drawn: ${fd}`,
                   })
                 }
               >
-                <rect x={sx} y={by} width={colW} height={bh} rx="4" className={styles.barWarn} />
-                <circle cx={cx} cy={cy} r="5" className={styles.dotWarn} />
-                <text x={cx} y={H - 8} textAnchor="middle" className={styles.tick}>
+                <rect
+                  x={sx}
+                  y={by}
+                  width={colW}
+                  height={bh}
+                  rx="4"
+                  className={styles.barWarn}
+                />
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r="5"
+                  className={styles.dotWarn}
+                />
+                <text
+                  x={cx}
+                  y={H - 8}
+                  textAnchor="middle"
+                  className={styles.tick}
+                >
                   {(g.date || "").slice(5, 10)}
                 </text>
               </g>
@@ -194,7 +312,11 @@ function SupportingStats({ games }) {
             {cols.map((c) => {
               const values = (games || []).map((g) => +g[c.key] || 0);
               const avg =
-                values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : "-";
+                values.length > 0
+                  ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(
+                      2
+                    )
+                  : "-";
               return (
                 <tr key={c.key}>
                   <td>{c.label}</td>
@@ -226,7 +348,9 @@ function TabGroup({ gameLog }) {
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`${styles.tabBtn} ${tab === t.key ? styles.tabActive : ""}`}
+            className={`${styles.tabBtn} ${
+              tab === t.key ? styles.tabActive : ""
+            }`}
           >
             {t.label}
           </button>
@@ -250,7 +374,7 @@ export default function PlayerPage() {
   const [matchPlayers, setMatchPlayers] = useState(null);
   const [gameLog, setGameLog] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [lastN]= useState(8);
+  const [lastN] = useState(8);
 
   useEffect(() => {
     if (!id || !fixtureId) return;
@@ -259,7 +383,9 @@ export default function PlayerPage() {
     async function loadAll() {
       try {
         const [sumRes, pmRes] = await Promise.all([
-          api.get("/football/player/summary", { params: { fixture_id: fixtureId, player_id: id } }),
+          api.get("/football/player/summary", {
+            params: { fixture_id: fixtureId, player_id: id },
+          }),
           api.get("/football/players", { params: { fixture_id: fixtureId } }),
         ]);
         if (!alive) return;
@@ -318,13 +444,24 @@ export default function PlayerPage() {
   const matchSot = `${shots.on || 0} on target`;
   const matchCards = `${cards.yellow || 0}Y · ${cards.red || 0}R`;
 
+  const homeTeamName =
+    matchPlayers?.home?.[0]?.team?.name || "Home";
+  const awayTeamName =
+    matchPlayers?.away?.[0]?.team?.name || "Away";
+
+  const posTag = getPositionTag(pmeta, sBlock);
+
   return (
     <div className={`${styles.page} scrollX`}>
       {/* HERO */}
       <div className={styles.hero}>
         <div className={styles.heroLeft}>
           {pmeta.photo && (
-            <img src={pmeta.photo} alt={pmeta.name} className={styles.avatar} />
+            <img
+              src={pmeta.photo}
+              alt={pmeta.name}
+              className={styles.avatar}
+            />
           )}
           <div>
             <div className={styles.nameRow}>
@@ -332,8 +469,11 @@ export default function PlayerPage() {
               <span className={styles.club}>• {teamName}</span>
             </div>
             <div className={styles.tags}>
-              <MiniKeyVal k="Pos" v={pmeta.position || "—"} />
-              <MiniKeyVal k="Fixture" v={<Link to={`/fixture/${fixtureId}`}>Back</Link>} />
+              <MiniKeyVal k="Pos" v={posTag} />
+              <MiniKeyVal
+                k="Fixture"
+                v={<Link to={`/fixture/${fixtureId}`}>Back</Link>}
+              />
             </div>
           </div>
         </div>
@@ -344,8 +484,12 @@ export default function PlayerPage() {
           {seasonTotals && (
             <StatBadge
               title="Season"
-              value={`${safe(seasonTotals.goals)} G · ${safe(seasonTotals.assists)} A`}
-              sub={`${safe(seasonTotals.apps)} apps / ${safe(seasonTotals.minutes)} min`}
+              value={`${safe(seasonTotals.goals)} G · ${safe(
+                seasonTotals.assists
+              )} A`}
+              sub={`${safe(seasonTotals.apps)} apps / ${safe(
+                seasonTotals.minutes
+              )} min`}
             />
           )}
         </div>
@@ -371,9 +515,15 @@ export default function PlayerPage() {
                   {(competitions || []).map((c, i) => (
                     <tr key={i}>
                       <td>{c?.league || "—"}</td>
-                      <td className={styles.num}>{safe(c?.games?.appearences)}</td>
-                      <td className={styles.num}>{safe(c?.games?.minutes)}</td>
-                      <td className={styles.num}>{safe(c?.goals?.total)}</td>
+                      <td className={styles.num}>
+                        {safe(c?.games?.appearences)}
+                      </td>
+                      <td className={styles.num}>
+                        {safe(c?.games?.minutes)}
+                      </td>
+                      <td className={styles.num}>
+                        {safe(c?.goals?.total)}
+                      </td>
                       <td className={styles.num}>{safe(c?.assists)}</td>
                     </tr>
                   ))}
@@ -385,10 +535,22 @@ export default function PlayerPage() {
           <div className={styles.card}>
             <div className={styles.cardHeader}>Season Totals</div>
             <div className={styles.infoGrid}>
-              <InfoRow label="Appearances" value={safe(seasonTotals?.apps)} />
-              <InfoRow label="Minutes" value={safe(seasonTotals?.minutes)} />
-              <InfoRow label="Goals" value={safe(seasonTotals?.goals)} />
-              <InfoRow label="Assists" value={safe(seasonTotals?.assists)} />
+              <InfoRow
+                label="Appearances"
+                value={safe(seasonTotals?.apps)}
+              />
+              <InfoRow
+                label="Minutes"
+                value={safe(seasonTotals?.minutes)}
+              />
+              <InfoRow
+                label="Goals"
+                value={safe(seasonTotals?.goals)}
+              />
+              <InfoRow
+                label="Assists"
+                value={safe(seasonTotals?.assists)}
+              />
             </div>
           </div>
         </div>
@@ -397,6 +559,13 @@ export default function PlayerPage() {
           <TabGroup gameLog={gameLog} />
         </div>
       </div>
+
+      {/* PLAYER PROPS / FAIR ODDS SECTION */}
+      <PlayerPropsSection
+        fixtureId={fixtureId}
+        homeTeam={homeTeamName}
+        awayTeam={awayTeamName}
+      />
     </div>
   );
 }
