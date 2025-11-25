@@ -1,16 +1,48 @@
+/* Wrapper spacing under Season Totals */
 .wrapper {
-  margin: 12px 0 0;
+  margin-top: 24px;
 }
 
+/* Card container */
+.card {
+  background: #0d1117;           /* dark navy/black */
+  border: 1px solid #1e242c;     /* subtle border */
+  border-radius: 8px;
+  padding: 16px 20px;
+  color: #e5e7eb;
+}
+
+/* Header layout */
+.cardHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.cardSubtitle {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+/* Toolbar */
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 
+/* Filters (Team, Market) */
 .filters {
   display: flex;
   gap: 10px;
@@ -22,77 +54,102 @@
   align-items: center;
   gap: 6px;
   font-size: 14px;
+  color: #e5e7eb;
 }
 
 .label select {
   padding: 6px 8px;
   font-size: 14px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: #e5e7eb;
+  border-radius: 6px;
 }
 
+/* Search box */
 .search {
   min-width: 220px;
   padding: 6px 10px;
   font-size: 14px;
-}
-
-.loading,
-.empty {
-  padding: 10px 2px;
-  color: #666;
-}
-
-.tableWrap {
-  overflow: auto;
-  border: 1px solid #e6e6e6;
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: #f3f4f6;
   border-radius: 6px;
 }
 
+/* Empty / loading */
+.loading,
+.empty {
+  padding: 12px 4px;
+  color: #9ca3af;
+}
+
+/* TABLE */
+.tableWrap {
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid #1e242c;
+}
+
+/* dark table */
 .table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 14px;
+  color: #e5e7eb;
 }
 
 thead th {
   position: sticky;
   top: 0;
-  background: #fafafa;
+  background: #11161d;
   font-weight: 600;
   text-align: left;
   padding: 10px 12px;
-  border-bottom: 1px solid #e6e6e6;
+  border-bottom: 1px solid #1f2937;
   white-space: nowrap;
+  color: #f1f5f9;
 }
 
+/* Zebra rows */
 .row td {
   padding: 9px 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #1e293b;
   vertical-align: middle;
 }
 
 .row:nth-child(4n+1) td {
-  /* subtle zebra across pairs (row + explain row) */
-  background: #fff;
+  background: #0f141c;
 }
 .row:nth-child(4n+3) td {
-  background: #fcfcfc;
+  background: #0b1017;
 }
 
-.player { font-weight: 600; }
-.team { color: #333; }
-.market { color: #333; }
+/* Columns */
+.player {
+  font-weight: 600;
+  color: #f8fafc;
+}
+.team {
+  color: #cbd5e1;
+}
+.market {
+  color: #e2e8f0;
+}
 
 .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
+/* Positive EV */
 .edgePos {
-  color: #0b7a29; /* green for +EV */
+  color: #10b981;    /* emerald green */
   font-weight: 600;
 }
 
+/* Why button */
 .action {
   text-align: right;
   white-space: nowrap;
@@ -101,26 +158,30 @@ thead th {
 .whyBtn {
   padding: 4px 10px;
   font-size: 13px;
-  border: 1px solid #d5d5d5;
-  background: #fff;
-  border-radius: 999px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #e5e7eb;
+  border-radius: 6px;
   cursor: pointer;
+  transition: background 0.15s;
 }
 .whyBtn:hover {
-  background: #f5f5f5;
+  background: #334155;
 }
 
+/* Explain panel */
 .explainRow td {
   padding: 0;
   border: none;
 }
 
 .explainCell {
-  padding: 10px 12px 12px;
-  background: #f7fafc;
-  border-top: 1px dashed #e3e8ee;
-  color: #334155;
-  line-height: 1.35;
+  padding: 12px 16px;
+  background: #141b25;
+  border-top: 1px solid #1e293b;
+  color: #e2e8f0;
+  line-height: 1.42;
+  font-size: 13px;
 }
 
 .explainLine {

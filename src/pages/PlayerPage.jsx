@@ -565,6 +565,8 @@ export default function PlayerPage() {
         fixtureId={fixtureId}
         homeTeam={homeTeamName}
         awayTeam={awayTeamName}
+        initialSearch={pmeta.name || ""}
+        restrictToPlayer={true}
       />
     </div>
   );
