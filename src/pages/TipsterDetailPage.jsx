@@ -12,6 +12,9 @@ import {
   deleteTipsterAcca,
   followTipster,
   unfollowTipster,
+  fetchTipsterSubscription,
+  startTipsterSubscription,
+  cancelTipsterSubscription,
 } from "../api";
 import { useAuth } from "../components/AuthGate";
 
@@ -423,11 +426,32 @@ export default function TipsterDetailPage() {
   const [busyAccaId, setBusyAccaId] = useState(null);
   const [busyFollow, setBusyFollow] = useState(false);
   const [range, setRange] = useState("30d");
+  const [subInfo, setSubInfo] = useState(null); // tipster subscription info
+  const [subLoading, setSubLoading] = useState(true);
+  const [subBusy, setSubBusy] = useState(false);
 
   useEffect(() => {
     fetchTipster(username).then(setTipster).catch(() => setTipster(null));
     fetchTipsterPicks(username).then(setPicks).catch(() => setPicks([]));
     fetchTipsterAccas(username).then(setAccas).catch(() => setAccas([]));
+
+    // subscription status (ignore 401s so guests still see free picks)
+    let cancelled = false;
+    (async () => {
+      setSubLoading(true);
+      try {
+        const data = await fetchTipsterSubscription(username);
+        if (!cancelled) setSubInfo(data);
+      } catch (e) {
+        if (!cancelled) setSubInfo(null);
+      } finally {
+        if (!cancelled) setSubLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [username]);
 
   const fxMap = useFixturesMap(picks);
@@ -453,6 +477,49 @@ export default function TipsterDetailPage() {
     typeof tipster.profit_30d === "number" && tipster.profit_30d !== 0
       ? tipster.profit_30d
       : localStats.profit;
+
+  const isSubscriber = !!subInfo?.is_subscriber;
+  const hasPremium = picks.some((p) => p.is_premium_only);
+  const hasSubscriberOnly = picks.some((p) => p.is_subscriber_only);
+
+  const monthlyPrice =
+    subInfo?.price_cents != null
+      ? (subInfo.price_cents / 100).toFixed(2)
+      : null;
+
+  // ---------- subscription handlers ----------
+  const handleSubscribe = async () => {
+    if (subBusy) return;
+    try {
+      setSubBusy(true);
+      const data = await startTipsterSubscription(username);
+      setSubInfo(data);
+    } catch (e) {
+      if (e?.response?.status === 401) {
+        nav("/login");
+      } else {
+        console.error("Subscribe failed", e);
+        alert("Could not start subscription. Please try again.");
+      }
+    } finally {
+      setSubBusy(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (subBusy) return;
+    if (!window.confirm("Cancel your subscription to this tipster?")) return;
+    try {
+      setSubBusy(true);
+      const data = await cancelTipsterSubscription(username);
+      setSubInfo(data);
+    } catch (e) {
+      console.error("Cancel subscription failed", e);
+      alert("Could not cancel subscription. Please try again.");
+    } finally {
+      setSubBusy(false);
+    }
+  };
 
   // ---------- handlers ----------
   const handleSettlePick = async (pick, result) => {
@@ -542,8 +609,6 @@ export default function TipsterDetailPage() {
       setBusyFollow(false);
     }
   };
-
-  const hasPremium = picks.some((p) => p.is_premium_only);
 
   return (
     <div className="page">
@@ -643,6 +708,50 @@ export default function TipsterDetailPage() {
               <span className="focusPill">{tipster.sport_focus}</span>
             )}
           </div>
+
+          {/* SUBSCRIPTION CARD */}
+          {!isOwner && subInfo && monthlyPrice && (
+            <div className="subCard" id="subscribe">
+              <div>
+                <div className="subLabel">Subscribe to {tipster.name}</div>
+                <div className="subPrice">
+                  £{monthlyPrice}
+                  <span className="subPriceUnit">/ month</span>
+                </div>
+                <div className="subStatus">
+                  {subInfo.subscriber_limit
+                    ? `${subInfo.subscriber_count}/${subInfo.subscriber_limit} spots taken`
+                    : `${subInfo.subscriber_count || 0} subscribers`}
+                  {subInfo.is_open_for_new_subs === false && " • Currently full"}
+                </div>
+              </div>
+              <div>
+                {isSubscriber ? (
+                  <button
+                    className="btnSmall btnGhost"
+                    disabled={subBusy}
+                    onClick={handleCancelSubscription}
+                  >
+                    {subBusy ? "Cancelling…" : "Cancel subscription"}
+                  </button>
+                ) : (
+                  <button
+                    className="btnSmall"
+                    disabled={
+                      subBusy || subInfo.is_open_for_new_subs === false
+                    }
+                    onClick={handleSubscribe}
+                  >
+                    {subBusy
+                      ? "Starting…"
+                      : subInfo.is_open_for_new_subs === false
+                      ? "Full"
+                      : "Subscribe"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -830,6 +939,55 @@ export default function TipsterDetailPage() {
         </div>
       )}
 
+      {/* banner if there are subscriber-only picks and viewer isn't subscribed */}
+      {hasSubscriberOnly && !isOwner && !isSubscriber && (
+        <div
+          style={{
+            marginBottom: 8,
+            fontSize: 13,
+            padding: "6px 10px",
+            borderRadius: 8,
+            background: "rgba(59,130,246,0.08)",
+            border: "1px solid rgba(59,130,246,0.5)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <span>
+            Some picks are <strong>locked for subscribers only</strong>.
+          </span>
+          {monthlyPrice ? (
+            <button
+              type="button"
+              onClick={handleSubscribe}
+              disabled={subBusy || subInfo?.is_open_for_new_subs === false}
+              style={{
+                fontSize: 12,
+                padding: "4px 10px",
+                borderRadius: 999,
+                border: "none",
+                background: "#3b82f6",
+                color: "white",
+                cursor: subBusy ? "default" : "pointer",
+              }}
+            >
+              {subBusy
+                ? "Starting…"
+                : subInfo?.is_open_for_new_subs === false
+                ? "Full"
+                : `Subscribe £${monthlyPrice}/mo`}
+            </button>
+          ) : (
+            <span style={{ opacity: 0.8 }}>
+              Log in or subscribe to unlock.
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="tableWrap">
         <table className="picks">
           <thead>
@@ -849,7 +1007,13 @@ export default function TipsterDetailPage() {
             {picks.map((p) => {
               const fx = fxMap[p.fixture_id];
               const settled = !!p.result;
-              const locked = p.is_premium_only && !viewerCanSeePremium;
+              const isSubOnly = !!p.is_subscriber_only;
+              const isPremOnly = !!p.is_premium_only;
+
+              const locked =
+                !isOwner &&
+                ((isPremOnly && !viewerCanSeePremium) ||
+                  (isSubOnly && !isSubscriber));
 
               return (
                 <tr key={p.id}>
@@ -882,20 +1046,48 @@ export default function TipsterDetailPage() {
                             opacity: 0.9,
                           }}
                         >
-                          🔒 Premium pick
+                          {isSubOnly && !isSubscriber && !isOwner
+                            ? "🔒 Subscribers only"
+                            : "🔒 Premium pick"}
                         </span>
-                        <Link
-                          to="/premium"
-                          style={{
-                            fontSize: 11,
-                            color: "#FBBF24",
-                            textDecoration: "underline",
-                            whiteSpace: "nowrap",
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Unlock →
-                        </Link>
+                        {isSubOnly && !isSubscriber && !isOwner ? (
+                          <button
+                            type="button"
+                            onClick={handleSubscribe}
+                            disabled={
+                              subBusy || subInfo?.is_open_for_new_subs === false
+                            }
+                            style={{
+                              fontSize: 11,
+                              padding: "2px 8px",
+                              borderRadius: 999,
+                              border: "none",
+                              background: "#3b82f6",
+                              color: "#fff",
+                              cursor: subBusy ? "default" : "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {subBusy
+                              ? "Starting…"
+                              : subInfo?.is_open_for_new_subs === false
+                              ? "Full"
+                              : "Subscribe →"}
+                          </button>
+                        ) : (
+                          <Link
+                            to="/premium"
+                            style={{
+                              fontSize: 11,
+                              color: "#FBBF24",
+                              textDecoration: "underline",
+                              whiteSpace: "nowrap",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Unlock →
+                          </Link>
+                        )}
                       </div>
                     ) : (
                       <div
@@ -916,12 +1108,28 @@ export default function TipsterDetailPage() {
                               padding: "2px 8px",
                               borderRadius: 999,
                               background: "rgba(248, 250, 252, 0.04)",
-                              border:
-                                "1px solid rgba(251, 191, 36, 0.7)",
+                              border: "1px solid rgba(251, 191, 36, 0.7)",
                               color: "#FBBF24",
                             }}
                           >
                             🔒 Premium
+                          </span>
+                        )}
+                        {p.is_subscriber_only && (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              fontSize: 11,
+                              padding: "2px 8px",
+                              borderRadius: 999,
+                              background: "rgba(37, 99, 235, 0.18)",
+                              border: "1px solid rgba(59, 130, 246, 0.9)",
+                              color: "#93c5fd",
+                            }}
+                          >
+                            👥 Subscribers
                           </span>
                         )}
                       </div>
@@ -1160,6 +1368,39 @@ export default function TipsterDetailPage() {
           text-decoration: underline;
         }
 
+        .subCard {
+          margin-top: 10px;
+          padding: 10px 12px;
+          border-radius: 10px;
+          background: radial-gradient(circle at top left, #1e3a3a, #020b08);
+          border: 1px solid rgba(148, 255, 215, 0.4);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          font-size: 0.85rem;
+        }
+        .subLabel {
+          font-size: 0.8rem;
+          opacity: 0.85;
+          margin-bottom: 2px;
+        }
+        .subPrice {
+          font-size: 1rem;
+          font-weight: 600;
+        }
+        .subPriceUnit {
+          font-size: 0.8rem;
+          opacity: 0.85;
+          margin-left: 4px;
+        }
+        .subStatus {
+          font-size: 0.78rem;
+          opacity: 0.8;
+          margin-top: 2px;
+        }
+
         .statsPanel {
           background: #0a0f0c;
           border-radius: 14px;
@@ -1385,7 +1626,7 @@ export default function TipsterDetailPage() {
 
         .actionsCell {
           display: flex;
-          align-items: "center";
+          align-items: center;
           gap: 8px;
           flex-wrap: wrap;
         }

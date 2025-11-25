@@ -171,3 +171,31 @@ export const fetchBillingStatus = async () => {
   const res = await api.get("/api/billing/status");
   return res.data; // e.g. { is_premium, stripe_customer_id, ... }
 };
+
+// -----------------------------
+// Tipster Subscriptions (OnlyFans-style)
+// -----------------------------
+
+// Get viewer's subscription state for a tipster
+export const fetchTipsterSubscription = async (username) => {
+  const res = await api.get(
+    `/api/tipsters/${encodeURIComponent(username)}/subscription`
+  );
+  return res.data; // { is_subscriber, price_cents, subscriber_count, subscriber_limit, is_open_for_new_subs }
+};
+
+// Start subscription (manual for now — will swap to Stripe Checkout)
+export const startTipsterSubscription = async (username) => {
+  const res = await api.post(
+    `/api/tipsters/${encodeURIComponent(username)}/subscription/start`
+  );
+  return res.data; // same structure as above
+};
+
+// Cancel subscription
+export const cancelTipsterSubscription = async (username) => {
+  const res = await api.post(
+    `/api/tipsters/${encodeURIComponent(username)}/subscription/cancel`
+  );
+  return res.data;
+};
