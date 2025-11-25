@@ -6,7 +6,13 @@ import "./styles/global.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import { Analytics } from "@vercel/analytics/react";
-import AuthGate from "./components/AuthGate"; // ✅ wrap provider
+import AuthGate from "./components/AuthGate";
+
+// ⬇️ Add this
+import { auth } from "./firebase";
+if (typeof window !== "undefined") {
+  window.auth = auth;
+}
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
