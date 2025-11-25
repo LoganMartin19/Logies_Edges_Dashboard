@@ -80,7 +80,7 @@ const useFixturesMap = (picks) => {
         try {
           out[id] = await fetchFixture(id);
         } catch {
-          // ignore fixture errors
+          // ignore
         }
       }
       if (!cancelled) setMap(out);
@@ -419,7 +419,7 @@ function EquityChart({ points }) {
 export default function TipsterDetailPage() {
   const { username } = useParams();
   const nav = useNavigate();
-  const { isPremium, user } = useAuth(); // 🔑 for lock / ownership checks
+  const { user, isPremium, loading } = useAuth(); // ⬅️ need user + loading
 
   const [tipster, setTipster] = useState(null);
   const [picks, setPicks] = useState([]);
@@ -428,30 +428,72 @@ export default function TipsterDetailPage() {
   const [busyAccaId, setBusyAccaId] = useState(null);
   const [busyFollow, setBusyFollow] = useState(false);
   const [range, setRange] = useState("30d");
+
   const [subInfo, setSubInfo] = useState(null); // tipster subscription info
   const [subLoading, setSubLoading] = useState(true);
   const [subBusy, setSubBusy] = useState(false);
 
-  // Load tipster, picks, accas, and subscription status
+  // ---------- base data ----------
   useEffect(() => {
-    fetchTipster(username).then(setTipster).catch(() => setTipster(null));
-    fetchTipsterPicks(username).then(setPicks).catch(() => setPicks([]));
-    fetchTipsterAccas(username).then(setAccas).catch(() => setAccas([]));
-
     let cancelled = false;
 
-    // Only call subscription endpoint when logged in
+    fetchTipster(username)
+      .then((data) => {
+        if (!cancelled) setTipster(data);
+      })
+      .catch(() => {
+        if (!cancelled) setTipster(null);
+      });
+
+    fetchTipsterPicks(username)
+      .then((data) => {
+        if (!cancelled) setPicks(data);
+      })
+      .catch(() => {
+        if (!cancelled) setPicks([]);
+      });
+
+    fetchTipsterAccas(username)
+      .then((data) => {
+        if (!cancelled) setAccas(data);
+      })
+      .catch(() => {
+        if (!cancelled) setAccas([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [username]);
+
+  // ---------- subscription status ----------
+  useEffect(() => {
+    let cancelled = false;
+
+    // wait for Firebase auth to finish initialising
+    if (loading) return;
+
+    // guest viewer → no subscription info, but don't 401
+    if (!user) {
+      if (!cancelled) {
+        setSubInfo(null);
+        setSubLoading(false);
+      }
+      return;
+    }
+
     (async () => {
-      setSubLoading(true);
+      if (!cancelled) setSubLoading(true);
       try {
-        if (!user) {
-          if (!cancelled) setSubInfo(null);
-          return;
-        }
         const data = await fetchTipsterSubscription(username);
-        if (!cancelled) setSubInfo(data);
+        if (!cancelled) {
+          setSubInfo(data);
+        }
       } catch (e) {
-        if (!cancelled) setSubInfo(null);
+        // 401 or other error → treat as no subscription
+        if (!cancelled) {
+          setSubInfo(null);
+        }
       } finally {
         if (!cancelled) setSubLoading(false);
       }
@@ -460,32 +502,7 @@ export default function TipsterDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [username, user]);
-
-  // If guest and we have tipster metadata, create a local subInfo stub
-  useEffect(() => {
-    if (!tipster) return;
-    if (subInfo) return; // already got from API
-
-    if (tipster.default_price_cents != null) {
-      setSubInfo({
-        is_subscriber: false,
-        status: null,
-        plan_name: "Monthly",
-        price_cents: tipster.default_price_cents,
-        renews_at: null,
-        canceled_at: null,
-        tipster_username: tipster.username,
-        tipster_name: tipster.name,
-        subscriber_count: tipster.subscriber_count || 0,
-        subscriber_limit: tipster.subscriber_limit,
-        is_open_for_new_subs:
-          typeof tipster.is_open_for_new_subs === "boolean"
-            ? tipster.is_open_for_new_subs
-            : true,
-      });
-    }
-  }, [tipster, subInfo]);
+  }, [username, user, loading]);
 
   const fxMap = useFixturesMap(picks);
   const localStats = useLocalRollingFromPicks(picks);
@@ -554,7 +571,7 @@ export default function TipsterDetailPage() {
     }
   };
 
-  // ---------- handlers ----------
+  // ---------- pick / acca handlers ----------
   const handleSettlePick = async (pick, result) => {
     try {
       setBusyPickId(pick.id);
@@ -721,7 +738,8 @@ export default function TipsterDetailPage() {
                       : `https://instagram.com/${socials.instagram.replace(
                           /^@/,
                           ""
-                        )}`}
+                        )}`
+                  }
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -742,7 +760,7 @@ export default function TipsterDetailPage() {
           </div>
 
           {/* SUBSCRIPTION CARD */}
-          {!isOwner && subInfo && monthlyPrice && (
+          {!isOwner && !subLoading && subInfo && monthlyPrice && (
             <div className="subCard" id="subscribe">
               <div>
                 <div className="subLabel">Subscribe to {tipster.name}</div>
