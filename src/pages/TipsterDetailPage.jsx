@@ -79,7 +79,9 @@ const useFixturesMap = (picks) => {
       for (const id of ids) {
         try {
           out[id] = await fetchFixture(id);
-        } catch {}
+        } catch {
+          // ignore fixture errors
+        }
       }
       if (!cancelled) setMap(out);
     })();
@@ -417,7 +419,7 @@ function EquityChart({ points }) {
 export default function TipsterDetailPage() {
   const { username } = useParams();
   const nav = useNavigate();
-  const { isPremium } = useAuth(); // 🔑 for lock / ownership checks
+  const { isPremium, user } = useAuth(); // 🔑 for lock / ownership checks
 
   const [tipster, setTipster] = useState(null);
   const [picks, setPicks] = useState([]);
@@ -430,16 +432,22 @@ export default function TipsterDetailPage() {
   const [subLoading, setSubLoading] = useState(true);
   const [subBusy, setSubBusy] = useState(false);
 
+  // Load tipster, picks, accas, and subscription status
   useEffect(() => {
     fetchTipster(username).then(setTipster).catch(() => setTipster(null));
     fetchTipsterPicks(username).then(setPicks).catch(() => setPicks([]));
     fetchTipsterAccas(username).then(setAccas).catch(() => setAccas([]));
 
-    // subscription status (ignore 401s so guests still see free picks)
     let cancelled = false;
+
+    // Only call subscription endpoint when logged in
     (async () => {
       setSubLoading(true);
       try {
+        if (!user) {
+          if (!cancelled) setSubInfo(null);
+          return;
+        }
         const data = await fetchTipsterSubscription(username);
         if (!cancelled) setSubInfo(data);
       } catch (e) {
@@ -452,7 +460,32 @@ export default function TipsterDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [username, user]);
+
+  // If guest and we have tipster metadata, create a local subInfo stub
+  useEffect(() => {
+    if (!tipster) return;
+    if (subInfo) return; // already got from API
+
+    if (tipster.default_price_cents != null) {
+      setSubInfo({
+        is_subscriber: false,
+        status: null,
+        plan_name: "Monthly",
+        price_cents: tipster.default_price_cents,
+        renews_at: null,
+        canceled_at: null,
+        tipster_username: tipster.username,
+        tipster_name: tipster.name,
+        subscriber_count: tipster.subscriber_count || 0,
+        subscriber_limit: tipster.subscriber_limit,
+        is_open_for_new_subs:
+          typeof tipster.is_open_for_new_subs === "boolean"
+            ? tipster.is_open_for_new_subs
+            : true,
+      });
+    }
+  }, [tipster, subInfo]);
 
   const fxMap = useFixturesMap(picks);
   const localStats = useLocalRollingFromPicks(picks);
@@ -688,8 +721,7 @@ export default function TipsterDetailPage() {
                       : `https://instagram.com/${socials.instagram.replace(
                           /^@/,
                           ""
-                        )}`
-                  }
+                        )}`}
                   target="_blank"
                   rel="noreferrer"
                 >
