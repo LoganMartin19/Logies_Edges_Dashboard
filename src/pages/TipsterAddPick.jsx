@@ -23,6 +23,7 @@ export default function TipsterAddPick() {
     price: "",
     stake: "1.0",
     is_premium_only: false,
+    is_subscriber_only: false, // ⭐ NEW
   });
 
   const [err, setErr] = useState("");
@@ -31,7 +32,11 @@ export default function TipsterAddPick() {
 
   // ---- helpers ----
   const update = (k) => (e) =>
-    setForm((f) => ({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
+    setForm((f) => ({
+      ...f,
+      [k]:
+        e.target.type === "checkbox" ? e.target.checked : e.target.value,
+    }));
 
   const normalizeFixtures = (data) => {
     if (!data) return [];
@@ -56,7 +61,9 @@ export default function TipsterAddPick() {
   const formatFixtureLabel = (fx) => {
     const h = fx.home_team ?? fx.home_name ?? "Home";
     const a = fx.away_team ?? fx.away_name ?? "Away";
-    return `${fmtDate(fx.kickoff_utc)} · ${fmtTime(fx.kickoff_utc)} — ${h} vs ${a}`;
+    return `${fmtDate(fx.kickoff_utc)} · ${fmtTime(
+      fx.kickoff_utc
+    )} — ${h} vs ${a}`;
   };
 
   // ---- load fixtures (top-level hook, never conditional) ----
@@ -77,7 +84,11 @@ export default function TipsterAddPick() {
         }
       } catch (e) {
         if (!alive) return;
-        setErr(e?.response?.data?.detail || e.message || "Failed to load fixtures");
+        setErr(
+          e?.response?.data?.detail ||
+            e.message ||
+            "Failed to load fixtures"
+        );
         setFixtures([]);
       } finally {
         if (alive) setLoadingFixtures(false);
@@ -115,17 +126,30 @@ export default function TipsterAddPick() {
         price: Number(form.price),
         stake: Number(form.stake) || 1.0,
         is_premium_only: !!form.is_premium_only,
+        is_subscriber_only: !!form.is_subscriber_only, // ⭐ NEW
       };
       await createTipsterPick(username, payload);
       nav(`/tipsters/${encodeURIComponent(username)}`);
     } catch (e2) {
-      setErr(e2?.response?.data?.detail || e2.message || "Failed to add pick");
+      setErr(
+        e2?.response?.data?.detail ||
+          e2.message ||
+          "Failed to add pick"
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const markets = ["HOME_WIN", "AWAY_WIN", "DRAW", "BTTS_Y", "BTTS_N", "O2.5", "U2.5"];
+  const markets = [
+    "HOME_WIN",
+    "AWAY_WIN",
+    "DRAW",
+    "BTTS_Y",
+    "BTTS_N",
+    "O2.5",
+    "U2.5",
+  ];
 
   return (
     <div style={{ maxWidth: 640, padding: 16 }}>
@@ -162,7 +186,9 @@ export default function TipsterAddPick() {
       </div>
 
       {loadingFixtures && (
-        <div style={{ marginBottom: 8, opacity: 0.8 }}>Loading fixtures…</div>
+        <div style={{ marginBottom: 8, opacity: 0.8 }}>
+          Loading fixtures…
+        </div>
       )}
 
       {err && (
@@ -193,11 +219,11 @@ export default function TipsterAddPick() {
             value={form.market}
             onChange={update("market")}
           >
-            {markets.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
+          {markets.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
           </select>
         </label>
 
@@ -259,11 +285,39 @@ export default function TipsterAddPick() {
           </div>
         </label>
 
+        {/* Subscriber-only toggle – NEW */}
+        <label
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+            padding: "8px 10px",
+            borderRadius: 8,
+            background: "rgba(37,99,235,0.08)",
+            border: "1px solid rgba(59,130,246,0.5)",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={form.is_subscriber_only}
+            onChange={update("is_subscriber_only")}
+            style={{ marginTop: 3 }}
+          />
+          <div>
+            <div style={{ fontWeight: 600 }}>Subscriber-only pick</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>
+              Only people subscribed to your tipster page will see this pick.
+            </div>
+          </div>
+        </label>
+
         <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
           <button type="submit" disabled={saving}>
             {saving ? "Saving…" : "Post Pick"}
           </button>
-          <Link to={`/tipsters/${encodeURIComponent(username)}`}>Cancel</Link>
+          <Link to={`/tipsters/${encodeURIComponent(username)}`}>
+            Cancel
+          </Link>
         </div>
       </form>
     </div>

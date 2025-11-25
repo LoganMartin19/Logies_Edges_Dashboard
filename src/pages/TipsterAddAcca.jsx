@@ -1,4 +1,3 @@
-// src/pages/TipsterAddAcca.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { fetchDailyFixtures, createTipsterAcca } from "../api";
@@ -15,6 +14,7 @@ export default function TipsterAddAcca() {
   const [legs, setLegs] = useState([]);
   const [stake, setStake] = useState(1.0);
   const [isPremium, setIsPremium] = useState(false);
+  const [isSubscriberOnly, setIsSubscriberOnly] = useState(false); // ⭐ NEW
 
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
@@ -43,7 +43,9 @@ export default function TipsterAddAcca() {
   const formatFixtureLabel = (fx) => {
     const h = fx.home_team ?? fx.home_name ?? "Home";
     const a = fx.away_team ?? fx.away_name ?? "Away";
-    return `${fmtDate(fx.kickoff_utc)} · ${fmtTime(fx.kickoff_utc)} — ${h} vs ${a}`;
+    return `${fmtDate(fx.kickoff_utc)} · ${fmtTime(
+      fx.kickoff_utc
+    )} — ${h} vs ${a}`;
   };
 
   // -------- load fixtures --------
@@ -59,7 +61,9 @@ export default function TipsterAddAcca() {
         setFixtures(list);
       } catch (e) {
         if (!mounted) return;
-        setErr(e?.response?.data?.detail || e.message || "Failed to load fixtures");
+        setErr(
+          e?.response?.data?.detail || e.message || "Failed to load fixtures"
+        );
         setFixtures([]);
       } finally {
         if (mounted) setLoading(false);
@@ -70,7 +74,15 @@ export default function TipsterAddAcca() {
     };
   }, [day, sport]);
 
-  const markets = ["HOME_WIN", "AWAY_WIN", "DRAW", "BTTS_Y", "BTTS_N", "O2.5", "U2.5"];
+  const markets = [
+    "HOME_WIN",
+    "AWAY_WIN",
+    "DRAW",
+    "BTTS_Y",
+    "BTTS_N",
+    "O2.5",
+    "U2.5",
+  ];
 
   // -------- add/remove legs --------
   const addLeg = (fx) => {
@@ -105,8 +117,10 @@ export default function TipsterAddAcca() {
       if (legs.length < 2) throw new Error("Acca needs at least 2 legs");
 
       await createTipsterAcca(username, {
+        // note: adjust key name here if your API expects stake_units instead of stake
         stake: parseFloat(stake) || 1,
-        is_premium_only: isPremium,     // ⭐️ NEW
+        is_premium_only: isPremium,
+        is_subscriber_only: isSubscriberOnly, // ⭐ NEW
         legs: legs.map((l) => ({
           fixture_id: Number(l.fixture_id),
           market: l.market,
@@ -118,7 +132,9 @@ export default function TipsterAddAcca() {
 
       nav(`/tipsters/${username}`);
     } catch (e2) {
-      setErr(e2?.response?.data?.detail || e2.message || "Failed to create acca");
+      setErr(
+        e2?.response?.data?.detail || e2.message || "Failed to create acca"
+      );
     }
   };
 
@@ -131,11 +147,18 @@ export default function TipsterAddAcca() {
       <div style={{ display: "flex", gap: 12, margin: "12px 0 20px" }}>
         <label>
           Day:&nbsp;
-          <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+          <input
+            type="date"
+            value={day}
+            onChange={(e) => setDay(e.target.value)}
+          />
         </label>
         <label>
           Sport:&nbsp;
-          <select value={sport} onChange={(e) => setSport(e.target.value)}>
+          <select
+            value={sport}
+            onChange={(e) => setSport(e.target.value)}
+          >
             <option value="football">Football</option>
             <option value="nba">NBA</option>
             <option value="nhl">NHL</option>
@@ -169,7 +192,10 @@ export default function TipsterAddAcca() {
                 }}
               >
                 <div style={{ fontWeight: 600 }}>{formatFixtureLabel(fx)}</div>
-                <button onClick={() => addLeg(fx)} style={{ marginLeft: "auto" }}>
+                <button
+                  onClick={() => addLeg(fx)}
+                  style={{ marginLeft: "auto" }}
+                >
                   Add leg
                 </button>
               </div>
@@ -190,7 +216,8 @@ export default function TipsterAddAcca() {
                 key={`${l.fixture_id}-${i}`}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 130px 110px 110px 30px",
+                  gridTemplateColumns:
+                    "1fr 130px 110px 110px 30px",
                   gap: 10,
                   alignItems: "center",
                   marginBottom: 8,
@@ -213,7 +240,9 @@ export default function TipsterAddAcca() {
                   }}
                 >
                   {markets.map((m) => (
-                    <option key={m} value={m}>{m}</option>
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
                   ))}
                 </select>
 
@@ -266,13 +295,48 @@ export default function TipsterAddAcca() {
               <div>
                 <strong>Premium-only Acca</strong>
                 <div style={{ fontSize: 12, opacity: 0.8 }}>
-                  Only Premium members (and yourself) can view this acca.
+                  Only site Premium members (and yourself) can view this acca.
+                </div>
+              </div>
+            </div>
+
+            {/* Subscriber-only ACCA toggle – NEW */}
+            <div
+              style={{
+                marginTop: 10,
+                padding: "10px 12px",
+                borderRadius: 10,
+                background: "rgba(37,99,235,0.08)",
+                border: "1px solid rgba(59,130,246,0.5)",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isSubscriberOnly}
+                onChange={(e) => setIsSubscriberOnly(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <div>
+                <strong>Subscriber-only Acca</strong>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  Only people subscribed to your tipster page will see this
+                  acca.
                 </div>
               </div>
             </div>
 
             {/* Totals */}
-            <div style={{ display: "flex", gap: 18, marginTop: 20, alignItems: "center" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 18,
+                marginTop: 20,
+                alignItems: "center",
+              }}
+            >
               <label>
                 Stake:&nbsp;
                 <input
@@ -304,7 +368,9 @@ export default function TipsterAddAcca() {
               </button>
             </div>
 
-            {err && <div style={{ color: "salmon", marginTop: 8 }}>{err}</div>}
+            {err && (
+              <div style={{ color: "salmon", marginTop: 8 }}>{err}</div>
+            )}
           </form>
         </>
       )}
