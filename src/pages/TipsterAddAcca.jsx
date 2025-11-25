@@ -121,7 +121,7 @@ export default function TipsterAddAcca() {
 
       await createTipsterAcca(username, {
         // if API expects stake_units instead, change key here
-        stake: parseFloat(stake) || 1,
+        stake_units: parseFloat(stake) || 1,
         is_premium_only: !!isPremium,
         is_subscriber_only: !!isSubscriberOnly, // 👈 this is what the DetailPage reads
         legs: legs.map((l) => ({
