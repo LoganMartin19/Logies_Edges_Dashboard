@@ -219,11 +219,11 @@ export default function TipsterAddPick() {
             value={form.market}
             onChange={update("market")}
           >
-          {markets.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
+            {markets.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
           </select>
         </label>
 
