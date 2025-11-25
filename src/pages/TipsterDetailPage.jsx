@@ -1277,76 +1277,218 @@ export default function TipsterDetailPage() {
               <tbody>
                 {accas.map((a) => {
                   const settled = !!a.result;
+                  const isAccaPremOnly = !!a.is_premium_only;
+                  const isAccaSubOnly = !!a.is_subscriber_only;
+
+                  const accaLocked =
+                    !isOwner &&
+                    ((isAccaPremOnly && !viewerCanSeePremium) ||
+                      (isAccaSubOnly && !isSubscriber));
+
+                  const stakeVal =
+                    a.stake_units != null ? a.stake_units : a.stake;
+
                   return (
                     <tr key={a.id}>
-                      <td>#{a.id}</td>
+                      {/* ID + pills */}
                       <td>
-                        <div style={{ display: "grid", gap: 6 }}>
-                          {a.legs.map((leg, i) => (
-                            <Link
-                              key={`${a.id}-${i}`}
-                              to={`/fixture/${leg.fixture_id}`}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <span>#{a.id}</span>
+
+                          {isAccaPremOnly && (
+                            <span
                               style={{
-                                textDecoration: "none",
-                                color: "inherit",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                fontSize: 11,
+                                padding: "2px 8px",
+                                borderRadius: 999,
+                                background: "rgba(248, 250, 252, 0.04)",
+                                border:
+                                  "1px solid rgba(251, 191, 36, 0.7)",
+                                color: "#FBBF24",
                               }}
                             >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 6,
-                                }}
-                              >
-                                <span style={{ opacity: 0.7 }}>{i + 1}.</span>
-                                <span style={{ fontWeight: 600 }}>
-                                  {leg.home_name}
-                                </span>
-                                <span style={{ opacity: 0.7 }}>vs</span>
-                                <span style={{ fontWeight: 600 }}>
-                                  {leg.away_name}
-                                </span>
-                                <span
-                                  style={{
-                                    marginLeft: 8,
-                                    opacity: 0.75,
-                                  }}
-                                >
-                                  {leg.market}
-                                </span>
-                                <span
-                                  style={{
-                                    marginLeft: "auto",
-                                    opacity: 0.85,
-                                  }}
-                                >
-                                  {number(leg.price)}
-                                </span>
-                              </div>
-                            </Link>
-                          ))}
+                              🔒 Premium
+                            </span>
+                          )}
+
+                          {isAccaSubOnly && (
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                fontSize: 11,
+                                padding: "2px 8px",
+                                borderRadius: 999,
+                                background: "rgba(37, 99, 235, 0.18)",
+                                border:
+                                  "1px solid rgba(59, 130, 246, 0.9)",
+                                color: "#93c5fd",
+                              }}
+                            >
+                              👥 Subscribers
+                            </span>
+                          )}
                         </div>
                       </td>
-                      <td>{number(a.combined_price)}</td>
-                      <td>{number(a.stake)}</td>
+
+                      {/* Legs */}
                       <td>
-                        <ResultBadge result={a.result} />
+                        {accaLocked ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              fontSize: 13,
+                            }}
+                          >
+                            <span>
+                              {isAccaSubOnly && !isSubscriber && !isOwner
+                                ? "🔒 Subscriber-only acca"
+                                : "🔒 Premium acca"}
+                            </span>
+                            {isAccaSubOnly && !isSubscriber && !isOwner ? (
+                              <button
+                                type="button"
+                                onClick={handleSubscribe}
+                                disabled={
+                                  subBusy ||
+                                  subInfo?.is_open_for_new_subs === false
+                                }
+                                style={{
+                                  fontSize: 11,
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                  border: "none",
+                                  background: "#3b82f6",
+                                  color: "#fff",
+                                  cursor: subBusy
+                                    ? "default"
+                                    : "pointer",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {subBusy
+                                  ? "Starting…"
+                                  : subInfo?.is_open_for_new_subs === false
+                                  ? "Full"
+                                  : "Subscribe →"}
+                              </button>
+                            ) : (
+                              <Link
+                                to="/premium"
+                                style={{
+                                  fontSize: 11,
+                                  color: "#FBBF24",
+                                  textDecoration: "underline",
+                                  whiteSpace: "nowrap",
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Unlock →
+                              </Link>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ display: "grid", gap: 6 }}>
+                            {a.legs.map((leg, i) => (
+                              <Link
+                                key={`${a.id}-${i}`}
+                                to={`/fixture/${leg.fixture_id}`}
+                                style={{
+                                  textDecoration: "none",
+                                  color: "inherit",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                  }}
+                                >
+                                  <span style={{ opacity: 0.7 }}>
+                                    {i + 1}.
+                                  </span>
+                                  <span style={{ fontWeight: 600 }}>
+                                    {leg.home_name}
+                                  </span>
+                                  <span style={{ opacity: 0.7 }}>
+                                    vs
+                                  </span>
+                                  <span style={{ fontWeight: 600 }}>
+                                    {leg.away_name}
+                                  </span>
+                                  <span
+                                    style={{
+                                      marginLeft: 8,
+                                      opacity: 0.75,
+                                    }}
+                                  >
+                                    {leg.market}
+                                  </span>
+                                  <span
+                                    style={{
+                                      marginLeft: "auto",
+                                      opacity: 0.85,
+                                    }}
+                                  >
+                                    {number(leg.price)}
+                                  </span>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
                       </td>
+
+                      {/* Combined */}
+                      <td>{accaLocked ? "—" : number(a.combined_price)}</td>
+
+                      {/* Stake */}
+                      <td>{accaLocked ? "—" : number(stakeVal)}</td>
+
+                      {/* Result */}
+                      <td>
+                        {accaLocked ? (
+                          <span className="badge neutral">🔒</span>
+                        ) : (
+                          <ResultBadge result={a.result} />
+                        )}
+                      </td>
+
+                      {/* Profit */}
                       <td
                         style={{
                           textAlign: "right",
-                          color: (a.profit ?? 0) >= 0 ? "#1db954" : "#d23b3b",
+                          color:
+                            (a.profit ?? 0) >= 0
+                              ? "#1db954"
+                              : "#d23b3b",
                         }}
                       >
-                        {number(a.profit)}
+                        {accaLocked ? "—" : number(a.profit)}
                       </td>
+
                       {isOwner && (
                         <td>
                           <div className="actionsCell">
                             {!settled && (
                               <SettleButtons
                                 disabled={busyAccaId === a.id}
-                                onSettle={(res) => handleSettleAcca(a, res)}
+                                onSettle={(res) =>
+                                  handleSettleAcca(a, res)
+                                }
                               />
                             )}
                             {a.can_delete && (
