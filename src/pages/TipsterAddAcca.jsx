@@ -1,3 +1,4 @@
+// src/pages/TipsterAddAcca.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { fetchDailyFixtures, createTipsterAcca } from "../api";
@@ -13,8 +14,10 @@ export default function TipsterAddAcca() {
   const [fixtures, setFixtures] = useState([]);
   const [legs, setLegs] = useState([]);
   const [stake, setStake] = useState(1.0);
+
+  // visibility flags
   const [isPremium, setIsPremium] = useState(false);
-  const [isSubscriberOnly, setIsSubscriberOnly] = useState(false); // ⭐ NEW
+  const [isSubscriberOnly, setIsSubscriberOnly] = useState(false); // ⭐ subscribers
 
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
@@ -117,10 +120,10 @@ export default function TipsterAddAcca() {
       if (legs.length < 2) throw new Error("Acca needs at least 2 legs");
 
       await createTipsterAcca(username, {
-        // note: adjust key name here if your API expects stake_units instead of stake
+        // if API expects stake_units instead, change key here
         stake: parseFloat(stake) || 1,
-        is_premium_only: isPremium,
-        is_subscriber_only: isSubscriberOnly, // ⭐ NEW
+        is_premium_only: !!isPremium,
+        is_subscriber_only: !!isSubscriberOnly, // 👈 this is what the DetailPage reads
         legs: legs.map((l) => ({
           fixture_id: Number(l.fixture_id),
           market: l.market,
@@ -216,8 +219,7 @@ export default function TipsterAddAcca() {
                 key={`${l.fixture_id}-${i}`}
                 style={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "1fr 130px 110px 110px 30px",
+                  gridTemplateColumns: "1fr 130px 110px 110px 30px",
                   gap: 10,
                   alignItems: "center",
                   marginBottom: 8,
