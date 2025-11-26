@@ -21,7 +21,7 @@ export function useAuth() {
 
 export default function AuthGate({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null);
-  const [profile, setProfile] = useState(null); // backend user row
+  const [profile, setProfile] = useState(null); // backend /auth/me payload
   const [initializing, setInitializing] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
@@ -55,7 +55,7 @@ export default function AuthGate({ children }) {
         setProfile(null);
         return;
       }
-      // Optional: could refresh profile here
+      // Optional: could refresh profile here if you want on token refresh
       // loadProfile();
     });
 
@@ -73,28 +73,37 @@ export default function AuthGate({ children }) {
     setProfile(null);
   };
 
-  // 🔥 New: let other components (like PremiumPage) update premium flag
+  // Allow other components (e.g. PremiumPage) to update premium flag
   const updatePremiumStatus = (isPremiumFlag) => {
     setProfile((prev) =>
       prev ? { ...prev, is_premium: !!isPremiumFlag } : prev
     );
   };
 
+  const loading = initializing || loadingProfile;
+  const isPremium = !!profile?.is_premium;
+  const isAdmin = !!profile?.is_admin; // 👈 important bit
+
   const value = {
-    // Stripe/Firebase data
+    // Raw Firebase user
     firebaseUser,
+
+    // Backend user from /auth/me
     profile,
     backendUser: profile,
-    isPremium: !!profile?.is_premium,
 
-    // Backwards compat
+    // Convenience flags
+    isPremium,
+    isAdmin,          // 👈 use this for /admin route + nav
+    loading,          // general "auth still loading" flag
+    initializing,     // original flag if you still use it anywhere
+
+    // Backwards compat: some places use `user` as Firebase user
     user: firebaseUser,
 
-    initializing: initializing || loadingProfile,
+    // Actions
     loginWithGoogle,
     logout,
-
-    // NEW
     updatePremiumStatus,
   };
 
