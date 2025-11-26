@@ -12,7 +12,7 @@ export default function NavBar() {
   const [myTipster, setMyTipster] = useState(null);
 
   // 🔁 updated for new AuthGate shape
-  const { firebaseUser, isPremium, initializing, logout } = useAuth();
+  const { firebaseUser, isPremium, isAdmin, initializing, logout } = useAuth();
 
   useEffect(() => {
     if (firebaseUser) {
@@ -213,6 +213,19 @@ export default function NavBar() {
             </NavLink>
           </li>
 
+          {/* 🛠 Admin top-level nav item (only for admins) */}
+          {isAdmin && (
+            <li>
+              <NavLink
+                to="/admin"
+                onClick={closeMenu}
+                className={({ isActive }) => (isActive ? styles.active : "")}
+              >
+                Admin
+              </NavLink>
+            </li>
+          )}
+
           {/* Right side auth */}
           {!initializing &&
             (firebaseUser ? (
@@ -226,7 +239,9 @@ export default function NavBar() {
                   className={styles.dropdownToggleUser}
                   onClick={toggleUserMenu}
                 >
-                  <span className={styles.avatarCircle}>{displayInitial}</span>
+                  <span className={styles.avatarCircle}>
+                    {displayInitial}
+                  </span>
                   <span className={styles.caret}>▾</span>
                 </button>
                 <ul className={styles.dropdownContent} onClick={closeMenu}>
@@ -263,6 +278,32 @@ export default function NavBar() {
                       Premium &amp; Billing
                     </NavLink>
                   </li>
+
+                  {/* 🛠 Extra links if user is admin */}
+                  {isAdmin && (
+                    <>
+                      <li>
+                        <NavLink
+                          to="/admin"
+                          className={({ isActive }) =>
+                            isActive ? styles.active : ""
+                          }
+                        >
+                          Admin dashboard
+                        </NavLink>
+                      </li>
+                      <li>
+                        <NavLink
+                          to="/admin/picks"
+                          className={({ isActive }) =>
+                            isActive ? styles.active : ""
+                          }
+                        >
+                          Featured picks admin
+                        </NavLink>
+                      </li>
+                    </>
+                  )}
 
                   {myTipster ? (
                     <>
