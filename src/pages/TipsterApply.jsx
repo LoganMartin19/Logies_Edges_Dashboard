@@ -75,7 +75,7 @@ export default function TipsterApply() {
       const twitter = socials.twitter?.trim() || "";
       const instagram = socials.instagram?.trim() || "";
 
-      const adminEmail = "logan.martin1905@gmail.com"; // 🔁 TODO: change to your real CSB admin email
+      const adminEmail = "admin@charteredsportsbetting.com"; // 🔁 TODO: change to your real CSB admin email
 
       const subject = `New CSB Tipster Application – @${cleanedUsername || "unknown"}`;
 

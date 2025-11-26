@@ -17,20 +17,19 @@ const pct = (x, d = 2) => {
 export default function TipstersPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState("roi");   // roi | profit | winrate | followers | picks
-  const [sortDir, setSortDir] = useState("desc"); // asc | desc
+  const [sortBy, setSortBy] = useState("roi");
+  const [sortDir, setSortDir] = useState("desc");
 
-  // fetch list, then hydrate any missing stats from /tipsters/{username}
+  // fetch list + hydrate missing stats
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
         setLoading(true);
-        const list = await fetchTipsters(); // lightweight list
+        const list = await fetchTipsters();
         if (cancelled) return;
 
-        // Find anyone with blank/zero stats
         const needsHydrate = list.filter((t) => {
           if (!t) return true;
           const roi = t.roi_30d ?? 0;
@@ -45,7 +44,6 @@ export default function TipstersPage() {
           return;
         }
 
-        // Hydrate in parallel; ignore failures
         const hydratedPairs = await Promise.all(
           needsHydrate.map(async (t) => {
             try {
@@ -56,9 +54,9 @@ export default function TipstersPage() {
             }
           })
         );
+
         const hydratedMap = Object.fromEntries(hydratedPairs);
 
-        // Merge hydrated stats over the list items
         const merged = list.map((t) => {
           const h = hydratedMap[t.username];
           return h
@@ -68,6 +66,7 @@ export default function TipstersPage() {
                 winrate_30d: h.winrate_30d ?? t.winrate_30d,
                 profit_30d: h.profit_30d ?? t.profit_30d,
                 picks_30d: h.picks_30d ?? t.picks_30d,
+                is_verified: h.is_verified ?? t.is_verified,
               }
             : t;
         });
@@ -89,7 +88,7 @@ export default function TipstersPage() {
   const getNormRoi = (t) => {
     const v = Number(t?.roi_30d ?? 0);
     if (!Number.isFinite(v)) return 0;
-    return Math.abs(v) <= 1 ? v * 100 : v; // always treat as %
+    return Math.abs(v) <= 1 ? v * 100 : v;
   };
 
   const getNormWr = (t) => {
@@ -102,7 +101,9 @@ export default function TipstersPage() {
     Number.isFinite(Number(t?.profit_30d)) ? Number(t.profit_30d) : 0;
 
   const getFollowers = (t) =>
-    Number.isFinite(Number(t?.follower_count)) ? Number(t.follower_count) : 0;
+    Number.isFinite(Number(t?.follower_count))
+      ? Number(t.follower_count)
+      : 0;
 
   const getPicks = (t) =>
     Number.isFinite(Number(t?.picks_30d)) ? Number(t.picks_30d) : 0;
@@ -139,11 +140,9 @@ export default function TipstersPage() {
   const handleSort = (col) => {
     setSortBy((prevCol) => {
       if (prevCol === col) {
-        // toggle direction
         setSortDir((prevDir) => (prevDir === "asc" ? "desc" : "asc"));
         return prevCol;
       }
-      // new column: default to desc
       setSortDir("desc");
       return col;
     });
@@ -156,7 +155,9 @@ export default function TipstersPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 16, color: "#eaf4ed" }}>Loading Tipsters...</div>
+      <div style={{ padding: 16, color: "#eaf4ed" }}>
+        Loading Tipsters...
+      </div>
     );
   }
 
@@ -175,7 +176,6 @@ export default function TipstersPage() {
         </div>
       </div>
 
-      {/* ⭐ Premium upsell – gold button linking to /premium for non-premium users */}
       <PremiumUpsellBanner
         mode="link"
         message="Unlock premium-only tipsters, extended records, and model-led picks with CSB Premium."
@@ -190,28 +190,16 @@ export default function TipstersPage() {
               <tr>
                 <th className="rank">#</th>
                 <th>Tipster</th>
-                <th
-                  className="sortable"
-                  onClick={() => handleSort("roi")}
-                >
+                <th className="sortable" onClick={() => handleSort("roi")}>
                   ROI (30d) {sortLabel("roi")}
                 </th>
-                <th
-                  className="sortable"
-                  onClick={() => handleSort("profit")}
-                >
+                <th className="sortable" onClick={() => handleSort("profit")}>
                   Profit (u) {sortLabel("profit")}
                 </th>
-                <th
-                  className="sortable"
-                  onClick={() => handleSort("winrate")}
-                >
+                <th className="sortable" onClick={() => handleSort("winrate")}>
                   Winrate {sortLabel("winrate")}
                 </th>
-                <th
-                  className="sortable"
-                  onClick={() => handleSort("picks")}
-                >
+                <th className="sortable" onClick={() => handleSort("picks")}>
                   Picks {sortLabel("picks")}
                 </th>
                 <th
@@ -266,34 +254,37 @@ export default function TipstersPage() {
                           />
                           <div>
                             <div className="name">
-                              {c.name || c.username}{" "}
-                              {c.is_verified && "✅"}
+                              {c.name || c.username}
+
+                              {c.is_verified && (
+                                <span className="verified-pill">
+                                  Verified
+                                </span>
+                              )}
                             </div>
                             <div className="handle">@{c.username}</div>
                           </div>
                         </div>
                       </Link>
                     </td>
+
                     <td className={`metric roi ${rowTone}`}>
                       {roiPct.toFixed(2)}%
                     </td>
                     <td className={`metric profit ${rowTone}`}>
                       {prof}
                     </td>
-                    <td className="metric">
-                      {wrPct.toFixed(1)}%
-                    </td>
+                    <td className="metric">{wrPct.toFixed(1)}%</td>
                     <td className="metric">{picks}</td>
                     <td className="metric">{followers}</td>
+
                     <td>
                       {c.sport_focus ? (
                         <span className="focus-pill">
                           {c.sport_focus}
                         </span>
                       ) : (
-                        <span className="focus-pill muted">
-                          —
-                        </span>
+                        <span className="focus-pill muted">—</span>
                       )}
                     </td>
                   </tr>
@@ -303,6 +294,9 @@ export default function TipstersPage() {
           </table>
         </div>
       )}
+
+      {/* ======================= */}
+      {/* STYLES */}
 
       <style jsx="true">{`
         .tipsters-page {
@@ -387,7 +381,6 @@ export default function TipstersPage() {
           cursor: pointer;
           user-select: none;
         }
-
         th.sortable:hover {
           background: rgba(255, 255, 255, 0.06);
         }
@@ -395,7 +388,6 @@ export default function TipstersPage() {
         tbody tr.row {
           transition: background 0.12s, transform 0.12s;
         }
-
         tbody tr.row:hover {
           background: rgba(255, 255, 255, 0.03);
         }
@@ -445,6 +437,20 @@ export default function TipstersPage() {
         .name {
           font-weight: 600;
           margin-bottom: 2px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .verified-pill {
+          padding: 2px 8px;
+          border-radius: 999px;
+          font-size: 0.7rem;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          background: rgba(34, 197, 94, 0.12);
+          border: 1px solid rgba(34, 197, 94, 0.8);
+          color: #bbf7d0;
         }
 
         .handle {
