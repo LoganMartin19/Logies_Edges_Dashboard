@@ -90,6 +90,7 @@ function App() {
             <Route path="/tennis/match/:id" element={<TennisMatch />} />
             <Route path="/basketball" element={<Basketball />} />
             <Route path="/basketball/game/:id" element={<BasketballFixture />} />
+            <Route path="/performance" element={<Performance />} />
 
             {/* Tipsters platform */}
             <Route path="/tipsters" element={<TipstersPage />} />
