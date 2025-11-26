@@ -6,6 +6,7 @@ import { auth, googleProvider } from "../firebase";
 import {
   signInWithPopup,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,   // 👈 NEW
 } from "firebase/auth";
 
 export default function LoginPage() {
@@ -42,6 +43,24 @@ export default function LoginPage() {
     }
   };
 
+  // 🔐 Forgot password handler
+  const onForgotPassword = async () => {
+    if (!email.trim()) {
+      setErr("Please enter your email first to reset your password.");
+      return;
+    }
+    try {
+      setErr("");
+      setLoading(true);
+      await sendPasswordResetEmail(auth, email.trim());
+      setErr("Password reset email sent. Check your inbox.");
+    } catch (e) {
+      setErr(e.message || "Could not send password reset email.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.card}>
@@ -53,7 +72,11 @@ export default function LoginPage() {
         </header>
 
         <div className={styles.oauth}>
-          <button onClick={onGoogle} className={styles.oauthBtn} disabled={loading}>
+          <button
+            onClick={onGoogle}
+            className={styles.oauthBtn}
+            disabled={loading}
+          >
             <span className={styles.googleLogo}>G</span>
             <span>Continue with Google</span>
           </button>
@@ -67,7 +90,7 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               value={email}
-              onChange={(e)=>setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@email.com"
               required
             />
@@ -79,10 +102,36 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               value={pw}
-              onChange={(e)=>setPw(e.target.value)}
+              onChange={(e) => setPw(e.target.value)}
               placeholder="••••••••"
               required
             />
+          </div>
+
+          {/* Forgot password link */}
+          <div
+            style={{
+              textAlign: "right",
+              marginTop: "-4px",
+              marginBottom: "8px",
+              fontSize: "0.85rem",
+            }}
+          >
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              disabled={loading}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                color: "#9be7ff",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              Forgot password?
+            </button>
           </div>
 
           {err && <div className={styles.error}>{err}</div>}
@@ -98,7 +147,8 @@ export default function LoginPage() {
         </form>
 
         <p className={styles.note}>
-          By continuing you agree to our Terms and acknowledge our Privacy Policy.
+          By continuing you agree to our Terms and acknowledge our Privacy
+          Policy.
         </p>
       </div>
     </div>
