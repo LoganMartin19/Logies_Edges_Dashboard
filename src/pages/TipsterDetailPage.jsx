@@ -14,7 +14,7 @@ import {
   unfollowTipster,
   fetchTipsterSubscription,
   startTipsterSubscription,
-  cancelTipsterSubscription,
+  fetchBillingPortal, // 👈 use Stripe portal instead of direct cancel
 } from "../api";
 import { useAuth } from "../components/AuthGate";
 
@@ -546,9 +546,9 @@ export default function TipsterDetailPage() {
     try {
       setSubBusy(true);
       const data = await startTipsterSubscription(username);
-  
+
       if (data?.checkout_url) {
-        window.location.href = data.checkout_url;  // 👈 send user to Stripe
+        window.location.href = data.checkout_url; // 👈 send user to Stripe Checkout
       } else {
         console.error("No checkout_url in response", data);
         alert("Could not start subscription. Please try again.");
@@ -565,16 +565,15 @@ export default function TipsterDetailPage() {
     }
   };
 
-  const handleCancelSubscription = async () => {
+  const handleManageSubscription = async () => {
     if (subBusy) return;
-    if (!window.confirm("Cancel your subscription to this tipster?")) return;
     try {
       setSubBusy(true);
-      const data = await cancelTipsterSubscription(username);
-      setSubInfo(data);
+      const { url } = await fetchBillingPortal();
+      window.location.href = url; // 👈 Stripe customer portal (manage/cancel subs)
     } catch (e) {
-      console.error("Cancel subscription failed", e);
-      alert("Could not cancel subscription. Please try again.");
+      console.error("Open billing portal failed", e);
+      alert("Could not open billing portal. Please try again.");
     } finally {
       setSubBusy(false);
     }
@@ -739,15 +738,13 @@ export default function TipsterDetailPage() {
                   X / Twitter
                 </a>
               )}
+
               {socials.instagram && (
                 <a
                   href={
                     socials.instagram.startsWith("http")
                       ? socials.instagram
-                      : `https://instagram.com/${socials.instagram.replace(
-                          /^@/,
-                          ""
-                        )}`
+                      : `https://instagram.com/${socials.instagram.replace(/^@/, "")}`
                   }
                   target="_blank"
                   rel="noreferrer"
@@ -789,9 +786,9 @@ export default function TipsterDetailPage() {
                   <button
                     className="btnSmall btnGhost"
                     disabled={subBusy}
-                    onClick={handleCancelSubscription}
+                    onClick={handleManageSubscription}
                   >
-                    {subBusy ? "Cancelling…" : "Cancel subscription"}
+                    {subBusy ? "Opening…" : "Manage in Stripe"}
                   </button>
                 ) : (
                   <button
