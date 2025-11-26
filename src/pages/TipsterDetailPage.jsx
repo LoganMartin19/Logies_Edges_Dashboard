@@ -527,7 +527,11 @@ export default function TipsterDetailPage() {
       ? tipster.profit_30d
       : localStats.profit;
 
-  const isSubscriber = !!subInfo?.is_subscriber;
+  // Treat the viewer as subscribed if EITHER:
+  // - the tipster profile says so (backend flag), OR
+  // - the subscription endpoint says so
+  const isSubscriber = !!(tipster?.is_subscribed || subInfo?.is_subscriber);
+
   const hasPremium = picks.some((p) => p.is_premium_only);
   const hasSubscriberOnly = picks.some((p) => p.is_subscriber_only);
 
