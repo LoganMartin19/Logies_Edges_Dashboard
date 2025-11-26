@@ -185,9 +185,10 @@ export const fetchTipsterSubscription = async (username) => {
 };
 
 // Start subscription (manual for now — will swap to Stripe Checkout)
-// Stripe checkout session → your API returns { checkout_url }
 export async function startTipsterSubscription(username) {
-  const res = await api.post(`/api/tipsters/${username}/subscription/checkout`);
+  const res = await api.post(
+    `/api/tipsters/${encodeURIComponent(username)}/subscription/checkout`
+  );
   return res.data; // { checkout_url }
 }
 
