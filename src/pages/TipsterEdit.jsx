@@ -1,7 +1,13 @@
 // src/pages/TipsterEdit.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link, useParams } from "react-router-dom";
-import { tipstersCreate, fetchTipster } from "../api";
+import {
+  tipstersCreate,
+  fetchTipster,
+  fetchTipsterConnectStatus,
+  startTipsterConnectOnboarding,
+  fetchTipsterConnectDashboard,
+} from "../api";
 import { useAuth } from "../components/AuthGate";
 import styles from "../styles/Auth.module.css";
 
@@ -39,6 +45,11 @@ export default function TipsterEdit() {
   const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
+
+  // Stripe Connect status + UX
+  const [connectStatus, setConnectStatus] = useState(null);
+  const [payoutLoading, setPayoutLoading] = useState(false);
+  const [payoutError, setPayoutError] = useState("");
 
   // Load the existing tipster
   useEffect(() => {
@@ -83,6 +94,14 @@ export default function TipsterEdit() {
               ? !!data.is_open_for_new_subs
               : true,
         });
+
+        // Fetch current Stripe Connect status for this tipster
+        try {
+          const status = await fetchTipsterConnectStatus(username);
+          if (!cancelled) setConnectStatus(status);
+        } catch (e) {
+          console.warn("Connect status failed", e);
+        }
       } catch (e) {
         setErr("Could not load tipster profile.");
       } finally {
@@ -204,6 +223,47 @@ export default function TipsterEdit() {
       setLoading(false);
     }
   };
+
+  const handleStripePayoutsClick = async () => {
+    setPayoutError("");
+    setPayoutLoading(true);
+    try {
+      // Always re-check latest status
+      const status = await fetchTipsterConnectStatus(username);
+      setConnectStatus(status);
+
+      if (status.has_connect && status.details_submitted) {
+        // Already onboarded → go to dashboard
+        const { dashboard_url } = await fetchTipsterConnectDashboard(username);
+        if (!dashboard_url) throw new Error("No dashboard URL returned");
+        window.location.href = dashboard_url;
+      } else {
+        // Not onboarded or incomplete → start / resume onboarding
+        const { onboarding_url } = await startTipsterConnectOnboarding(
+          username
+        );
+        if (!onboarding_url) throw new Error("No onboarding URL returned");
+        window.location.href = onboarding_url;
+      }
+    } catch (e) {
+      console.error("Stripe payouts link failed", e);
+      const msg =
+        e?.response?.data?.detail ||
+        e.message ||
+        "Could not open Stripe payouts.";
+      setPayoutError(msg);
+    } finally {
+      setPayoutLoading(false);
+    }
+  };
+
+  const connectLabel = (() => {
+    if (!connectStatus) return "Set up payouts with Stripe";
+    if (connectStatus.has_connect && connectStatus.details_submitted) {
+      return "Open Stripe dashboard";
+    }
+    return "Set up payouts with Stripe";
+  })();
 
   // ------------------------------
   // Render form
@@ -349,6 +409,46 @@ export default function TipsterEdit() {
             </Link>
           </div>
         </form>
+
+        {/* Stripe payouts section */}
+        <hr
+          style={{
+            margin: "1.75rem 0 1.25rem",
+            border: "none",
+            borderTop: "1px solid rgba(148,163,184,0.35)",
+          }}
+        />
+
+        <div className={styles.row}>
+          <label className={styles.label}>Payouts (Stripe)</label>
+          <div>
+            <p
+              style={{
+                fontSize: "0.85rem",
+                color: "#6B7280",
+                marginBottom: "0.75rem",
+                maxWidth: 420,
+              }}
+            >
+              Connect your Stripe account to receive tipster subscription
+              payouts. If you&apos;ve already finished onboarding, this button
+              will open your Stripe dashboard instead.
+            </p>
+            <button
+              type="button"
+              onClick={handleStripePayoutsClick}
+              className={styles.btn}
+              disabled={payoutLoading}
+            >
+              {payoutLoading ? "Opening Stripe…" : connectLabel}
+            </button>
+            {payoutError && (
+              <div className={styles.error} style={{ marginTop: "0.6rem" }}>
+                {payoutError}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

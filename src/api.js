@@ -199,3 +199,25 @@ export const cancelTipsterSubscription = async (username) => {
   );
   return res.data;
 };
+
+// ----- Tipster Stripe Connect (creator payouts) -----
+export const fetchTipsterConnectStatus = (username) =>
+  api
+    .get(
+      `/api/tipsters/${encodeURIComponent(username)}/connect/status`
+    )
+    .then((r) => r.data);
+
+export const startTipsterConnectOnboarding = (username) =>
+  api
+    .post(
+      `/api/tipsters/${encodeURIComponent(username)}/connect/onboard`
+    )
+    .then((r) => r.data); // { onboarding_url }
+
+export const fetchTipsterConnectDashboard = (username) =>
+  api
+    .get(
+      `/api/tipsters/${encodeURIComponent(username)}/connect/dashboard`
+    )
+    .then((r) => r.data); // { dashboard_url }
