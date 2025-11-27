@@ -1,53 +1,75 @@
-// src/pages/TipsterAddPick.jsx
-import React, { useEffect, useState } from "react";
+// src/pages/TipsterAddAcca.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { createTipsterPick, fetchDailyFixtures } from "../api";
-import { useAuth } from "../components/AuthGate";
+import { fetchDailyFixtures, createTipsterAcca } from "../api";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-export default function TipsterAddPick() {
+// --- same prop set as TipsterAddPick ---
+const PROP_TYPES = [
+  { value: "shots", label: "Shots" },
+  { value: "sot", label: "Shots on Target" },
+  { value: "passes", label: "Passes" },
+  { value: "tackles", label: "Tackles" },
+  { value: "yellow", label: "Yellow Card" },
+  { value: "goals_anytime", label: "Anytime Goalscorer" },
+];
+
+const PROP_TYPE_LABEL = {
+  shots: "Shots",
+  sot: "Shots on Target",
+  passes: "Passes",
+  tackles: "Tackles",
+  yellow: "Yellow Cards",
+  goals_anytime: "Anytime Goalscorer",
+};
+
+// Build the readable market label for a player prop leg
+const buildPlayerPropMarketLabel = (leg) => {
+  const player = (leg.player || "").trim();
+  const type = leg.type;
+  const line = (leg.line || "").trim();
+  const side = leg.side || "over";
+
+  if (!player) {
+    throw new Error("Please enter a player name for each player prop leg.");
+  }
+  if (!type) {
+    throw new Error("Please choose a player prop type for each player prop leg.");
+  }
+
+  if (type === "goals_anytime") {
+    // Anytime goalscorer: no line/side required
+    return `${player} - Anytime Goalscorer`;
+  }
+
+  if (!line) {
+    throw new Error("Please enter a line (e.g. 0.5, 1.5) for each player prop leg.");
+  }
+
+  const typeLabel = PROP_TYPE_LABEL[type] || type;
+  const sideWord = side === "under" ? "Under" : "Over";
+  return `${player} - ${sideWord} ${line} ${typeLabel}`;
+};
+
+export default function TipsterAddAcca() {
   const { username } = useParams();
-  const { user } = useAuth();
   const nav = useNavigate();
 
   const [day, setDay] = useState(todayStr());
   const [sport, setSport] = useState("football");
   const [fixtures, setFixtures] = useState([]);
+  const [legs, setLegs] = useState([]);
+  const [stake, setStake] = useState(1.0);
 
-  const [form, setForm] = useState({
-    fixture_id: "",
-    market: "HOME_WIN", // used for match markets
-    bookmaker: "bet365",
-    price: "",
-    stake: "1.0",
-    is_premium_only: false,
-    is_subscriber_only: false,
-  });
-
-  const [marketMode, setMarketMode] = useState("match"); // "match" | "player"
-  const [playerFields, setPlayerFields] = useState({
-    player_name: "",
-    prop_type: "Shots",
-    line: "0.5",
-    direction: "Over",
-  });
+  // visibility flags
+  const [isPremium, setIsPremium] = useState(false);
+  const [isSubscriberOnly, setIsSubscriberOnly] = useState(false);
 
   const [err, setErr] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [loadingFixtures, setLoadingFixtures] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const update = (k) => (e) =>
-    setForm((f) => ({
-      ...f,
-      [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value,
-    }));
-
-  const updatePlayer = (k) => (e) => {
-    const v = e.target.value;
-    setPlayerFields((pf) => ({ ...pf, [k]: v }));
-  };
-
+  // -------- fixture formatting helpers --------
   const normalizeFixtures = (data) => {
     if (!data) return [];
     if (Array.isArray(data)) return data;
@@ -76,44 +98,31 @@ export default function TipsterAddPick() {
     )} — ${h} vs ${a}`;
   };
 
+  // -------- load fixtures --------
   useEffect(() => {
-    let alive = true;
+    let mounted = true;
     (async () => {
       try {
         setErr("");
-        setLoadingFixtures(true);
+        setLoading(true);
         const res = await fetchDailyFixtures(day, sport);
-        if (!alive) return;
+        if (!mounted) return;
         const list = normalizeFixtures(res);
         setFixtures(list);
-        if (list.length && !form.fixture_id) {
-          setForm((f) => ({ ...f, fixture_id: String(list[0].id) }));
-        }
       } catch (e) {
-        if (!alive) return;
+        if (!mounted) return;
         setErr(
           e?.response?.data?.detail || e.message || "Failed to load fixtures"
         );
         setFixtures([]);
       } finally {
-        if (alive) setLoadingFixtures(false);
+        if (mounted) setLoading(false);
       }
     })();
     return () => {
-      alive = false;
+      mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day, sport]);
-
-  if (!user) {
-    return (
-      <div style={{ maxWidth: 560, padding: 16 }}>
-        <h2>Add Pick</h2>
-        <p>You need to be logged in to add a pick.</p>
-        <Link to="/login">Go to login</Link>
-      </div>
-    );
-  }
 
   const markets = [
     "HOME_WIN",
@@ -125,65 +134,108 @@ export default function TipsterAddPick() {
     "U2.5",
   ];
 
-  const playerPropTypes = [
-    "Shots",
-    "Shots On Target",
-    "Goals",
-    "Assists",
-    "Yellows",
-  ];
+  // -------- add/remove legs --------
+  const addLeg = (fx) => {
+    const h = fx.home_team ?? fx.home_name ?? "Home";
+    const a = fx.away_team ?? fx.away_name ?? "Away";
+    setLegs((prev) => [
+      ...prev,
+      {
+        fixture_id: fx.id,
+        home_name: h,
+        away_name: a,
 
-  const directions = ["Over", "Under"];
+        // match market fields
+        market: "HOME_WIN",
+        price: 2.0,
+        bookmaker: "bet365",
 
+        // new: player prop fields
+        legType: "match", // "match" | "player"
+        player: "",
+        type: "shots",
+        line: "",
+        side: "over",
+      },
+    ]);
+  };
+
+  const rmLeg = (i) => setLegs((prev) => prev.filter((_, idx) => idx !== i));
+
+  const combined = useMemo(
+    () => legs.reduce((acc, l) => acc * (parseFloat(l.price) || 1), 1),
+    [legs]
+  );
+
+  // -------- submit --------
   const submit = async (e) => {
     e.preventDefault();
-    setErr("");
-    setSaving(true);
     try {
-      if (!form.fixture_id) {
-        throw new Error("Please choose a fixture");
-      }
-      let market = form.market.trim();
+      setErr("");
 
-      if (marketMode === "player") {
-        const p = playerFields;
-        const player = (p.player_name || "").trim();
-        const prop = p.prop_type || "";
-        const dir = p.direction || "";
-        const line = (p.line ?? "").toString().trim();
-        market = `PLAYER | ${player} | ${prop} | ${dir} ${line}`.trim();
-      }
+      if (legs.length < 2) throw new Error("Acca needs at least 2 legs");
 
-      const payload = {
-        fixture_id: Number(form.fixture_id),
-        market,
-        bookmaker: form.bookmaker.trim() || null,
-        price: Number(form.price),
-        stake: Number(form.stake) || 1.0,
-        is_premium_only: !!form.is_premium_only,
-        is_subscriber_only: !!form.is_subscriber_only,
-      };
-      await createTipsterPick(username, payload);
-      nav(`/tipsters/${encodeURIComponent(username)}`);
+      // Build final legs with correct market strings
+      const finalLegs = legs.map((l, idx) => {
+        if (!l.fixture_id) {
+          throw new Error(`Leg ${idx + 1} is missing a fixture.`);
+        }
+
+        let marketToSend = (l.market || "").trim();
+
+        if (l.legType === "player") {
+          marketToSend = buildPlayerPropMarketLabel(l);
+        }
+
+        if (!marketToSend) {
+          throw new Error(`Leg ${idx + 1} is missing a market.`);
+        }
+
+        const priceNum = Number(l.price);
+        if (!priceNum || Number.isNaN(priceNum)) {
+          throw new Error(`Please enter valid decimal odds for leg ${idx + 1}.`);
+        }
+
+        return {
+          fixture_id: Number(l.fixture_id),
+          market: marketToSend,
+          price: priceNum,
+          bookmaker: (l.bookmaker || "").trim() || null,
+          note: null,
+        };
+      });
+
+      await createTipsterAcca(username, {
+        stake_units: parseFloat(stake) || 1,
+        is_premium_only: !!isPremium,
+        is_subscriber_only: !!isSubscriberOnly,
+        legs: finalLegs,
+      });
+
+      nav(`/tipsters/${username}`);
     } catch (e2) {
       setErr(
-        e2?.response?.data?.detail || e2.message || "Failed to add pick"
+        e2?.response?.data?.detail || e2.message || "Failed to create acca"
       );
-    } finally {
-      setSaving(false);
     }
   };
 
-  return (
-    <div style={{ maxWidth: 640, padding: 16 }}>
-      <Link to={`/tipsters/${encodeURIComponent(username)}`}>← Back</Link>
-      <h2 style={{ marginTop: 6 }}>Add Pick</h2>
-      <p style={{ marginTop: -4, opacity: 0.8 }}>
-        Posting as <b>@{username}</b>
-      </p>
+  // helpers to update leg fields
+  const updateLegField = (index, field, value) => {
+    setLegs((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
 
-      {/* Day + sport filters */}
-      <div style={{ display: "flex", gap: 12, margin: "12px 0 16px" }}>
+  return (
+    <div style={{ maxWidth: 820, padding: 16 }}>
+      <Link to={`/tipsters/${username}`}>← Back</Link>
+      <h2 style={{ marginTop: 4 }}>New Acca for @{username}</h2>
+
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 12, margin: "12px 0 20px" }}>
         <label>
           Day:&nbsp;
           <input
@@ -208,212 +260,431 @@ export default function TipsterAddPick() {
         </label>
       </div>
 
-      {loadingFixtures && (
-        <div style={{ marginBottom: 8, opacity: 0.8 }}>Loading fixtures…</div>
-      )}
+      {loading ? (
+        <div>Loading fixtures…</div>
+      ) : (
+        <>
+          <div style={{ marginBottom: 8, opacity: 0.7 }}>
+            Fixtures found: <strong>{fixtures.length}</strong>
+          </div>
 
-      {err && (
-        <div style={{ color: "salmon", margin: "10px 0" }}>{err}</div>
-      )}
-
-      <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
-        <label>
-          Fixture
-          <select
-            required
-            value={form.fixture_id}
-            onChange={update("fixture_id")}
-          >
-            <option value="">Select a fixture…</option>
+          {/* fixtures list */}
+          <div style={{ display: "grid", gap: 8 }}>
             {fixtures.map((fx) => (
-              <option key={fx.id} value={fx.id}>
-                {formatFixtureLabel(fx)}
-              </option>
+              <div
+                key={fx.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "#0c331f",
+                  padding: 8,
+                  borderRadius: 8,
+                  gap: 10,
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>{formatFixtureLabel(fx)}</div>
+                <button
+                  onClick={() => addLeg(fx)}
+                  style={{ marginLeft: "auto" }}
+                >
+                  Add leg
+                </button>
+              </div>
             ))}
-          </select>
-        </label>
+          </div>
 
-        {/* Market type toggle */}
-        <label>
-          Market type
-          <select
-            value={marketMode}
-            onChange={(e) => setMarketMode(e.target.value)}
-            style={{ display: "block", marginTop: 4 }}
-          >
-            <option value="match">Match Market</option>
-            <option value="player">Player Prop</option>
-          </select>
-        </label>
+          {!fixtures.length && (
+            <div style={{ opacity: 0.6, marginTop: 8 }}>
+              No fixtures for {day} ({sport})
+            </div>
+          )}
 
-        {marketMode === "match" ? (
-          <label>
-            Market
-            <select
-              required
-              value={form.market}
-              onChange={update("market")}
-            >
-              {markets.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <>
-            <label>
-              Player name
-              <input
-                value={playerFields.player_name}
-                onChange={updatePlayer("player_name")}
-                placeholder="e.g. Bukayo Saka"
-              />
-            </label>
+          {/* legs */}
+          <h3 style={{ marginTop: 22 }}>Legs ({legs.length})</h3>
+          <form onSubmit={submit}>
+            {legs.map((l, i) => (
+              <div
+                key={`${l.fixture_id}-${i}`}
+                style={{
+                  marginBottom: 10,
+                  background: "#04210F",
+                  padding: 8,
+                  borderRadius: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                {/* Fixture label + remove */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <div>
+                    <strong>{l.home_name}</strong> vs{" "}
+                    <strong>{l.away_name}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => rmLeg(i)}
+                    style={{ marginLeft: "auto" }}
+                  >
+                    ✕
+                  </button>
+                </div>
 
+                {/* Pick type toggle */}
+                <div>
+                  <div
+                    style={{
+                      marginBottom: 4,
+                      fontSize: 12,
+                      opacity: 0.85,
+                    }}
+                  >
+                    Leg type
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={() => updateLegField(i, "legType", "match")}
+                      style={{
+                        padding: "3px 10px",
+                        borderRadius: 999,
+                        border:
+                          l.legType === "match"
+                            ? "1px solid rgba(34,197,94,0.8)"
+                            : "1px solid rgba(148,163,184,0.5)",
+                        background:
+                          l.legType === "match"
+                            ? "rgba(22,163,74,0.15)"
+                            : "transparent",
+                        color: "#e5e7eb",
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Match market
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateLegField(i, "legType", "player")}
+                      style={{
+                        padding: "3px 10px",
+                        borderRadius: 999,
+                        border:
+                          l.legType === "player"
+                            ? "1px solid rgba(59,130,246,0.8)"
+                            : "1px solid rgba(148,163,184,0.5)",
+                        background:
+                          l.legType === "player"
+                            ? "rgba(37,99,235,0.15)"
+                            : "transparent",
+                        color: "#e5e7eb",
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Player prop
+                    </button>
+                  </div>
+                </div>
+
+                {/* Match market row */}
+                {l.legType === "match" && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1.2fr 1fr 1fr",
+                      gap: 8,
+                      alignItems: "center",
+                    }}
+                  >
+                    <label style={{ fontSize: 13 }}>
+                      Market
+                      <select
+                        value={l.market}
+                        onChange={(e) =>
+                          updateLegField(i, "market", e.target.value)
+                        }
+                        style={{ width: "100%", marginTop: 2 }}
+                      >
+                        {markets.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label style={{ fontSize: 13 }}>
+                      Bookmaker
+                      <input
+                        value={l.bookmaker}
+                        onChange={(e) =>
+                          updateLegField(i, "bookmaker", e.target.value)
+                        }
+                        placeholder="bet365"
+                        style={{ width: "100%", marginTop: 2 }}
+                      />
+                    </label>
+
+                    <label style={{ fontSize: 13 }}>
+                      Odds
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={l.price}
+                        onChange={(e) =>
+                          updateLegField(i, "price", e.target.value)
+                        }
+                        style={{ width: "100%", marginTop: 2 }}
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {/* Player prop box */}
+                {l.legType === "player" && (
+                  <div
+                    style={{
+                      borderRadius: 10,
+                      padding: "8px 10px",
+                      border: "1px solid rgba(59,130,246,0.4)",
+                      background: "rgba(15,23,42,0.7)",
+                      display: "grid",
+                      gap: 6,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1.4fr 0.8fr",
+                        gap: 8,
+                      }}
+                    >
+                      <label style={{ fontSize: 13 }}>
+                        Player name
+                        <input
+                          value={l.player}
+                          onChange={(e) =>
+                            updateLegField(i, "player", e.target.value)
+                          }
+                          placeholder="e.g. Bukayo Saka"
+                          style={{ width: "100%", marginTop: 2 }}
+                        />
+                      </label>
+
+                      <label style={{ fontSize: 13 }}>
+                        Prop type
+                        <select
+                          value={l.type}
+                          onChange={(e) =>
+                            updateLegField(i, "type", e.target.value)
+                          }
+                          style={{ width: "100%", marginTop: 2 }}
+                        >
+                          {PROP_TYPES.map((t) => (
+                            <option key={t.value} value={t.value}>
+                              {t.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    {l.type !== "goals_anytime" && (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "0.8fr 0.8fr 0.8fr",
+                          gap: 8,
+                        }}
+                      >
+                        <label style={{ fontSize: 13 }}>
+                          Line
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={l.line}
+                            onChange={(e) =>
+                              updateLegField(i, "line", e.target.value)
+                            }
+                            placeholder="e.g. 1.5"
+                            style={{ width: "100%", marginTop: 2 }}
+                          />
+                        </label>
+
+                        <label style={{ fontSize: 13 }}>
+                          Side
+                          <select
+                            value={l.side}
+                            onChange={(e) =>
+                              updateLegField(i, "side", e.target.value)
+                            }
+                            style={{ width: "100%", marginTop: 2 }}
+                          >
+                            <option value="over">Over</option>
+                            <option value="under">Under</option>
+                          </select>
+                        </label>
+
+                        <label style={{ fontSize: 13 }}>
+                          Odds
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={l.price}
+                            onChange={(e) =>
+                              updateLegField(i, "price", e.target.value)
+                            }
+                            style={{ width: "100%", marginTop: 2 }}
+                          />
+                        </label>
+                      </div>
+                    )}
+
+                    {l.type === "goals_anytime" && (
+                      <label style={{ fontSize: 13 }}>
+                        Odds
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={l.price}
+                          onChange={(e) =>
+                            updateLegField(i, "price", e.target.value)
+                          }
+                          style={{ width: "100%", marginTop: 2 }}
+                        />
+                      </label>
+                    )}
+
+                    <label style={{ fontSize: 13 }}>
+                      Bookmaker
+                      <input
+                        value={l.bookmaker}
+                        onChange={(e) =>
+                          updateLegField(i, "bookmaker", e.target.value)
+                        }
+                        placeholder="bet365"
+                        style={{ width: "100%", marginTop: 2 }}
+                      />
+                    </label>
+
+                    <div style={{ fontSize: 11, opacity: 0.75 }}>
+                      This leg will be stored as a readable market like{" "}
+                      <em>"Bukayo Saka - Over 1.5 Shots on Target"</em>.
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Premium ACCA toggle */}
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "1.3fr 1fr 1fr",
-                gap: 8,
+                marginTop: 14,
+                padding: "10px 12px",
+                borderRadius: 10,
+                background: "rgba(22,163,74,0.08)",
+                border: "1px solid rgba(34,197,94,0.35)",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isPremium}
+                onChange={(e) => setIsPremium(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <div>
+                <strong>Premium-only Acca</strong>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  Only site Premium members (and yourself) can view this acca.
+                </div>
+              </div>
+            </div>
+
+            {/* Subscriber-only ACCA toggle */}
+            <div
+              style={{
+                marginTop: 10,
+                padding: "10px 12px",
+                borderRadius: 10,
+                background: "rgba(37,99,235,0.08)",
+                border: "1px solid rgba(59,130,246,0.5)",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isSubscriberOnly}
+                onChange={(e) => setIsSubscriberOnly(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <div>
+                <strong>Subscriber-only Acca</strong>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  Only people subscribed to your tipster page will see this
+                  acca.
+                </div>
+              </div>
+            </div>
+
+            {/* Totals */}
+            <div
+              style={{
+                display: "flex",
+                gap: 18,
+                marginTop: 20,
+                alignItems: "center",
+                flexWrap: "wrap",
               }}
             >
               <label>
-                Prop
-                <select
-                  value={playerFields.prop_type}
-                  onChange={updatePlayer("prop_type")}
-                >
-                  {playerPropTypes.map((pt) => (
-                    <option key={pt} value={pt}>
-                      {pt}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Dir
-                <select
-                  value={playerFields.direction}
-                  onChange={updatePlayer("direction")}
-                >
-                  {directions.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Line
+                Stake:&nbsp;
                 <input
                   type="number"
+                  min="0.1"
                   step="0.1"
-                  value={playerFields.line}
-                  onChange={updatePlayer("line")}
-                  placeholder="0.5"
+                  value={stake}
+                  onChange={(e) => setStake(e.target.value)}
                 />
               </label>
+
+              <div>
+                Combined: <strong>{combined.toFixed(2)}</strong>
+              </div>
+
+              <div>
+                Profit:{" "}
+                <strong>
+                  {(parseFloat(stake || 0) * (combined - 1)).toFixed(2)}
+                </strong>
+              </div>
+
+              <button
+                type="submit"
+                className="btnPrimary"
+                style={{ marginLeft: "auto" }}
+              >
+                Create Acca
+              </button>
             </div>
-          </>
-        )}
 
-        <label>
-          Bookmaker
-          <input
-            value={form.bookmaker}
-            onChange={update("bookmaker")}
-            placeholder="bet365"
-          />
-        </label>
-
-        <label>
-          Odds (decimal)
-          <input
-            required
-            type="number"
-            step="0.01"
-            value={form.price}
-            onChange={update("price")}
-            placeholder="e.g. 1.95"
-          />
-        </label>
-
-        <label>
-          Stake (units)
-          <input
-            type="number"
-            step="0.1"
-            value={form.stake}
-            onChange={update("stake")}
-            placeholder="1.0"
-          />
-        </label>
-
-        {/* Premium-only toggle */}
-        <label
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 8,
-            padding: "8px 10px",
-            borderRadius: 8,
-            background: "rgba(22,163,74,0.08)",
-            border: "1px solid rgba(34,197,94,0.35)",
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={form.is_premium_only}
-            onChange={update("is_premium_only")}
-            style={{ marginTop: 3 }}
-          />
-          <div>
-            <div style={{ fontWeight: 600 }}>Premium-only pick</div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>
-              Only CSB Premium members (and you) will see this pick.
-            </div>
-          </div>
-        </label>
-
-        {/* Subscriber-only toggle */}
-        <label
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 8,
-            padding: "8px 10px",
-            borderRadius: 8,
-            background: "rgba(37,99,235,0.08)",
-            border: "1px solid rgba(59,130,246,0.5)",
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={form.is_subscriber_only}
-            onChange={update("is_subscriber_only")}
-            style={{ marginTop: 3 }}
-          />
-          <div>
-            <div style={{ fontWeight: 600 }}>Subscriber-only pick</div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>
-              Only people subscribed to your tipster page will see this pick.
-            </div>
-          </div>
-        </label>
-
-        <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-          <button type="submit" disabled={saving}>
-            {saving ? "Saving…" : "Post Pick"}
-          </button>
-          <Link to={`/tipsters/${encodeURIComponent(username)}`}>
-            Cancel
-          </Link>
-        </div>
-      </form>
+            {err && (
+              <div style={{ color: "salmon", marginTop: 8 }}>{err}</div>
+            )}
+          </form>
+        </>
+      )}
     </div>
   );
 }
