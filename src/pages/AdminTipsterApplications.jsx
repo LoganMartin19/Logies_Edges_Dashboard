@@ -1,233 +1,336 @@
-// src/pages/TipsterApply.jsx
-import React, { useMemo, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../components/AuthGate";
-import { api } from "../api"; // ✅ new
-import styles from "../styles/Auth.module.css";
+// src/pages/AdminTipsterApplications.jsx
+import React, { useEffect, useState, useCallback } from "react";
+import { api } from "../api";
 
-const sanitise = (s = "") =>
-  (s || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9_]/g, "")
-    .slice(0, 20);
+const chip = (active) => ({
+  padding: "3px 10px",
+  borderRadius: 999,
+  fontSize: "0.78rem",
+  cursor: "pointer",
+  border: active
+    ? "1px solid rgba(34,197,94,0.9)"
+    : "1px solid rgba(148,163,184,0.5)",
+  background: active ? "rgba(22,163,74,0.18)" : "rgba(15,23,42,0.5)",
+  color: active ? "#bbf7d0" : "#e5e7eb",
+});
 
-export default function TipsterApply() {
-  const { user } = useAuth();
-  const nav = useNavigate();
-
-  const suggested = useMemo(
-    () => sanitise(user?.displayName) || sanitise(user?.email?.split("@")[0]),
-    [user]
-  );
-
-  const [form, setForm] = useState({
-    name: user?.displayName || "",
-    username: suggested || "",
-    bio: "",
-    sport_focus: "Football",
-    avatar_url: user?.photoURL || "",
-    social_links: {
-      twitter: "",
-      instagram: "",
-    },
-  });
-
-  const [err, setErr] = useState("");
-  const [ok, setOk] = useState(false);
+export default function AdminTipsterApplications() {
+  const [apps, setApps] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [busyId, setBusyId] = useState(null); // row-level spinner
 
-  if (!user) {
-    return (
-      <div className={styles.wrapper}>
-        <div className={styles.card}>
-          <div className={styles.header}>
-            <div className={styles.title}>Apply to become a Tipster</div>
-            <div className={styles.subtitle}>Please log in first.</div>
-          </div>
-          <Link to="/login" className={styles.btn}>
-            Log in
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const update = (k) => (e) =>
-    setForm({ ...form, [k]: e.target.value });
-
-  const updateSocial = (key) => (e) =>
-    setForm({
-      ...form,
-      social_links: {
-        ...form.social_links,
-        [key]: e.target.value,
-      },
-    });
-
-  const submit = async (e) => {
-    e.preventDefault();
-    setErr("");
-    setOk(false);
+  const load = useCallback(async () => {
     setLoading(true);
-
+    setErr("");
     try {
-      const cleanedUsername = sanitise(form.username);
-      const socials = form.social_links || {};
-      const twitter = socials.twitter?.trim() || "";
-      const instagram = socials.instagram?.trim() || "";
-
-      if (!cleanedUsername) {
-        throw new Error("Please choose a valid username.");
-      }
-
-      const payload = {
-        name: form.name.trim(),
-        username: cleanedUsername,
-        sport_focus: form.sport_focus,
-        avatar_url: form.avatar_url.trim() || null,
-        bio: form.bio.trim() || "",
-        social_links: {
-          twitter,
-          instagram,
+      const { data } = await api.get("/api/tipsters/applications", {
+        params: {
+          status: statusFilter === "all" ? undefined : statusFilter,
         },
-      };
-
-      await api.post("/api/tipsters/apply", payload);
-
-      setOk(true);
-      // Optional: redirect after a delay
-      // setTimeout(() => nav("/tipsters"), 2000);
-    } catch (e2) {
-      console.error(e2);
-      const msg =
-        e2?.response?.data?.detail ||
-        e2?.response?.data?.message ||
-        e2.message ||
-        "Something went wrong submitting your application.";
-      setErr(msg);
+      });
+      setApps(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setErr(
+        e?.response?.data?.detail ||
+          e?.message ||
+          "Could not load tipster applications."
+      );
+      setApps([]);
     } finally {
       setLoading(false);
+    }
+  }, [statusFilter]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleApprove = async (id) => {
+    if (
+      !window.confirm(
+        "Approve this application and create a verified tipster profile?"
+      )
+    ) {
+      return;
+    }
+    try {
+      setBusyId(id);
+      await api.post(`/api/tipsters/applications/${id}/approve`, {
+        admin_note: "Approved via admin UI",
+      });
+      await load();
+    } catch (e) {
+      console.error(e);
+      alert(
+        e?.response?.data?.detail ||
+          e?.message ||
+          "Could not approve this application."
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleReject = async (id) => {
+    const note =
+      window.prompt(
+        "Reason for rejection? (optional – saved in admin_note)",
+        ""
+      ) || null;
+
+    if (!window.confirm("Reject this application?")) return;
+
+    try {
+      setBusyId(id);
+      await api.post(`/api/tipsters/applications/${id}/reject`, {
+        admin_note: note,
+      });
+      await load();
+    } catch (e) {
+      console.error(e);
+      alert(
+        e?.response?.data?.detail ||
+          e?.message ||
+          "Could not reject this application."
+      );
+    } finally {
+      setBusyId(null);
     }
   };
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.card}>
-        <header className={styles.header}>
-          <div className={styles.title}>Apply to become a Tipster</div>
-          <div className={styles.subtitle}>
-            Fill this in to apply for a verified tipster profile on CSB.
-            Applications are reviewed manually – creating this does{" "}
-            <strong>not</strong> automatically list you.
-          </div>
-        </header>
-
-        {err && <div className={styles.error}>{err}</div>}
-        {ok && (
-          <div className={styles.success}>
-            Application submitted ✅ We&apos;ll review it and get back to you.
-          </div>
-        )}
-
-        <form className={styles.form} onSubmit={submit}>
-          <div className={styles.row}>
-            <label className={styles.label}>Display name</label>
-            <input
-              className={styles.input}
-              value={form.name}
-              onChange={update("name")}
-              required
-            />
-          </div>
-
-          <div className={styles.row}>
-            <label className={styles.label}>Username</label>
-            <input
-              className={styles.input}
-              value={form.username}
-              onChange={update("username")}
-              required
-            />
-            <div className={styles.hint}>
-              lowercase letters / numbers / _ (max 20)
-            </div>
-          </div>
-
-          <div className={styles.row}>
-            <label className={styles.label}>Sport focus</label>
-            <select
-              className={styles.input}
-              value={form.sport_focus}
-              onChange={update("sport_focus")}
-            >
-              <option>Football</option>
-              <option>NFL</option>
-              <option>NBA</option>
-              <option>NHL</option>
-              <option>Tennis</option>
-              <option>CFB</option>
-            </select>
-          </div>
-
-          <div className={styles.row}>
-            <label className={styles.label}>Avatar URL (optional)</label>
-            <input
-              className={styles.input}
-              value={form.avatar_url}
-              onChange={update("avatar_url")}
-            />
-          </div>
-
-          <div className={styles.row}>
-            <label className={styles.label}>Bio</label>
-            <textarea
-              className={styles.textarea}
-              rows={4}
-              value={form.bio}
-              onChange={update("bio")}
-              placeholder="Tell people what you specialise in, staking style, leagues, etc."
-            />
-          </div>
-
-          {/* 🔗 Socials */}
-          <div className={styles.row}>
-            <label className={styles.label}>X (Twitter)</label>
-            <input
-              className={styles.input}
-              value={form.social_links.twitter}
-              onChange={updateSocial("twitter")}
-              placeholder="@yourhandle or full URL"
-            />
-            <div className={styles.hint}>
-              We’ll show this on your tipster page so followers can find you on X.
-            </div>
-          </div>
-
-          <div className={styles.row}>
-            <label className={styles.label}>Instagram</label>
-            <input
-              className={styles.input}
-              value={form.social_links.instagram}
-              onChange={updateSocial("instagram")}
-              placeholder="@yourhandle or full URL"
-            />
-          </div>
-
-          <div className={styles.actions}>
-            <button className={styles.btn} type="submit" disabled={loading}>
-              {loading ? "Submitting…" : "Submit application"}
-            </button>
-            <Link to="/tipsters" className={`${styles.btn} ${styles.btnGhost}`}>
-              Cancel
-            </Link>
-          </div>
-
-          <p className={styles.hint} style={{ marginTop: 12 }}>
-            Once reviewed, we’ll create and verify your tipster profile.
-            Verified tipsters will be highlighted on the leaderboard.
-          </p>
-        </form>
+    <div
+      style={{
+        padding: "0.75rem",
+        background: "#020814",
+        borderRadius: 12,
+      }}
+    >
+      {/* Filter pills */}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginBottom: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        {["pending", "approved", "rejected", "all"].map((st) => (
+          <button
+            key={st}
+            type="button"
+            style={chip(statusFilter === st)}
+            onClick={() => setStatusFilter(st)}
+          >
+            {st.charAt(0).toUpperCase() + st.slice(1)}
+          </button>
+        ))}
       </div>
+
+      {/* Error / loading / empty states */}
+      {err && (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: "0.5rem 0.75rem",
+            borderRadius: 8,
+            background: "rgba(248,113,113,0.12)",
+            color: "#fecaca",
+            fontSize: "0.85rem",
+          }}
+        >
+          {err}
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ fontSize: "0.9rem", color: "#9ca3af" }}>
+          Loading applications…
+        </div>
+      )}
+
+      {!loading && !err && apps.length === 0 && (
+        <div
+          style={{
+            padding: "1rem 0.75rem",
+            borderRadius: 8,
+            background: "rgba(15,23,42,0.8)",
+            fontSize: "0.9rem",
+            color: "#9ca3af",
+          }}
+        >
+          No applications in this state yet.
+        </div>
+      )}
+
+      {!loading && !err && apps.length > 0 && (
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "0.85rem",
+            }}
+          >
+            <thead>
+              <tr>
+                <th style={th}>Submitted</th>
+                <th style={th}>Name</th>
+                <th style={th}>Username</th>
+                <th style={th}>Sport</th>
+                <th style={th}>Email</th>
+                <th style={th}>Socials</th>
+                <th style={th}>Status</th>
+                <th style={{ ...th, textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apps.map((a) => {
+                const created =
+                  a.created_at &&
+                  new Date(a.created_at).toLocaleString("en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+
+                const twitter = a.social_links?.twitter || "";
+                const instagram = a.social_links?.instagram || "";
+
+                return (
+                  <tr key={a.id}>
+                    <td style={td}>{created || "—"}</td>
+                    <td style={td}>{a.name}</td>
+                    <td style={td}>@{a.username}</td>
+                    <td style={td}>{a.sport_focus || "Football"}</td>
+                    <td style={td}>{a.email}</td>
+                    <td style={td}>
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        {twitter && (
+                          <span style={{ opacity: 0.9 }}>X: {twitter}</span>
+                        )}
+                        {instagram && (
+                          <span style={{ opacity: 0.9 }}>
+                            IG: {instagram}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td style={td}>
+                      <span
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          textTransform: "capitalize",
+                          fontSize: "0.75rem",
+                          background:
+                            a.status === "approved"
+                              ? "rgba(22,163,74,0.25)"
+                              : a.status === "rejected"
+                              ? "rgba(248,113,113,0.25)"
+                              : "rgba(55,65,81,0.6)",
+                          border:
+                            a.status === "approved"
+                              ? "1px solid rgba(34,197,94,0.7)"
+                              : a.status === "rejected"
+                              ? "1px solid rgba(248,113,113,0.7)"
+                              : "1px solid rgba(148,163,184,0.7)",
+                        }}
+                      >
+                        {a.status}
+                      </span>
+                    </td>
+                    <td
+                      style={{
+                        ...td,
+                        textAlign: "right",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {a.status === "pending" ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(a.id)}
+                            disabled={busyId === a.id}
+                            style={{
+                              fontSize: "0.8rem",
+                              padding: "3px 8px",
+                              borderRadius: 999,
+                              border: "1px solid rgba(34,197,94,0.8)",
+                              background: "rgba(22,163,74,0.15)",
+                              color: "#bbf7d0",
+                              cursor: "pointer",
+                              marginRight: 6,
+                            }}
+                          >
+                            {busyId === a.id ? "Working…" : "Approve"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleReject(a.id)}
+                            disabled={busyId === a.id}
+                            style={{
+                              fontSize: "0.8rem",
+                              padding: "3px 8px",
+                              borderRadius: 999,
+                              border: "1px solid rgba(248,113,113,0.8)",
+                              background: "rgba(127,29,29,0.4)",
+                              color: "#fecaca",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ opacity: 0.7, fontSize: "0.8rem" }}>
+                          —{/* no actions once decided */}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {/* Optional: quick bio preview under the table */}
+          <div
+            style={{
+              marginTop: 12,
+              fontSize: "0.8rem",
+              color: "#9ca3af",
+            }}
+          >
+            Click into an applicant row mentally to review their bio in the
+            table above – we keep this view compact for now. If you want, we
+            can add a modal later that shows full bio + history.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+const th = {
+  textAlign: "left",
+  padding: "6px 8px",
+  borderBottom: "1px solid rgba(31,41,55,0.9)",
+  fontWeight: 500,
+  fontSize: "0.78rem",
+  color: "#9ca3af",
+  whiteSpace: "nowrap",
+};
+
+const td = {
+  padding: "6px 8px",
+  borderBottom: "1px solid rgba(31,41,55,0.8)",
+  fontSize: "0.8rem",
+  color: "#e5e7eb",
+  verticalAlign: "top",
+};

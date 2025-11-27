@@ -1,32 +1,31 @@
 // src/pages/AdminPage.jsx
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../components/AuthGate";
-import AdminPicks from "./AdminPicks"; // featured picks UI
-import AdminAddAcca from "./AdminAddAcca"; // acca builder page
-import AdminTipsterApplications from "./AdminTipsterApplications"; // ✅ NEW
+import AdminPicks from "./AdminPicks";
+import AdminAddAcca from "./AdminAddAcca";
+import AdminTipsterApplications from "./AdminTipsterApplications";
 
 export default function AdminPage() {
   const nav = useNavigate();
   const { firebaseUser, profile, isAdmin, loading, logout } = useAuth();
 
+  const [activeTab, setActiveTab] = useState("featured"); // "featured" | "accas" | "tipsters"
+
   // Gate access: only admins allowed
   useEffect(() => {
     if (loading) return;
 
-    // Not logged in → send to login
     if (!firebaseUser || !profile) {
       nav("/login");
       return;
     }
 
-    // Logged in but not admin → send home
     if (!isAdmin) {
       nav("/");
     }
   }, [loading, firebaseUser, profile, isAdmin, nav]);
 
-  // While auth/profile is loading, or redirecting
   if (loading || !firebaseUser || !profile || !isAdmin) {
     return (
       <div
@@ -46,6 +45,22 @@ export default function AdminPage() {
   }
 
   const email = profile?.email || firebaseUser.email;
+
+  const tabChipStyle = (tab) => ({
+    padding: "3px 10px",
+    borderRadius: 999,
+    fontSize: "0.78rem",
+    cursor: "pointer",
+    border:
+      activeTab === tab
+        ? "1px solid rgba(255,255,255,0.9)"
+        : "1px solid rgba(148,163,184,0.5)",
+    background:
+      activeTab === tab
+        ? "rgba(15,23,42,0.95)"
+        : "rgba(15,23,42,0.4)",
+    color: activeTab === tab ? "#f9fafb" : "#e5e7eb",
+  });
 
   return (
     <div
@@ -121,7 +136,7 @@ export default function AdminPage() {
           </div>
         </header>
 
-        {/* Summary / nav strip for future sections */}
+        {/* Tabs */}
         <section
           style={{
             display: "flex",
@@ -137,174 +152,154 @@ export default function AdminPage() {
               border: "1px solid rgba(148,163,184,0.5)",
               background: "rgba(15,23,42,0.7)",
               fontSize: "0.85rem",
+              width: "100%",
             }}
           >
             <div style={{ opacity: 0.8, marginBottom: 4 }}>Admin sections</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <span
-                style={{
-                  padding: "3px 10px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(34,197,94,0.7)",
-                  fontSize: "0.78rem",
-                  background: "rgba(22,163,74,0.12)",
-                }}
+              <button
+                type="button"
+                style={tabChipStyle("featured")}
+                onClick={() => setActiveTab("featured")}
               >
                 Featured Picks
-              </span>
-              <span
-                style={{
-                  padding: "3px 10px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(59,130,246,0.7)",
-                  fontSize: "0.78rem",
-                  background: "rgba(37,99,235,0.12)",
-                }}
+              </button>
+              <button
+                type="button"
+                style={tabChipStyle("accas")}
+                onClick={() => setActiveTab("accas")}
               >
                 Acca Builder
-              </span>
-              <span
-                style={{
-                  padding: "3px 10px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(249,115,22,0.7)",
-                  fontSize: "0.78rem",
-                  background: "rgba(194,65,12,0.18)",
-                }}
+              </button>
+              <button
+                type="button"
+                style={tabChipStyle("tipsters")}
+                onClick={() => setActiveTab("tipsters")}
               >
                 Tipster applications
-              </span>
-              <span
-                style={{
-                  padding: "3px 10px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(148,163,184,0.4)",
-                  fontSize: "0.78rem",
-                  opacity: 0.7,
-                }}
-              >
-                Stripe / payouts (soon)
-              </span>
+              </button>
             </div>
           </div>
         </section>
 
-        {/* Featured Picks */}
-        <section
-          style={{
-            borderRadius: 16,
-            border: "1px solid rgba(148,163,184,0.35)",
-            background: "rgba(15,23,42,0.85)",
-            padding: "1rem 1.25rem",
-            marginBottom: "1.25rem",
-          }}
-        >
-          <h2
+        {/* Active tab content */}
+        {activeTab === "featured" && (
+          <section
             style={{
-              marginTop: 0,
-              marginBottom: "0.75rem",
-              fontSize: "1.1rem",
+              borderRadius: 16,
+              border: "1px solid rgba(148,163,184,0.35)",
+              background: "rgba(15,23,42,0.85)",
+              padding: "1rem 1.25rem",
             }}
           >
-            Featured Picks & Fixtures
-          </h2>
-          <p
-            style={{
-              marginTop: 0,
-              marginBottom: "1rem",
-              fontSize: "0.85rem",
-              color: "#9ca3af",
-            }}
-          >
-            Use this panel to attach “Featured Picks” to today&apos;s fixtures.
-            These show up on the public dashboard and in your marketing posts.
-          </p>
+            <h2
+              style={{
+                marginTop: 0,
+                marginBottom: "0.75rem",
+                fontSize: "1.1rem",
+              }}
+            >
+              Featured Picks & Fixtures
+            </h2>
+            <p
+              style={{
+                marginTop: 0,
+                marginBottom: "1rem",
+                fontSize: "0.85rem",
+                color: "#9ca3af",
+              }}
+            >
+              Use this panel to attach “Featured Picks” to today&apos;s fixtures.
+              These show up on the public dashboard and in your marketing posts.
+            </p>
 
-          <div
-            style={{
-              borderRadius: 12,
-              overflow: "hidden",
-              background: "#020814",
-            }}
-          >
-            <AdminPicks />
-          </div>
-        </section>
+            <div
+              style={{
+                borderRadius: 12,
+                overflow: "hidden",
+                background: "#020814",
+              }}
+            >
+              <AdminPicks />
+            </div>
+          </section>
+        )}
 
-        {/* Acca Builder */}
-        <section
-          style={{
-            borderRadius: 16,
-            border: "1px solid rgba(148,163,184,0.35)",
-            background: "rgba(15,23,42,0.85)",
-            padding: "1rem 1.25rem",
-            marginBottom: "1.25rem",
-          }}
-        >
-          <h2
+        {activeTab === "accas" && (
+          <section
             style={{
-              marginTop: 0,
-              marginBottom: "0.75rem",
-              fontSize: "1.1rem",
+              borderRadius: 16,
+              border: "1px solid rgba(148,163,184,0.35)",
+              background: "rgba(15,23,42,0.85)",
+              padding: "1rem 1.25rem",
             }}
           >
-            Acca Builder
-          </h2>
-          <p
-            style={{
-              marginTop: 0,
-              marginBottom: "1rem",
-              fontSize: "0.85rem",
-              color: "#9ca3af",
-            }}
-          >
-            Build multi-leg accumulators combining match markets and player
-            props. These are posted as curated CSB accas via the admin API.
-          </p>
+            <h2
+              style={{
+                marginTop: 0,
+                marginBottom: "0.75rem",
+                fontSize: "1.1rem",
+              }}
+            >
+              Acca Builder
+            </h2>
+            <p
+              style={{
+                marginTop: 0,
+                marginBottom: "1rem",
+                fontSize: "0.85rem",
+                color: "#9ca3af",
+              }}
+            >
+              Build multi-leg accumulators combining match markets and player
+              props. These are posted as curated CSB accas via the admin API.
+            </p>
 
-          <div
-            style={{
-              borderRadius: 12,
-              overflow: "hidden",
-              background: "#020814",
-            }}
-          >
-            <AdminAddAcca />
-          </div>
-        </section>
+            <div
+              style={{
+                borderRadius: 12,
+                overflow: "hidden",
+                background: "#020814",
+              }}
+            >
+              <AdminAddAcca />
+            </div>
+          </section>
+        )}
 
-        {/* Tipster Applications */}
-        <section
-          style={{
-            borderRadius: 16,
-            border: "1px solid rgba(148,163,184,0.35)",
-            background: "rgba(15,23,42,0.85)",
-            padding: "1rem 1.25rem",
-          }}
-        >
-          <h2
+        {activeTab === "tipsters" && (
+          <section
             style={{
-              marginTop: 0,
-              marginBottom: "0.75rem",
-              fontSize: "1.1rem",
+              borderRadius: 16,
+              border: "1px solid rgba(148,163,184,0.35)",
+              background: "rgba(15,23,42,0.85)",
+              padding: "1rem 1.25rem",
             }}
           >
-            Tipster applications
-          </h2>
-          <p
-            style={{
-              marginTop: 0,
-              marginBottom: "0.75rem",
-              fontSize: "0.85rem",
-              color: "#9ca3af",
-            }}
-          >
-            Review new tipster applications and approve them to automatically
-            create verified tipster profiles.
-          </p>
+            <h2
+              style={{
+                marginTop: 0,
+                marginBottom: "0.75rem",
+                fontSize: "1.1rem",
+              }}
+            >
+              Tipster applications
+            </h2>
+            <p
+              style={{
+                marginTop: 0,
+                marginBottom: "1rem",
+                fontSize: "0.85rem",
+                color: "#9ca3af",
+              }}
+            >
+              Review new tipster applications and approve them to automatically
+              create verified tipster profiles.
+            </p>
 
-          <AdminTipsterApplications />
-        </section>
+            <AdminTipsterApplications />
+          </section>
+        )}
       </div>
     </div>
   );
