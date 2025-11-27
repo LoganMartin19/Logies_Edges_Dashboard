@@ -6,6 +6,24 @@ import { useAuth } from "../components/AuthGate";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
+const PROP_TYPES = [
+  { value: "shots", label: "Shots" },
+  { value: "sot", label: "Shots on Target" },
+  { value: "passes", label: "Passes" },
+  { value: "tackles", label: "Tackles" },
+  { value: "yellow", label: "Yellow Card" },
+  { value: "goals_anytime", label: "Anytime Goalscorer" },
+];
+
+const PROP_TYPE_LABEL = {
+  shots: "Shots",
+  sot: "Shots on Target",
+  passes: "Passes",
+  tackles: "Tackles",
+  yellow: "Yellow Cards",
+  goals_anytime: "Anytime Goalscorer",
+};
+
 export default function TipsterAddPick() {
   const { username } = useParams();
   const { user } = useAuth();
@@ -18,12 +36,21 @@ export default function TipsterAddPick() {
 
   const [form, setForm] = useState({
     fixture_id: "",
-    market: "HOME_WIN", // e.g. HOME_WIN / AWAY_WIN / DRAW / O2.5 / BTTS_Y
+    market: "HOME_WIN", // default for match markets
     bookmaker: "bet365",
     price: "",
     stake: "1.0",
     is_premium_only: false,
-    is_subscriber_only: false, // ⭐ NEW
+    is_subscriber_only: false,
+  });
+
+  // NEW: pick type + player prop state
+  const [pickType, setPickType] = useState("match"); // "match" | "player"
+  const [prop, setProp] = useState({
+    player: "",
+    type: "shots",
+    line: "",
+    side: "over", // "over" | "under"
   });
 
   const [err, setErr] = useState("");
@@ -34,8 +61,13 @@ export default function TipsterAddPick() {
   const update = (k) => (e) =>
     setForm((f) => ({
       ...f,
-      [k]:
-        e.target.type === "checkbox" ? e.target.checked : e.target.value,
+      [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value,
+    }));
+
+  const updateProp = (k) => (e) =>
+    setProp((p) => ({
+      ...p,
+      [k]: e.target.value,
     }));
 
   const normalizeFixtures = (data) => {
@@ -85,9 +117,7 @@ export default function TipsterAddPick() {
       } catch (e) {
         if (!alive) return;
         setErr(
-          e?.response?.data?.detail ||
-            e.message ||
-            "Failed to load fixtures"
+          e?.response?.data?.detail || e.message || "Failed to load fixtures"
         );
         setFixtures([]);
       } finally {
@@ -111,6 +141,33 @@ export default function TipsterAddPick() {
     );
   }
 
+  const buildPlayerPropMarketLabel = () => {
+    const player = (prop.player || "").trim();
+    const type = prop.type;
+    const line = (prop.line || "").trim();
+    const side = prop.side;
+
+    if (!player) {
+      throw new Error("Please enter a player name");
+    }
+    if (!type) {
+      throw new Error("Please choose a player prop type");
+    }
+
+    // Anytime goalscorer: no line/side required
+    if (type === "goals_anytime") {
+      return `${player} - Anytime Goalscorer`;
+    }
+
+    if (!line) {
+      throw new Error("Please enter a line (e.g. 0.5, 1.5)");
+    }
+
+    const typeLabel = PROP_TYPE_LABEL[type] || type;
+    const sideWord = side === "under" ? "Under" : "Over";
+    return `${player} - ${sideWord} ${line} ${typeLabel}`;
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
@@ -119,22 +176,36 @@ export default function TipsterAddPick() {
       if (!form.fixture_id) {
         throw new Error("Please choose a fixture");
       }
+
+      let marketToSend = form.market.trim();
+
+      if (pickType === "player") {
+        marketToSend = buildPlayerPropMarketLabel();
+      }
+
+      if (!marketToSend) {
+        throw new Error("Market is required");
+      }
+
       const payload = {
         fixture_id: Number(form.fixture_id),
-        market: form.market.trim(),
+        market: marketToSend,
         bookmaker: form.bookmaker.trim() || null,
         price: Number(form.price),
         stake: Number(form.stake) || 1.0,
         is_premium_only: !!form.is_premium_only,
-        is_subscriber_only: !!form.is_subscriber_only, // ⭐ NEW
+        is_subscriber_only: !!form.is_subscriber_only,
       };
+
+      if (!payload.price || Number.isNaN(payload.price)) {
+        throw new Error("Please enter valid decimal odds");
+      }
+
       await createTipsterPick(username, payload);
       nav(`/tipsters/${encodeURIComponent(username)}`);
     } catch (e2) {
       setErr(
-        e2?.response?.data?.detail ||
-          e2.message ||
-          "Failed to add pick"
+        e2?.response?.data?.detail || e2.message || "Failed to add pick"
       );
     } finally {
       setSaving(false);
@@ -186,9 +257,7 @@ export default function TipsterAddPick() {
       </div>
 
       {loadingFixtures && (
-        <div style={{ marginBottom: 8, opacity: 0.8 }}>
-          Loading fixtures…
-        </div>
+        <div style={{ marginBottom: 8, opacity: 0.8 }}>Loading fixtures…</div>
       )}
 
       {err && (
@@ -212,20 +281,151 @@ export default function TipsterAddPick() {
           </select>
         </label>
 
-        <label>
-          Market
-          <select
-            required
-            value={form.market}
-            onChange={update("market")}
+        {/* Pick type toggle */}
+        <div>
+          <div style={{ marginBottom: 6, fontWeight: 600 }}>Pick type</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => setPickType("match")}
+              style={{
+                padding: "4px 10px",
+                borderRadius: 999,
+                border:
+                  pickType === "match"
+                    ? "1px solid rgba(34,197,94,0.8)"
+                    : "1px solid rgba(148,163,184,0.5)",
+                background:
+                  pickType === "match"
+                    ? "rgba(22,163,74,0.15)"
+                    : "transparent",
+                color: "#e5e7eb",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              Match market
+            </button>
+            <button
+              type="button"
+              onClick={() => setPickType("player")}
+              style={{
+                padding: "4px 10px",
+                borderRadius: 999,
+                border:
+                  pickType === "player"
+                    ? "1px solid rgba(59,130,246,0.8)"
+                    : "1px solid rgba(148,163,184,0.5)",
+                background:
+                  pickType === "player"
+                    ? "rgba(37,99,235,0.15)"
+                    : "transparent",
+                color: "#e5e7eb",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              Player prop
+            </button>
+          </div>
+        </div>
+
+        {pickType === "match" && (
+          <label>
+            Market
+            <select
+              required
+              value={form.market}
+              onChange={update("market")}
+            >
+              {markets.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {pickType === "player" && (
+          <div
+            style={{
+              borderRadius: 10,
+              padding: "10px 12px",
+              border: "1px solid rgba(59,130,246,0.4)",
+              background: "rgba(15,23,42,0.7)",
+              display: "grid",
+              gap: 8,
+            }}
           >
-            {markets.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </label>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+              Player prop details
+            </div>
+
+            <label>
+              Player name
+              <input
+                value={prop.player}
+                onChange={updateProp("player")}
+                placeholder="e.g. Bukayo Saka"
+              />
+            </label>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.2fr 0.8fr",
+                gap: 8,
+              }}
+            >
+              <label>
+                Prop type
+                <select
+                  value={prop.type}
+                  onChange={updateProp("type")}
+                >
+                  {PROP_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Line & side only if not anytime goalscorer */}
+              {prop.type !== "goals_anytime" && (
+                <label>
+                  Line
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={prop.line}
+                    onChange={updateProp("line")}
+                    placeholder="e.g. 1.5"
+                  />
+                </label>
+              )}
+            </div>
+
+            {prop.type !== "goals_anytime" && (
+              <label>
+                Side
+                <select
+                  value={prop.side}
+                  onChange={updateProp("side")}
+                >
+                  <option value="over">Over</option>
+                  <option value="under">Under</option>
+                </select>
+              </label>
+            )}
+
+            <div style={{ fontSize: 12, opacity: 0.8 }}>
+              We’ll store this as a readable market like:{" "}
+              <em>"Bukayo Saka - Over 1.5 Shots on Target"</em>.
+            </div>
+          </div>
+        )}
 
         <label>
           Bookmaker
@@ -285,7 +485,7 @@ export default function TipsterAddPick() {
           </div>
         </label>
 
-        {/* Subscriber-only toggle – NEW */}
+        {/* Subscriber-only toggle */}
         <label
           style={{
             display: "flex",

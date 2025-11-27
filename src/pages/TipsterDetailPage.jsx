@@ -156,6 +156,41 @@ const SettleButtons = ({ onSettle, disabled }) => (
   </div>
 );
 
+/* ---------- player prop helpers ---------- */
+
+/**
+ * We store player props as human-readable strings like:
+ *   "Bukayo Saka - Over 1.5 Shots on Target"
+ *   "Erling Haaland - Anytime Goalscorer"
+ * This parses them into { player, description } if possible.
+ */
+function parsePlayerPropMarket(market) {
+  if (typeof market !== "string") return null;
+  const parts = market.split(" - ");
+  if (parts.length < 2) return null;
+  const player = parts[0].trim();
+  const description = parts.slice(1).join(" - ").trim();
+  if (!player || !description) return null;
+  return { player, description };
+}
+
+function MarketText({ market }) {
+  const parsed = parsePlayerPropMarket(market);
+  if (!parsed) {
+    return <span>{market}</span>;
+  }
+  return (
+    <>
+      <span style={{ fontWeight: 600 }}>{parsed.player}</span>
+      <span style={{ opacity: 0.8 }}> — {parsed.description}</span>
+    </>
+  );
+}
+
+function isPlayerPropMarket(market) {
+  return !!parsePlayerPropMarket(market);
+}
+
 /* ------------ stats + chart helpers ----------- */
 
 const RANGE_OPTIONS = [
@@ -744,7 +779,10 @@ export default function TipsterDetailPage() {
                   href={
                     socials.instagram.startsWith("http")
                       ? socials.instagram
-                      : `https://instagram.com/${socials.instagram.replace(/^@/, "")}`
+                      : `https://instagram.com/${socials.instagram.replace(
+                          /^@/,
+                          ""
+                        )}`
                   }
                   target="_blank"
                   rel="noreferrer"
@@ -915,7 +953,9 @@ export default function TipsterDetailPage() {
                         <td style={{ textAlign: "right" }}>
                           <span
                             className={
-                              m.roi >= 0 ? "roiBadge roiGood" : "roiBadge roiBad"
+                              m.roi >= 0
+                                ? "roiBadge roiGood"
+                                : "roiBadge roiBad"
                             }
                           >
                             {percent(m.roi)}%
@@ -954,7 +994,9 @@ export default function TipsterDetailPage() {
                         <td style={{ textAlign: "right" }}>
                           <span
                             className={
-                              l.roi >= 0 ? "roiBadge roiGood" : "roiBadge roiBad"
+                              l.roi >= 0
+                                ? "roiBadge roiGood"
+                                : "roiBadge roiBad"
                             }
                           >
                             {percent(l.roi)}%
@@ -1071,6 +1113,8 @@ export default function TipsterDetailPage() {
                 ((isPremOnly && !viewerCanSeePremium) ||
                   (isSubOnly && !isSubscriber));
 
+              const playerProp = isPlayerPropMarket(p.market);
+
               return (
                 <tr key={p.id}>
                   <td>
@@ -1151,9 +1195,30 @@ export default function TipsterDetailPage() {
                           display: "flex",
                           alignItems: "center",
                           gap: 6,
+                          flexWrap: "wrap",
                         }}
                       >
-                        <span>{p.market}</span>
+                        <MarketText market={p.market} />
+
+                        {playerProp && (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              fontSize: 11,
+                              padding: "2px 8px",
+                              borderRadius: 999,
+                              background: "rgba(56,189,248,0.08)",
+                              border:
+                                "1px solid rgba(56,189,248,0.7)",
+                              color: "#bae6fd",
+                            }}
+                          >
+                            🧩 Prop
+                          </span>
+                        )}
+
                         {p.is_premium_only && (
                           <span
                             style={{
