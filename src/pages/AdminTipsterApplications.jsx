@@ -14,6 +14,24 @@ const chip = (active) => ({
   color: active ? "#bbf7d0" : "#e5e7eb",
 });
 
+const th = {
+  textAlign: "left",
+  padding: "6px 8px",
+  borderBottom: "1px solid rgba(31,41,55,0.9)",
+  fontWeight: 500,
+  fontSize: "0.78rem",
+  color: "#9ca3af",
+  whiteSpace: "nowrap",
+};
+
+const td = {
+  padding: "6px 8px",
+  borderBottom: "1px solid rgba(31,41,55,0.8)",
+  fontSize: "0.8rem",
+  color: "#e5e7eb",
+  verticalAlign: "top",
+};
+
 export default function AdminTipsterApplications() {
   const [apps, setApps] = useState([]);
   const [statusFilter, setStatusFilter] = useState("pending");
@@ -25,7 +43,7 @@ export default function AdminTipsterApplications() {
     setLoading(true);
     setErr("");
     try {
-      const { data } = await api.get("/api/admin/tipsters/applications", {
+      const { data } = await api.get("/api/tipsters/applications", {
         params: {
           status: statusFilter === "all" ? undefined : statusFilter,
         },
@@ -58,7 +76,7 @@ export default function AdminTipsterApplications() {
     }
     try {
       setBusyId(id);
-      await api.post(`/api/admin/tipsters/applications/${id}/approve`, {
+      await api.post(`/api/tipsters/applications/${id}/approve`, {
         admin_note: "Approved via admin UI",
       });
       await load();
@@ -86,7 +104,7 @@ export default function AdminTipsterApplications() {
 
     try {
       setBusyId(id);
-      await api.post(`/api/admin/tipsters/applications/${id}/reject`, {
+      await api.post(`/api/tipsters/applications/${id}/reject`, {
         admin_note: note,
       });
       await load();
@@ -316,21 +334,3 @@ export default function AdminTipsterApplications() {
     </div>
   );
 }
-
-const th = {
-  textAlign: "left",
-  padding: "6px 8px",
-  borderBottom: "1px solid rgba(31,41,55,0.9)",
-  fontWeight: 500,
-  fontSize: "0.78rem",
-  color: "#9ca3af",
-  whiteSpace: "nowrap",
-};
-
-const td = {
-  padding: "6px 8px",
-  borderBottom: "1px solid rgba(31,41,55,0.8)",
-  fontSize: "0.8rem",
-  color: "#e5e7eb",
-  verticalAlign: "top",
-};
