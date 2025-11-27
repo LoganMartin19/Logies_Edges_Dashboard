@@ -83,6 +83,53 @@ const splitMatchup = (s = "") => {
   return m.length === 2 ? { home: m[0].trim(), away: m[1].trim() } : {};
 };
 
+/* ---------- player prop helpers (same vibe as TipsterAddPick) ---------- */
+
+const PROP_TYPES = [
+  { value: "shots", label: "Shots" },
+  { value: "sot", label: "Shots on Target" },
+  { value: "passes", label: "Passes" },
+  { value: "tackles", label: "Tackles" },
+  { value: "yellow", label: "Yellow Card" },
+  { value: "goals_anytime", label: "Anytime Goalscorer" },
+];
+
+const PROP_TYPE_LABEL = {
+  shots: "Shots",
+  sot: "Shots on Target",
+  passes: "Passes",
+  tackles: "Tackles",
+  yellow: "Yellow Cards",
+  goals_anytime: "Anytime Goalscorer",
+};
+
+const buildPlayerPropMarketLabel = ({ player, type, line, side }) => {
+  const playerName = (player || "").trim();
+  const propType = type || "shots";
+  const propLine = (line || "").trim();
+  const propSide = side || "over";
+
+  if (!playerName) {
+    throw new Error("Please enter a player name for a player prop pick.");
+  }
+  if (!propType) {
+    throw new Error("Please choose a prop type for a player prop pick.");
+  }
+
+  if (propType === "goals_anytime") {
+    // Anytime goalscorer: no line/side required
+    return `${playerName} - Anytime Goalscorer`;
+  }
+
+  if (!propLine) {
+    throw new Error("Please enter a line (e.g. 0.5, 1.5) for the player prop.");
+  }
+
+  const typeLabel = PROP_TYPE_LABEL[propType] || propType;
+  const sideWord = propSide === "under" ? "Under" : "Over";
+  return `${playerName} - ${sideWord} ${propLine} ${typeLabel}`;
+};
+
 export default function AdminPicks() {
   // default to today + all so the API 422 never happens
   const [day, setDay] = useState(todayISO());
@@ -142,16 +189,34 @@ export default function AdminPicks() {
     }
   };
 
-  // ----------------- ADD PICK (now uses /admin/picks & supports premium) ----
+  // ----------------- ADD PICK (now supports player props) ----
   const addPick = async (fixture, form) => {
-    const market = form.market.value.trim();
-    const bookmaker = form.bookmaker.value.trim() || "bet365";
+    const pickType = form.pick_type?.value || "match";
+
+    let market = "";
+    if (pickType === "player") {
+      // build a readable player prop market
+      market = buildPlayerPropMarketLabel({
+        player: form.player?.value,
+        type: form.prop_type?.value,
+        line: form.line?.value,
+        side: form.side?.value,
+      });
+    } else {
+      market = (form.market.value || "").trim();
+    }
+
+    const bookmaker = (form.bookmaker.value || "").trim() || "bet365";
     const price = parseFloat(form.price.value);
-    const note = form.note.value.trim();
+    const note = (form.note.value || "").trim();
     const isPremiumOnly = form.is_premium_only?.checked || false;
 
-    if (!market || !price || isNaN(price)) {
-      alert("Market and numeric price required");
+    if (!market) {
+      alert("Market is required");
+      return;
+    }
+    if (!price || isNaN(price)) {
+      alert("Numeric decimal odds required");
       return;
     }
 
@@ -170,7 +235,6 @@ export default function AdminPicks() {
 
     setBusyPickId("adding");
     try {
-      // Use your tested endpoint
       await api.post("/admin/picks", payload);
       form.reset();
       await loadAll();
@@ -292,6 +356,7 @@ export default function AdminPicks() {
       onClick={() => {
         const form = document.getElementById(`pick-form-${f.id}`);
         if (!form) return;
+        form.pick_type.value = "match"; // ensure we're in match mode
         form.market.value = mkt || "";
         form.bookmaker.value = book || "";
         form.price.value =
@@ -665,10 +730,94 @@ export default function AdminPicks() {
                           gap: 6,
                         }}
                       >
+                        {/* Pick type */}
+                        <label
+                          style={{
+                            fontSize: 12,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 2,
+                          }}
+                        >
+                          <span>Pick type</span>
+                          <select name="pick_type" defaultValue="match">
+                            <option value="match">Match market</option>
+                            <option value="player">Player prop</option>
+                          </select>
+                        </label>
+
+                        {/* Match market input */}
                         <input
                           name="market"
-                          placeholder="HOME_WIN / AWAY_WIN / O221.5"
+                          placeholder="Match market (e.g. HOME_WIN / O2.5)"
                         />
+
+                        {/* Player prop fields (optional if Match market) */}
+                        <div
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 6,
+                            padding: 6,
+                            fontSize: 12,
+                            background: "#f9fafb",
+                          }}
+                        >
+                          <div
+                            style={{
+                              marginBottom: 4,
+                              fontWeight: 600,
+                              fontSize: 11,
+                            }}
+                          >
+                            Player prop (fill if pick type = Player)
+                          </div>
+                          <input
+                            name="player"
+                            placeholder="Player name (e.g. Bukayo Saka)"
+                            style={{ marginBottom: 4 }}
+                          />
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1.3fr 0.7fr 0.7fr",
+                              gap: 4,
+                            }}
+                          >
+                            <select
+                              name="prop_type"
+                              defaultValue="shots"
+                            >
+                              {PROP_TYPES.map((t) => (
+                                <option key={t.value} value={t.value}>
+                                  {t.label}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              name="line"
+                              placeholder="Line (e.g. 1.5)"
+                            />
+                            <select
+                              name="side"
+                              defaultValue="over"
+                            >
+                              <option value="over">Over</option>
+                              <option value="under">Under</option>
+                            </select>
+                          </div>
+                          <div
+                            style={{
+                              marginTop: 4,
+                              fontSize: 10,
+                              color: "#6b7280",
+                            }}
+                          >
+                            For anytime goalscorer, line/side can be left
+                            blank – we’ll store it as{" "}
+                            <em>"Player - Anytime Goalscorer"</em>.
+                          </div>
+                        </div>
+
                         <input
                           name="bookmaker"
                           placeholder="bet365"

@@ -2,7 +2,8 @@
 import React, { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../components/AuthGate";
-import AdminPicks from "./AdminPicks"; // re-use your existing admin picks UI
+import AdminPicks from "./AdminPicks"; // featured picks UI
+import AdminAddAcca from "./AdminAddAcca"; // ✅ new acca builder page
 
 export default function AdminPage() {
   const nav = useNavigate();
@@ -154,6 +155,17 @@ export default function AdminPage() {
                 style={{
                   padding: "3px 10px",
                   borderRadius: 999,
+                  border: "1px solid rgba(59,130,246,0.7)",
+                  fontSize: "0.78rem",
+                  background: "rgba(37,99,235,0.12)",
+                }}
+              >
+                Acca Builder
+              </span>
+              <span
+                style={{
+                  padding: "3px 10px",
+                  borderRadius: 999,
                   border: "1px solid rgba(148,163,184,0.4)",
                   fontSize: "0.78rem",
                   opacity: 0.7,
@@ -176,13 +188,14 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {/* Main admin content – reuse your AdminPicks */}
+        {/* Featured Picks */}
         <section
           style={{
             borderRadius: 16,
             border: "1px solid rgba(148,163,184,0.35)",
             background: "rgba(15,23,42,0.85)",
             padding: "1rem 1.25rem",
+            marginBottom: "1.25rem",
           }}
         >
           <h2
@@ -214,6 +227,47 @@ export default function AdminPage() {
             }}
           >
             <AdminPicks />
+          </div>
+        </section>
+
+        {/* Acca Builder */}
+        <section
+          style={{
+            borderRadius: 16,
+            border: "1px solid rgba(148,163,184,0.35)",
+            background: "rgba(15,23,42,0.85)",
+            padding: "1rem 1.25rem",
+          }}
+        >
+          <h2
+            style={{
+              marginTop: 0,
+              marginBottom: "0.75rem",
+              fontSize: "1.1rem",
+            }}
+          >
+            Acca Builder
+          </h2>
+          <p
+            style={{
+              marginTop: 0,
+              marginBottom: "1rem",
+              fontSize: "0.85rem",
+              color: "#9ca3af",
+            }}
+          >
+            Build multi-leg accumulators combining match markets and player props.
+            These are posted as curated CSB accas via the admin API.
+          </p>
+
+          <div
+            style={{
+              borderRadius: 12,
+              overflow: "hidden",
+              background: "#020814",
+            }}
+          >
+            <AdminAddAcca />
           </div>
         </section>
       </div>
