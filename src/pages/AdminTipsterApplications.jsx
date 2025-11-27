@@ -25,7 +25,7 @@ export default function AdminTipsterApplications() {
     setLoading(true);
     setErr("");
     try {
-      const { data } = await api.get("/api/tipsters/applications", {
+      const { data } = await api.get("/api/admin/tipsters/applications", {
         params: {
           status: statusFilter === "all" ? undefined : statusFilter,
         },
@@ -58,10 +58,11 @@ export default function AdminTipsterApplications() {
     }
     try {
       setBusyId(id);
-      await api.post(`/api/tipsters/applications/${id}/approve`, {
+      await api.post(`/api/admin/tipsters/applications/${id}/approve`, {
         admin_note: "Approved via admin UI",
       });
       await load();
+      setStatusFilter("approved");
     } catch (e) {
       console.error(e);
       alert(
@@ -85,10 +86,11 @@ export default function AdminTipsterApplications() {
 
     try {
       setBusyId(id);
-      await api.post(`/api/tipsters/applications/${id}/reject`, {
+      await api.post(`/api/admin/tipsters/applications/${id}/reject`, {
         admin_note: note,
       });
       await load();
+      setStatusFilter("rejected");
     } catch (e) {
       console.error(e);
       alert(
@@ -299,7 +301,6 @@ export default function AdminTipsterApplications() {
             </tbody>
           </table>
 
-          {/* Optional: quick bio preview under the table */}
           <div
             style={{
               marginTop: 12,
@@ -307,9 +308,8 @@ export default function AdminTipsterApplications() {
               color: "#9ca3af",
             }}
           >
-            Click into an applicant row mentally to review their bio in the
-            table above – we keep this view compact for now. If you want, we
-            can add a modal later that shows full bio + history.
+            We keep this view compact for now. If you want later, we can add a
+            modal to show full bio + history for each applicant.
           </div>
         </div>
       )}
