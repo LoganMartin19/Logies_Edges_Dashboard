@@ -81,8 +81,6 @@ export default function TipsterApply() {
       }
 
       const payload = {
-        firebase_uid: user.uid,
-        email: user.email,
         name: form.name.trim(),
         username: cleanedUsername,
         sport_focus: form.sport_focus,
