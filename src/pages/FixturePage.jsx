@@ -69,31 +69,44 @@ const FixturePage = () => {
     if (!raw) return "";
     let x = String(raw).toUpperCase().replace(/\s+/g, "");
     const syn = {
+      // BTTS
       BTTSYES: "BTTS_Y",
       BTTSY: "BTTS_Y",
       BTTSNO: "BTTS_N",
       BTTSN: "BTTS_N",
+
+      // 1X2
       HOMEWIN: "HOME_WIN",
       AWAYWIN: "AWAY_WIN",
+
+      // DNB (Draw No Bet)
+      HOMEDNB: "HOME_DNB",
+      HOME_DNB: "HOME_DNB",
+      DRAWNOBETHOME: "HOME_DNB",
+      HOMEDRAWNOBET: "HOME_DNB",
+
+      AWAYDNB: "AWAY_DNB",
+      AWAY_DNB: "AWAY_DNB",
+      DRAWNOBETAWAY: "AWAY_DNB",
+      AWAYDRAWNOBET: "AWAY_DNB",
     };
+
     if (syn[x]) return syn[x];
 
+    // Over/Under synonyms: OVER2.5, UNDER2.5 etc.
     const ou =
-      x.match(/^O?VER?(\d+(\.\d+)?)$/) || x.match(/^U?N?DER?(\d+(\.\d+)?)$/);
+      x.match(/^O?VER?(\d+(\.\d+)?)$/) ||
+      x.match(/^U?N?DER?(\d+(\.\d+)?)$/);
     if (ou) {
       if (/^O(VER)?\d/.test(x)) return `O${x.replace(/^O(VER)?/, "")}`;
       if (/^U(NDER)?\d/.test(x)) return `U${x.replace(/^U(NDER)?/, "")}`;
     }
 
+    // Already canonical O2.5 / U2.5
     if (/^O\d+(\.\d+)?$/.test(x) || /^U\d+(\.\d+)?$/.test(x)) return x;
+
     return x;
   };
-
-  // Reset explanations when fixture changes
-  useEffect(() => {
-    setExplanations({});
-    setExpandedWhy(null);
-  }, [id]);
 
 
   // --- LOAD FIXTURE DATA ----------------------------------------------------
