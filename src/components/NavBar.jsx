@@ -11,12 +11,14 @@ export default function NavBar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [myTipster, setMyTipster] = useState(null);
 
-  // 🔁 updated for new AuthGate shape
+  // from AuthGate
   const { firebaseUser, isPremium, isAdmin, initializing, logout } = useAuth();
 
   useEffect(() => {
     if (firebaseUser) {
-      fetchMyTipster().then(setMyTipster).catch(() => setMyTipster(null));
+      fetchMyTipster()
+        .then(setMyTipster)
+        .catch(() => setMyTipster(null));
     } else {
       setMyTipster(null);
     }
@@ -26,7 +28,6 @@ export default function NavBar() {
     setMenuOpen((p) => {
       const next = !p;
       if (!next) {
-        // closing burger -> close submenus too
         setSportsOpen(false);
         setUserMenuOpen(false);
       }
@@ -46,6 +47,12 @@ export default function NavBar() {
     (firebaseUser?.displayName && firebaseUser.displayName[0]) ||
     (firebaseUser?.email && firebaseUser.email[0]) ||
     "U";
+
+  // 👇 NEW: choose best avatar source
+  const avatarUrl =
+    myTipster?.avatar_url ||
+    firebaseUser?.photoURL ||
+    null;
 
   return (
     <nav className={styles.navbar}>
@@ -95,7 +102,7 @@ export default function NavBar() {
             </NavLink>
           </li>
 
-          {/* SPORTS DROPDOWN (click to toggle) */}
+          {/* SPORTS DROPDOWN */}
           <li
             className={`${styles.dropdown} ${
               sportsOpen ? styles.dropdownOpen : ""
@@ -202,7 +209,7 @@ export default function NavBar() {
             </NavLink>
           </li>
 
-          {/* 🔥 Premium top-level nav item */}
+          {/* Premium */}
           <li>
             <NavLink
               to="/premium"
@@ -213,7 +220,7 @@ export default function NavBar() {
             </NavLink>
           </li>
 
-          {/* 🛠 Admin top-level nav item (only for admins) */}
+          {/* Admin */}
           {isAdmin && (
             <li>
               <NavLink
@@ -240,7 +247,15 @@ export default function NavBar() {
                   onClick={toggleUserMenu}
                 >
                   <span className={styles.avatarCircle}>
-                    {displayInitial}
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="User avatar"
+                        className={styles.avatarImg}
+                      />
+                    ) : (
+                      displayInitial
+                    )}
                   </span>
                   <span className={styles.caret}>▾</span>
                 </button>
@@ -267,7 +282,6 @@ export default function NavBar() {
                     </NavLink>
                   </li>
 
-                  {/* ⭐ Premium & billing always visible when logged in */}
                   <li>
                     <NavLink
                       to="/premium"
@@ -279,7 +293,6 @@ export default function NavBar() {
                     </NavLink>
                   </li>
 
-                  {/* 🛠 Extra links if user is admin */}
                   {isAdmin && (
                     <>
                       <li>
