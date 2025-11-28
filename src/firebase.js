@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getMessaging, isSupported } from "firebase/messaging";
+import { getStorage } from "firebase/storage";          // 👈 NEW
 
 // --- Firebase Config (from Vercel envs) ---
 const firebaseConfig = {
@@ -9,7 +10,8 @@ const firebaseConfig = {
   authDomain: process.env.REACT_APP_FB_AUTH_DOMAIN,
   projectId: process.env.REACT_APP_FB_PROJECT_ID,
   appId: process.env.REACT_APP_FB_APP_ID,
-  messagingSenderId: process.env.REACT_APP_FB_MESSAGING_SENDER_ID, // <-- IMPORTANT for web push
+  messagingSenderId: process.env.REACT_APP_FB_MESSAGING_SENDER_ID,
+  storageBucket: "logies-edges.firebasestorage.app",   // 👈 from Firebase config
 };
 
 // --- Initialise App ---
@@ -20,13 +22,11 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 
-// --- Messaging (Web Push) ---
-/**
- * Returns Firebase Messaging instance if supported,
- * otherwise returns null safely.
- */
-let _messagingPromise;
+// --- Storage ---
+export const storage = getStorage(app);                // 👈 export this
 
+// --- Messaging (Web Push) ---
+let _messagingPromise;
 export function getMessagingSafe() {
   if (!_messagingPromise) {
     _messagingPromise = isSupported().then((supported) => {

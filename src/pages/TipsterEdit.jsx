@@ -11,12 +11,76 @@ import {
 import { useAuth } from "../components/AuthGate";
 import styles from "../styles/Auth.module.css";
 
+// 👇 NEW: storage imports
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "../firebase";
+
 const sanitise = (s = "") =>
   (s || "")
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 20);
 
+/* ---------- Avatar Uploader (same pattern as Apply page) ---------- */
+function AvatarUploader({ value, onChange }) {
+  const { user } = useAuth();
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+
+      const uid = user?.uid || user?.firebaseUid || "anon";
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `tipster_avatars/${uid}_${Date.now()}.${ext}`;
+
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+
+      onChange(url); // push URL into form.avatar_url
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+      alert("Could not upload avatar. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {/* Preview */}
+      {value && (
+        <img
+          src={value}
+          alt="Avatar preview"
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: "50%",
+            objectFit: "cover",
+          }}
+        />
+      )}
+
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        disabled={uploading}
+      />
+
+      {uploading && (
+        <span style={{ fontSize: 12, opacity: 0.7 }}>Uploading…</span>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Main page ---------- */
 export default function TipsterEdit() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -319,12 +383,23 @@ export default function TipsterEdit() {
             </select>
           </div>
 
+          {/* 👇 UPDATED: Avatar upload + manual URL */}
           <div className={styles.row}>
-            <label className={styles.label}>Avatar URL</label>
+            <label className={styles.label}>Avatar</label>
+            <AvatarUploader
+              value={form.avatar_url}
+              onChange={(url) =>
+                setForm((prev) => ({ ...prev, avatar_url: url || "" }))
+              }
+            />
+            <div className={styles.hint} style={{ marginTop: 4 }}>
+              Or paste an image URL manually:
+            </div>
             <input
               className={styles.input}
               value={form.avatar_url}
               onChange={update("avatar_url")}
+              placeholder="https://… (optional)"
             />
           </div>
 
