@@ -24,6 +24,36 @@ const PROP_TYPE_LABEL = {
   goals_anytime: "Anytime Goalscorer",
 };
 
+// Canonical match markets for performance + a few new families
+const MATCH_MARKETS = [
+  { value: "HOME_WIN", label: "1X2 – Home Win" },
+  { value: "DRAW", label: "1X2 – Draw" },
+  { value: "AWAY_WIN", label: "1X2 – Away Win" },
+
+  { value: "BTTS_Y", label: "BTTS – Yes" },
+  { value: "BTTS_N", label: "BTTS – No" },
+
+  { value: "O2.5", label: "Goals – Over 2.5" },
+  { value: "U2.5", label: "Goals – Under 2.5" },
+
+  // ⭐ Double Chance
+  { value: "DC_1X", label: "Double Chance – 1X (Home or Draw)" },
+  { value: "DC_12", label: "Double Chance – 12 (Home or Away)" },
+  { value: "DC_X2", label: "Double Chance – X2 (Draw or Away)" },
+
+  // ⭐ Draw No Bet
+  { value: "DNB_H", label: "Draw No Bet – Home" },
+  { value: "DNB_A", label: "Draw No Bet – Away" },
+
+  // New “families” – line/details typed by the tipster
+  { value: "HANDICAP", label: "Handicap / Asian Handicap" },
+  { value: "CORNERS", label: "Corners" },
+  { value: "CARDS", label: "Cards / Bookings" },
+  { value: "OTHER", label: "Other Market" },
+];
+
+const DETAIL_MARKETS = new Set(["HANDICAP", "CORNERS", "CARDS", "OTHER"]);
+
 export default function TipsterAddPick() {
   const { username } = useParams();
   const { user } = useAuth();
@@ -43,6 +73,9 @@ export default function TipsterAddPick() {
     is_premium_only: false,
     is_subscriber_only: false,
   });
+
+  // NEW: market details for handicap/corners/cards/other
+  const [marketDetail, setMarketDetail] = useState("");
 
   // NEW: pick type + player prop state
   const [pickType, setPickType] = useState("match"); // "match" | "player"
@@ -180,26 +213,35 @@ export default function TipsterAddPick() {
       let marketToSend = form.market.trim();
 
       if (pickType === "player") {
+        // Player props → nice human label
         marketToSend = buildPlayerPropMarketLabel();
+      } else {
+        // Match markets: if it's a detail market (handicap/corners/cards/other),
+        // append the line/description so the pick is readable.
+        const detail = (marketDetail || "").trim();
+        if (DETAIL_MARKETS.has(form.market) && detail) {
+          marketToSend = `${marketToSend} - ${detail}`;
+        }
       }
 
       if (!marketToSend) {
         throw new Error("Market is required");
       }
 
+      const priceNum = Number(form.price);
+      if (!priceNum || Number.isNaN(priceNum)) {
+        throw new Error("Please enter valid decimal odds");
+      }
+
       const payload = {
         fixture_id: Number(form.fixture_id),
         market: marketToSend,
         bookmaker: form.bookmaker.trim() || null,
-        price: Number(form.price),
+        price: priceNum,
         stake: Number(form.stake) || 1.0,
         is_premium_only: !!form.is_premium_only,
         is_subscriber_only: !!form.is_subscriber_only,
       };
-
-      if (!payload.price || Number.isNaN(payload.price)) {
-        throw new Error("Please enter valid decimal odds");
-      }
 
       await createTipsterPick(username, payload);
       nav(`/tipsters/${encodeURIComponent(username)}`);
@@ -212,15 +254,7 @@ export default function TipsterAddPick() {
     }
   };
 
-  const markets = [
-    "HOME_WIN",
-    "AWAY_WIN",
-    "DRAW",
-    "BTTS_Y",
-    "BTTS_N",
-    "O2.5",
-    "U2.5",
-  ];
+  const isDetailMarket = DETAIL_MARKETS.has(form.market);
 
   return (
     <div style={{ maxWidth: 640, padding: 16 }}>
@@ -242,10 +276,7 @@ export default function TipsterAddPick() {
         </label>
         <label>
           Sport:&nbsp;
-          <select
-            value={sport}
-            onChange={(e) => setSport(e.target.value)}
-          >
+          <select value={sport} onChange={(e) => setSport(e.target.value)}>
             <option value="football">Football</option>
             <option value="nba">NBA</option>
             <option value="nhl">NHL</option>
@@ -260,9 +291,7 @@ export default function TipsterAddPick() {
         <div style={{ marginBottom: 8, opacity: 0.8 }}>Loading fixtures…</div>
       )}
 
-      {err && (
-        <div style={{ color: "salmon", margin: "10px 0" }}>{err}</div>
-      )}
+      {err && <div style={{ color: "salmon", margin: "10px 0" }}>{err}</div>}
 
       <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
         <label>
@@ -331,20 +360,43 @@ export default function TipsterAddPick() {
         </div>
 
         {pickType === "match" && (
-          <label>
-            Market
-            <select
-              required
-              value={form.market}
-              onChange={update("market")}
-            >
-              {markets.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </label>
+          <>
+            <label>
+              Market
+              <select
+                required
+                value={form.market}
+                onChange={(e) => {
+                  update("market")(e);
+                  // reset extra detail when switching market family
+                  setMarketDetail("");
+                }}
+              >
+                {MATCH_MARKETS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {isDetailMarket && (
+              <label>
+                Market details
+                <input
+                  value={marketDetail}
+                  onChange={(e) => setMarketDetail(e.target.value)}
+                  placeholder="e.g. Celtic -1.5, Team Over 9.5 corners"
+                />
+                <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
+                  This will be appended to the base market. For example, if you
+                  choose <code>HANDICAP</code> and type{" "}
+                  <code>Celtic -1.5</code>, the stored market will be{" "}
+                  <em>"HANDICAP - Celtic -1.5"</em>.
+                </div>
+              </label>
+            )}
+          </>
         )}
 
         {pickType === "player" && (
@@ -380,10 +432,7 @@ export default function TipsterAddPick() {
             >
               <label>
                 Prop type
-                <select
-                  value={prop.type}
-                  onChange={updateProp("type")}
-                >
+                <select value={prop.type} onChange={updateProp("type")}>
                   {PROP_TYPES.map((t) => (
                     <option key={t.value} value={t.value}>
                       {t.label}
@@ -410,10 +459,7 @@ export default function TipsterAddPick() {
             {prop.type !== "goals_anytime" && (
               <label>
                 Side
-                <select
-                  value={prop.side}
-                  onChange={updateProp("side")}
-                >
+                <select value={prop.side} onChange={updateProp("side")}>
                   <option value="over">Over</option>
                   <option value="under">Under</option>
                 </select>
@@ -515,9 +561,7 @@ export default function TipsterAddPick() {
           <button type="submit" disabled={saving}>
             {saving ? "Saving…" : "Post Pick"}
           </button>
-          <Link to={`/tipsters/${encodeURIComponent(username)}`}>
-            Cancel
-          </Link>
+          <Link to={`/tipsters/${encodeURIComponent(username)}`}>Cancel</Link>
         </div>
       </form>
     </div>

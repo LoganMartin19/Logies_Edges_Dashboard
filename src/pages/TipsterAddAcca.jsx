@@ -24,6 +24,36 @@ const PROP_TYPE_LABEL = {
   goals_anytime: "Anytime Goalscorer",
 };
 
+// Canonical match markets (same base list as TipsterAddPick)
+const MATCH_MARKETS = [
+  { value: "HOME_WIN", label: "1X2 – Home Win" },
+  { value: "DRAW", label: "1X2 – Draw" },
+  { value: "AWAY_WIN", label: "1X2 – Away Win" },
+
+  { value: "BTTS_Y", label: "BTTS – Yes" },
+  { value: "BTTS_N", label: "BTTS – No" },
+
+  { value: "O2.5", label: "Goals – Over 2.5" },
+  { value: "U2.5", label: "Goals – Under 2.5" },
+
+  // ⭐ Double Chance
+  { value: "DC_1X", label: "Double Chance – 1X (Home or Draw)" },
+  { value: "DC_12", label: "Double Chance – 12 (Home or Away)" },
+  { value: "DC_X2", label: "Double Chance – X2 (Draw or Away)" },
+
+  // ⭐ Draw No Bet
+  { value: "DNB_H", label: "Draw No Bet – Home" },
+  { value: "DNB_A", label: "Draw No Bet – Away" },
+
+  // “Families” that need extra detail text
+  { value: "HANDICAP", label: "Handicap / Asian Handicap" },
+  { value: "CORNERS", label: "Corners" },
+  { value: "CARDS", label: "Cards / Bookings" },
+  { value: "OTHER", label: "Other Market" },
+];
+
+const DETAIL_MARKETS = new Set(["HANDICAP", "CORNERS", "CARDS", "OTHER"]);
+
 // Build the readable market label for a player prop leg
 const buildPlayerPropMarketLabel = (leg) => {
   const player = (leg.player || "").trim();
@@ -35,7 +65,9 @@ const buildPlayerPropMarketLabel = (leg) => {
     throw new Error("Please enter a player name for each player prop leg.");
   }
   if (!type) {
-    throw new Error("Please choose a player prop type for each player prop leg.");
+    throw new Error(
+      "Please choose a player prop type for each player prop leg."
+    );
   }
 
   if (type === "goals_anytime") {
@@ -44,7 +76,9 @@ const buildPlayerPropMarketLabel = (leg) => {
   }
 
   if (!line) {
-    throw new Error("Please enter a line (e.g. 0.5, 1.5) for each player prop leg.");
+    throw new Error(
+      "Please enter a line (e.g. 0.5, 1.5) for each player prop leg."
+    );
   }
 
   const typeLabel = PROP_TYPE_LABEL[type] || type;
@@ -124,16 +158,6 @@ export default function TipsterAddAcca() {
     };
   }, [day, sport]);
 
-  const markets = [
-    "HOME_WIN",
-    "AWAY_WIN",
-    "DRAW",
-    "BTTS_Y",
-    "BTTS_N",
-    "O2.5",
-    "U2.5",
-  ];
-
   // -------- add/remove legs --------
   const addLeg = (fx) => {
     const h = fx.home_team ?? fx.home_name ?? "Home";
@@ -146,7 +170,8 @@ export default function TipsterAddAcca() {
         away_name: a,
 
         // match market fields
-        market: "HOME_WIN",
+        market: "HOME_WIN", // canonical family code
+        marketDetail: "", // extra text for handicap/corners/cards/other
         price: 2.0,
         bookmaker: "bet365",
 
@@ -184,7 +209,14 @@ export default function TipsterAddAcca() {
         let marketToSend = (l.market || "").trim();
 
         if (l.legType === "player") {
+          // Player prop: build nice readable label
           marketToSend = buildPlayerPropMarketLabel(l);
+        } else {
+          // Match market: append detail where appropriate
+          const detail = (l.marketDetail || "").trim();
+          if (DETAIL_MARKETS.has(l.market) && detail) {
+            marketToSend = `${marketToSend} - ${detail}`;
+          }
         }
 
         if (!marketToSend) {
@@ -193,7 +225,9 @@ export default function TipsterAddAcca() {
 
         const priceNum = Number(l.price);
         if (!priceNum || Number.isNaN(priceNum)) {
-          throw new Error(`Please enter valid decimal odds for leg ${idx + 1}.`);
+          throw new Error(
+            `Please enter valid decimal odds for leg ${idx + 1}.`
+          );
         }
 
         return {
@@ -228,6 +262,8 @@ export default function TipsterAddAcca() {
       return next;
     });
   };
+
+  const isDetailMarket = (m) => DETAIL_MARKETS.has(m);
 
   return (
     <div style={{ maxWidth: 820, padding: 16 }}>
@@ -336,7 +372,7 @@ export default function TipsterAddAcca() {
                   </button>
                 </div>
 
-                {/* Pick type toggle */}
+                {/* Leg type toggle */}
                 <div>
                   <div
                     style={{
@@ -395,56 +431,94 @@ export default function TipsterAddAcca() {
 
                 {/* Match market row */}
                 {l.legType === "match" && (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1.2fr 1fr 1fr",
-                      gap: 8,
-                      alignItems: "center",
-                    }}
-                  >
-                    <label style={{ fontSize: 13 }}>
-                      Market
-                      <select
-                        value={l.market}
-                        onChange={(e) =>
-                          updateLegField(i, "market", e.target.value)
-                        }
-                        style={{ width: "100%", marginTop: 2 }}
-                      >
-                        {markets.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                  <>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1.2fr 1fr 1fr",
+                        gap: 8,
+                        alignItems: "center",
+                      }}
+                    >
+                      <label style={{ fontSize: 13 }}>
+                        Market
+                        <select
+                          value={l.market}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            updateLegField(i, "market", v);
+                            // clear details when switching family
+                            if (!DETAIL_MARKETS.has(v)) {
+                              updateLegField(i, "marketDetail", "");
+                            }
+                          }}
+                          style={{ width: "100%", marginTop: 2 }}
+                        >
+                          {MATCH_MARKETS.map((m) => (
+                            <option key={m.value} value={m.value}>
+                              {m.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
 
-                    <label style={{ fontSize: 13 }}>
-                      Bookmaker
-                      <input
-                        value={l.bookmaker}
-                        onChange={(e) =>
-                          updateLegField(i, "bookmaker", e.target.value)
-                        }
-                        placeholder="bet365"
-                        style={{ width: "100%", marginTop: 2 }}
-                      />
-                    </label>
+                      <label style={{ fontSize: 13 }}>
+                        Bookmaker
+                        <input
+                          value={l.bookmaker}
+                          onChange={(e) =>
+                            updateLegField(i, "bookmaker", e.target.value)
+                          }
+                          placeholder="bet365"
+                          style={{ width: "100%", marginTop: 2 }}
+                        />
+                      </label>
 
-                    <label style={{ fontSize: 13 }}>
-                      Odds
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={l.price}
-                        onChange={(e) =>
-                          updateLegField(i, "price", e.target.value)
-                        }
-                        style={{ width: "100%", marginTop: 2 }}
-                      />
-                    </label>
-                  </div>
+                      <label style={{ fontSize: 13 }}>
+                        Odds
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={l.price}
+                          onChange={(e) =>
+                            updateLegField(i, "price", e.target.value)
+                          }
+                          style={{ width: "100%", marginTop: 2 }}
+                        />
+                      </label>
+                    </div>
+
+                    {isDetailMarket(l.market) && (
+                      <label style={{ fontSize: 13, marginTop: 4 }}>
+                        Market details
+                        <input
+                          value={l.marketDetail || ""}
+                          onChange={(e) =>
+                            updateLegField(
+                              i,
+                              "marketDetail",
+                              e.target.value
+                            )
+                          }
+                          placeholder="e.g. Celtic -1.5, Team Over 9.5 corners"
+                          style={{ width: "100%", marginTop: 2 }}
+                        />
+                        <div
+                          style={{
+                            fontSize: 11,
+                            opacity: 0.75,
+                            marginTop: 2,
+                          }}
+                        >
+                          This will be appended to the base market. For example,
+                          if you choose <code>HANDICAP</code> and type{" "}
+                          <code>Celtic -1.5</code>, the stored market will be{" "}
+                          <em>"HANDICAP - Celtic -1.5"</em>. Performance can
+                          still treat all <code>HANDICAP</code> legs together.
+                        </div>
+                      </label>
+                    )}
+                  </>
                 )}
 
                 {/* Player prop box */}
