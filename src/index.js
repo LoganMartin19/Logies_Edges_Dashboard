@@ -14,6 +14,18 @@ if (typeof window !== "undefined") {
   window.auth = auth;
 }
 
+// Register Firebase messaging service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("/firebase-messaging-sw.js")
+    .then((reg) => {
+      console.log("FCM Service Worker registered", reg.scope);
+    })
+    .catch((err) => {
+      console.error("FCM Service Worker registration failed:", err);
+    });
+}
+
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>

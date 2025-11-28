@@ -16,6 +16,7 @@ import {
   startTipsterSubscription,
   fetchBillingPortal, // 👈 use Stripe portal instead of direct cancel
 } from "../api";
+import { ensureWebPushForCurrentUser } from "../pushNotifications";
 import { useAuth } from "../components/AuthGate";
 
 /* ---------------- helpers ---------------- */
@@ -665,37 +666,38 @@ export default function TipsterDetailPage() {
 
   const handleToggleFollow = async () => {
     if (!tipster || isOwner || busyFollow) return;
+  
     try {
       setBusyFollow(true);
+  
       if (tipster.is_following) {
+        // UNFOLLOW
         const res = await unfollowTipster(tipster.username);
-        setTipster((prev) =>
-          prev
-            ? {
-                ...prev,
-                is_following: false,
-                follower_count:
-                  typeof res.follower_count === "number"
-                    ? res.follower_count
-                    : Math.max(0, (prev.follower_count || 0) - 1),
-              }
-            : prev
-        );
+  
+        setTipster(prev => prev ? {
+          ...prev,
+          is_following: false,
+          follower_count: typeof res.follower_count === "number"
+            ? res.follower_count
+            : Math.max(0, (prev.follower_count || 0) - 1)
+        } : prev);
+  
       } else {
+        // FOLLOW
         const res = await followTipster(tipster.username);
-        setTipster((prev) =>
-          prev
-            ? {
-                ...prev,
-                is_following: true,
-                follower_count:
-                  typeof res.follower_count === "number"
-                    ? res.follower_count
-                    : (prev.follower_count || 0) + 1,
-              }
-            : prev
-        );
+  
+        setTipster(prev => prev ? {
+          ...prev,
+          is_following: true,
+          follower_count: typeof res.follower_count === "number"
+            ? res.follower_count
+            : (prev.follower_count || 0) + 1
+        } : prev);
+  
+        // 🔔 Register for web push only when following a tipster
+        await ensureWebPushForCurrentUser();
       }
+  
     } catch (e) {
       console.error("Follow toggle failed", e);
     } finally {

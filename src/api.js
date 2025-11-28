@@ -221,3 +221,12 @@ export const fetchTipsterConnectDashboard = (username) =>
       `/api/tipsters/${encodeURIComponent(username)}/connect/dashboard`
     )
     .then((r) => r.data); // { dashboard_url }
+
+
+// -----------------------------
+// Web Push / Notifications
+// -----------------------------
+export async function registerPushToken(token, platform = "web") {
+  const res = await api.post("/api/push/register", { token, platform });
+  return res.data;
+}

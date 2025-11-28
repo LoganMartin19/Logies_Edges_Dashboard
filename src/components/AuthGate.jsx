@@ -13,6 +13,7 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import { fetchCurrentUser } from "../api";
+import { ensureWebPushForCurrentUser } from "../pushNotifications";
 
 const AuthContext = createContext(null);
 export function useAuth() {
@@ -24,6 +25,9 @@ export default function AuthGate({ children }) {
   const [profile, setProfile] = useState(null); // backend /auth/me payload
   const [initializing, setInitializing] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
+
+  // Track whether we've already tried to register push for this session
+  const [pushRegistered, setPushRegistered] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -44,6 +48,7 @@ export default function AuthGate({ children }) {
       if (!u) {
         setProfile(null);
         setInitializing(false);
+        setPushRegistered(false); // reset on logout
         return;
       }
       loadProfile();
@@ -53,6 +58,7 @@ export default function AuthGate({ children }) {
       if (!u) {
         setFirebaseUser(null);
         setProfile(null);
+        setPushRegistered(false);
         return;
       }
       // Optional: could refresh profile here if you want on token refresh
@@ -65,12 +71,28 @@ export default function AuthGate({ children }) {
     };
   }, []);
 
+  // Once logged in, try to register web push token (FCM)
+  useEffect(() => {
+    if (!firebaseUser || pushRegistered) return;
+
+    (async () => {
+      try {
+        await ensureWebPushForCurrentUser();
+      } catch (e) {
+        console.error("[AuthGate] web push registration failed", e);
+      } finally {
+        setPushRegistered(true);
+      }
+    })();
+  }, [firebaseUser, pushRegistered]);
+
   const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
 
   const logout = async () => {
     await signOut(auth);
     setFirebaseUser(null);
     setProfile(null);
+    setPushRegistered(false);
   };
 
   // Allow other components (e.g. PremiumPage) to update premium flag
@@ -94,9 +116,9 @@ export default function AuthGate({ children }) {
 
     // Convenience flags
     isPremium,
-    isAdmin,          // 👈 use this for /admin route + nav
-    loading,          // general "auth still loading" flag
-    initializing,     // original flag if you still use it anywhere
+    isAdmin, // use this for /admin route + nav
+    loading, // general "auth still loading" flag
+    initializing,
 
     // Backwards compat: some places use `user` as Firebase user
     user: firebaseUser,
