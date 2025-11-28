@@ -11,7 +11,7 @@ import {
 import { useAuth } from "../components/AuthGate";
 import styles from "../styles/Auth.module.css";
 
-// 👇 NEW: storage imports
+// 👇 Storage imports
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "../firebase";
 
@@ -21,7 +21,7 @@ const sanitise = (s = "") =>
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 20);
 
-/* ---------- Avatar Uploader (same pattern as Apply page) ---------- */
+/* ---------- Avatar Uploader ---------- */
 function AvatarUploader({ value, onChange }) {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
@@ -30,12 +30,19 @@ function AvatarUploader({ value, onChange }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!user?.uid && !user?.firebaseUid) {
+      alert("You must be logged in to upload an avatar.");
+      return;
+    }
+
     try {
       setUploading(true);
 
-      const uid = user?.uid || user?.firebaseUid || "anon";
+      const uid = user?.uid || user?.firebaseUid;
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `tipster_avatars/${uid}_${Date.now()}.${ext}`;
+
+      // 👇 match rules: /tipster_avatars/{userId}/{fileName}
+      const path = `tipster_avatars/${uid}/${Date.now()}.${ext}`;
 
       const storageRef = ref(storage, path);
       await uploadBytes(storageRef, file);
@@ -383,7 +390,7 @@ export default function TipsterEdit() {
             </select>
           </div>
 
-          {/* 👇 UPDATED: Avatar upload + manual URL */}
+          {/* Avatar upload + manual URL */}
           <div className={styles.row}>
             <label className={styles.label}>Avatar</label>
             <AvatarUploader
