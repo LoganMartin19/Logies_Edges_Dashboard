@@ -5,10 +5,15 @@ import { auth } from "./firebase"; // <-- to read current user token
 export const API_BASE =
   process.env.REACT_APP_API_BASE || "https://logies-edges-api.onrender.com";
 
-export const api = axios.create({
-  baseURL: API_BASE,
-  headers: { "Content-Type": "application/json" },
-});
+  export const api = axios.create({
+    baseURL: API_BASE,
+    headers: { "Content-Type": "application/json" },
+  });
+  
+  // 👇 add this line
+  if (typeof window !== "undefined") {
+    window.api = api;
+  }
 
 // -----------------------------
 // Attach Firebase ID token
