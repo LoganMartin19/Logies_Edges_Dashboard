@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthGate";
 import { auth } from "../firebase";
 import { updateProfile } from "firebase/auth";
-import { fetchMyTipster } from "../api";
+import { fetchMyTipster, api } from "../api"; // ⬅️ bring in api
 import styles from "../styles/Auth.module.css";
 
 // small helpers for stats
@@ -12,6 +12,21 @@ const number = (x, d = 2) =>
   typeof x === "number" && isFinite(x) ? x.toFixed(d) : "—";
 const percent = (x, d = 1) =>
   typeof x === "number" && isFinite(x) ? (x * 100).toFixed(d) : "—";
+
+// VAPID public key from env (set in .env as REACT_APP_VAPID_PUBLIC_KEY)
+const VAPID_PUBLIC_KEY = process.env.REACT_APP_VAPID_PUBLIC_KEY;
+
+// helper: convert base64 → Uint8Array for Push API
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
 
 export default function AccountPage() {
   const { user } = useAuth();
@@ -25,6 +40,16 @@ export default function AccountPage() {
 
   const [myTipster, setMyTipster] = useState(null);
   const [loadingTipster, setLoadingTipster] = useState(true);
+
+  // 🔔 notification state
+  const [notifStatus, setNotifStatus] = useState("");
+  const [notifError, setNotifError] = useState("");
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifPermission, setNotifPermission] = useState(
+    typeof window !== "undefined" && "Notification" in window
+      ? Notification.permission
+      : "default"
+  );
 
   // Populate form from Firebase user
   useEffect(() => {
@@ -51,13 +76,22 @@ export default function AccountPage() {
     };
   }, []);
 
+  // simple helper for capability check
+  const supportsPush =
+    typeof window !== "undefined" &&
+    "Notification" in window &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window;
+
   if (!user) {
     return (
       <div className={styles.wrapper}>
         <div className={styles.card}>
           <div className={styles.header}>
             <div className={styles.title}>Profile &amp; Settings</div>
-            <div className={styles.subtitle}>Please log in to manage your account.</div>
+            <div className={styles.subtitle}>
+              Please log in to manage your account.
+            </div>
           </div>
           <Link to="/login" className={styles.btn}>
             Log in
@@ -93,6 +127,69 @@ export default function AccountPage() {
     }
   };
 
+  const handleEnableNotifications = async () => {
+    setNotifError("");
+    setNotifStatus("");
+
+    try {
+      if (!supportsPush) {
+        setNotifError(
+          "Your browser doesn’t support web push (or service workers aren’t available). Try Chrome or Edge on desktop or Android."
+        );
+        return;
+      }
+
+      if (!VAPID_PUBLIC_KEY) {
+        setNotifError(
+          "Notifications aren’t fully configured yet (missing VAPID public key). Ask admin (you 😄) to set REACT_APP_VAPID_PUBLIC_KEY."
+        );
+        return;
+      }
+
+      setNotifLoading(true);
+
+      // 1) ask or confirm permission
+      let permission = Notification.permission;
+      if (permission !== "granted") {
+        permission = await Notification.requestPermission();
+      }
+      setNotifPermission(permission);
+
+      if (permission !== "granted") {
+        setNotifError(
+          "You need to allow notifications in your browser’s prompt or site settings to receive alerts."
+        );
+        return;
+      }
+
+      // 2) get service worker registration
+      const registration = await navigator.serviceWorker.ready;
+
+      // 3) reuse existing subscription if we have one
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
+
+      // 4) send to backend
+      await api.post("/api/push/subscribe", {
+        subscription,
+      });
+
+      setNotifStatus("Notifications enabled for this device ✅");
+    } catch (err) {
+      console.error("Enable notifications failed", err);
+      setNotifError(
+        err?.message || "Could not enable notifications for this browser."
+      );
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
   const initial =
     (user.displayName && user.displayName[0]) ||
     (user.email && user.email[0]) ||
@@ -105,8 +202,7 @@ export default function AccountPage() {
         <header className={styles.header}>
           <div className={styles.title}>Profile &amp; Settings</div>
           <div className={styles.subtitle}>
-            Manage your CSB account details. More personalisation and follow
-            features coming soon.
+            Manage your CSB account details and alert preferences.
           </div>
         </header>
 
@@ -182,12 +278,63 @@ export default function AccountPage() {
             </div>
           </div>
 
+          {/* 🔔 Notifications */}
+          <div className={styles.row}>
+            <label className={styles.label}>Notifications</label>
+            <div>
+              <p className={styles.hint}>
+                Turn on browser alerts for shortlist edges, featured picks, and
+                important CSB updates on this device.
+              </p>
+
+              {notifError && (
+                <div className={styles.error} style={{ marginTop: 6 }}>
+                  {notifError}
+                </div>
+              )}
+              {notifStatus && (
+                <div className={styles.success} style={{ marginTop: 6 }}>
+                  {notifStatus}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className={styles.btn}
+                style={{ marginTop: 8 }}
+                onClick={handleEnableNotifications}
+                disabled={notifLoading}
+              >
+                {notifLoading
+                  ? "Enabling…"
+                  : notifPermission === "granted"
+                  ? "Re-sync this browser"
+                  : "Enable browser alerts"}
+              </button>
+
+              {supportsPush && (
+                <div className={styles.hint} style={{ marginTop: 6 }}>
+                  Current browser status:{" "}
+                  <strong>{notifPermission}</strong>
+                  {notifPermission === "denied" &&
+                    " – update this in your browser's Site settings to allow notifications."}
+                </div>
+              )}
+              {!supportsPush && (
+                <div className={styles.hint} style={{ marginTop: 6 }}>
+                  Your current browser doesn’t support web push notifications.
+                  Try Chrome/Edge on desktop or Android.
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* future settings */}
           <div className={styles.row}>
             <label className={styles.label}>Coming soon</label>
             <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: 13 }}>
               <li>Favourite sports &amp; leagues</li>
-              <li>Notification &amp; email alert preferences</li>
+              <li>More granular notification &amp; email preferences</li>
               <li>Followed tipsters &amp; social features</li>
             </ul>
           </div>
@@ -245,8 +392,8 @@ export default function AccountPage() {
               </button>
             </div>
             <p className={styles.hint} style={{ marginTop: 8 }}>
-              Followers &amp; following will appear here once we roll out the social
-              layer.
+              Followers &amp; following will appear here once we roll out the
+              social layer.
             </p>
           </div>
         ) : (
