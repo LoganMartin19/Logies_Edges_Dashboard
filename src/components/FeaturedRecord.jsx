@@ -1,5 +1,6 @@
 // src/components/FeaturedRecord.jsx
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../components/AuthGate";
 
@@ -30,8 +31,7 @@ const getMatch = (p = {}) => {
 export default function FeaturedRecord({ span = "30d" }) {
   const [data, setData] = useState(null);
   const [open, setOpen] = useState(false);
-  const { user } = useAuth();
-  const isLoggedIn = !!user;
+  const { isPremium } = useAuth(); // 🔐 use same flag as PublicDashboard
 
   useEffect(() => {
     let alive = true;
@@ -64,7 +64,6 @@ export default function FeaturedRecord({ span = "30d" }) {
   const recObj = s.record || {};
   const rec = `${recObj.won || 0}W-${recObj.lost || 0}L-${recObj.void || 0}V`;
   const roi = s.roi != null ? s.roi.toFixed(1) : "0.0";
-  const totalPicks = data.picks?.length || 0;
 
   return (
     <>
@@ -72,9 +71,7 @@ export default function FeaturedRecord({ span = "30d" }) {
       <div style={pill} onClick={() => setOpen(true)} title="Click for details">
         <span>Record: {rec}</span>
         <span style={small}>ROI {roi}%</span>
-        <span style={small}>
-          ({totalPicks} picks / {span})
-        </span>
+        <span style={small}>({data.picks?.length || 0} picks / {span})</span>
       </div>
 
       {/* DRAWER */}
@@ -113,109 +110,163 @@ export default function FeaturedRecord({ span = "30d" }) {
                 <div>
                   <b>Record:</b> {rec}
                 </div>
-                <div>
-                  <b>Total picks:</b> {totalPicks}
-                </div>
               </div>
 
-              {/* PICKS TABLE – only for logged in users */}
-              {isLoggedIn ? (
-                <div className="rec-scroll">
-                  <table className="rec-table">
-                    <thead>
-                      <tr>
-                        <th className="fixture">Fixture</th>
-                        <th>Comp</th>
-                        <th>Market</th>
-                        <th className="col-book">Book</th>
-                        <th className="col-num" style={{ textAlign: "right" }}>
-                          Odds
-                        </th>
-                        <th className="col-num" style={{ textAlign: "right" }}>
-                          Stake
-                        </th>
-                        <th className="col-num" style={{ textAlign: "right" }}>
-                          Result
-                        </th>
-                        <th className="col-num" style={{ textAlign: "right" }}>
-                          Units
-                        </th>
-                        <th>Note</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(data.picks || []).map((p) => {
-                        const match = getMatch(p);
-                        const comp = p.league || p.comp || "—";
-                        const stake = +p.stake || 0;
-                        const price = +p.price || 0;
-                        const res = (p.result || "").toLowerCase();
-                        let units = 0;
-                        if (res === "won") units = stake * (price - 1);
-                        else if (res === "lost") units = -stake;
+              {/* TABLE */}
+              <div className="rec-scroll">
+                <table className="rec-table">
+                  <thead>
+                    <tr>
+                      <th className="fixture">Fixture</th>
+                      <th>Comp</th>
+                      <th>Market</th>
+                      <th className="col-book">Book</th>
+                      <th className="col-num" style={{ textAlign: "right" }}>
+                        Odds
+                      </th>
+                      <th className="col-num" style={{ textAlign: "right" }}>
+                        Stake
+                      </th>
+                      <th className="col-num" style={{ textAlign: "right" }}>
+                        Result
+                      </th>
+                      <th className="col-num" style={{ textAlign: "right" }}>
+                        Units
+                      </th>
+                      <th>Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.picks || []).map((p) => {
+                      const match = getMatch(p);
+                      const comp = p.league || p.comp || "—";
+                      const stake = +p.stake || 0;
+                      const price = +p.price || 0;
+                      const res = (p.result || "").toLowerCase();
+                      let units = 0;
+                      if (res === "won") units = stake * (price - 1);
+                      else if (res === "lost") units = -stake;
 
-                        return (
-                          <tr
-                            key={p.pick_id}
+                      const locked = p.is_premium_only && !isPremium; // 🔒 same pattern
+
+                      return (
+                        <tr
+                          key={p.pick_id}
+                          style={{
+                            borderTop: "1px solid rgba(255,255,255,.08)",
+                          }}
+                        >
+                          {/* Fixture + comp always visible */}
+                          <td className="fixture">{match}</td>
+                          <td>{comp}</td>
+
+                          {/* Market cell – lock if premium-only and user not premium */}
+                          <td>
+                            {locked ? (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  fontSize: 12,
+                                }}
+                              >
+                                <span style={{ opacity: 0.9 }}>
+                                  Premium pick
+                                </span>
+                                <span
+                                  style={{
+                                    padding: "2px 6px",
+                                    borderRadius: 999,
+                                    background: "rgba(255,255,255,0.06)",
+                                    border:
+                                      "1px solid rgba(251,191,36,0.7)",
+                                    color: "#FBBF24",
+                                    fontSize: 10,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                  }}
+                                >
+                                  🔒
+                                </span>
+                                <Link
+                                  to="/premium"
+                                  style={{
+                                    color: "#FBBF24",
+                                    textDecoration: "underline",
+                                    fontSize: 11,
+                                  }}
+                                >
+                                  Unlock +
+                                </Link>
+                              </span>
+                            ) : (
+                              p.market || "—"
+                            )}
+                          </td>
+
+                          <td className="col-book">
+                            {locked ? "—" : p.bookmaker || "—"}
+                          </td>
+
+                          <td className="col-num">
+                            {locked
+                              ? "—"
+                              : price
+                              ? price.toFixed(2)
+                              : "—"}
+                          </td>
+
+                          <td className="col-num">
+                            {locked
+                              ? "—"
+                              : stake
+                              ? stake.toFixed(2)
+                              : "—"}
+                          </td>
+
+                          <td
+                            className="col-num"
                             style={{
-                              borderTop: "1px solid rgba(255,255,255,.08)",
+                              color: locked
+                                ? "#bbb"
+                                : res === "won"
+                                ? "#5efc82"
+                                : res === "lost"
+                                ? "#ff6b6b"
+                                : "#bbb",
                             }}
                           >
-                            <td className="fixture">{match}</td>
-                            <td>{comp}</td>
-                            <td>{p.market || "—"}</td>
-                            <td className="col-book">
-                              {p.bookmaker || "—"}
-                            </td>
-                            <td className="col-num">
-                              {price ? price.toFixed(2) : "—"}
-                            </td>
-                            <td className="col-num">
-                              {stake ? stake.toFixed(2) : "—"}
-                            </td>
-                            <td
-                              className="col-num"
-                              style={{
-                                color:
-                                  res === "won"
-                                    ? "#5efc82"
-                                    : res === "lost"
-                                    ? "#ff6b6b"
-                                    : "#bbb",
-                              }}
-                            >
-                              {res || "—"}
-                            </td>
-                            <td
-                              className="col-num"
-                              style={{
-                                color:
-                                  units > 0
-                                    ? "#5efc82"
-                                    : units < 0
-                                    ? "#ff6b6b"
-                                    : "#bbb",
-                              }}
-                            >
-                              {units ? units.toFixed(2) : "0.00"}
-                            </td>
-                            <td>{p.note || ""}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="rec-card" style={{ marginTop: 12 }}>
-                  <div className="rec-subtitle">Want to see the picks?</div>
-                  <p className="rec-muted">
-                    This summary shows the performance of Featured Picks over the
-                    last {span}. Create a free account or log in to see the full
-                    list of individual selections.
-                  </p>
-                </div>
-              )}
+                            {locked ? "—" : res || "—"}
+                          </td>
+
+                          <td
+                            className="col-num"
+                            style={{
+                              color: locked
+                                ? "#bbb"
+                                : units > 0
+                                ? "#5efc82"
+                                : units < 0
+                                ? "#ff6b6b"
+                                : "#bbb",
+                            }}
+                          >
+                            {locked
+                              ? "—"
+                              : units
+                              ? units.toFixed(2)
+                              : "0.00"}
+                          </td>
+
+                          <td>{locked ? "—" : p.note || ""}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
               {/* KELLY */}
               <div className="rec-card" style={{ marginTop: 16 }}>
