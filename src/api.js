@@ -1,7 +1,7 @@
 // src/api.js
 import axios from "axios";
 import { auth } from "./firebase"; // <-- to read current user token
-
+window.api = api;
 export const API_BASE =
   process.env.REACT_APP_API_BASE || "https://logies-edges-api.onrender.com";
 
