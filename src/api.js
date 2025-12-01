@@ -5,15 +5,15 @@ import { auth } from "./firebase"; // <-- to read current user token
 export const API_BASE =
   process.env.REACT_APP_API_BASE || "https://logies-edges-api.onrender.com";
 
-  export const api = axios.create({
-    baseURL: API_BASE,
-    headers: { "Content-Type": "application/json" },
-  });
-  
-  // 👇 add this line
-  if (typeof window !== "undefined") {
-    window.api = api;
-  }
+export const api = axios.create({
+  baseURL: API_BASE,
+  headers: { "Content-Type": "application/json" },
+});
+
+// 👇 keep this – handy for debugging in the browser
+if (typeof window !== "undefined") {
+  window.api = api;
+}
 
 // -----------------------------
 // Attach Firebase ID token
@@ -51,6 +51,10 @@ api.interceptors.response.use(
 // -----------------------------
 export const fetchCurrentUser = () =>
   api.get("/auth/me").then((r) => r.data);
+
+// 👇 NEW: trigger welcome-email test for the logged-in user
+export const sendTestWelcomeEmail = () =>
+  api.post("/auth/welcome-email/test").then((r) => r.data);
 
 // -----------------------------
 // Public helpers
@@ -154,13 +158,7 @@ export const fetchFollowingFeed = async () =>
 // -----------------------------
 
 // Start Stripe Checkout for premium
-// -----------------------------
-// Billing (Stripe)
-// -----------------------------
-
-// Start Stripe Checkout for premium
 export const startPremiumCheckout = async () => {
-  // was: "/api/billing/create-checkout-session"
   const res = await api.post("/api/billing/premium/checkout");
   return res.data; // { checkout_url }
 };
@@ -186,7 +184,7 @@ export const fetchTipsterSubscription = async (username) => {
   const res = await api.get(
     `/api/tipsters/${encodeURIComponent(username)}/subscription`
   );
-  return res.data; // { is_subscriber, price_cents, subscriber_count, subscriber_limit, is_open_for_new_subs }
+  return res.data;
 };
 
 // Start subscription (manual for now — will swap to Stripe Checkout)
@@ -194,7 +192,7 @@ export async function startTipsterSubscription(username) {
   const res = await api.post(
     `/api/tipsters/${encodeURIComponent(username)}/subscription/checkout`
   );
-  return res.data; // { checkout_url }
+  return res.data;
 }
 
 // Cancel subscription
@@ -226,7 +224,6 @@ export const fetchTipsterConnectDashboard = (username) =>
       `/api/tipsters/${encodeURIComponent(username)}/connect/dashboard`
     )
     .then((r) => r.data); // { dashboard_url }
-
 
 // -----------------------------
 // Web Push / Notifications
