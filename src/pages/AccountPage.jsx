@@ -4,7 +4,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthGate";
 import { auth } from "../firebase";
 import { updateProfile } from "firebase/auth";
-import { fetchMyTipster, api } from "../api"; // ⬅️ bring in api
+import {
+  fetchMyTipster,
+  api,
+  fetchCurrentUser,
+  updateEmailPreferences,
+} from "../api";
 import styles from "../styles/Auth.module.css";
 
 // small helpers for stats
@@ -51,6 +56,12 @@ export default function AccountPage() {
       : "default"
   );
 
+  // ✉️ email picks preference
+  const [emailOptIn, setEmailOptIn] = useState(true);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefsMessage, setPrefsMessage] = useState("");
+  const [prefsError, setPrefsError] = useState("");
+
   // Populate form from Firebase user
   useEffect(() => {
     if (!user) return;
@@ -75,6 +86,33 @@ export default function AccountPage() {
       cancelled = true;
     };
   }, []);
+
+  // Load backend profile (/auth/me) so we can read email_picks_opt_in
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const me = await fetchCurrentUser();
+        if (!cancelled && me) {
+          if (typeof me.email_picks_opt_in !== "undefined") {
+            setEmailOptIn(!!me.email_picks_opt_in);
+          } else {
+            setEmailOptIn(true);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.warn("Failed to load email prefs", e);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // simple helper for capability check
   const supportsPush =
@@ -190,6 +228,28 @@ export default function AccountPage() {
     }
   };
 
+  const handleSaveEmailPrefs = async (e) => {
+    e.preventDefault();
+    setPrefsError("");
+    setPrefsMessage("");
+    setSavingPrefs(true);
+    try {
+      const res = await updateEmailPreferences(emailOptIn);
+      const next = !!res.email_picks_opt_in;
+      setEmailOptIn(next);
+      setPrefsMessage(
+        next
+          ? "You’ll receive CSB pick emails."
+          : "You’ve opted out of CSB pick emails."
+      );
+    } catch (err) {
+      const apiDetail = err?.response?.data?.detail;
+      setPrefsError(apiDetail || "Failed to update email preferences");
+    } finally {
+      setSavingPrefs(false);
+    }
+  };
+
   const initial =
     (user.displayName && user.displayName[0]) ||
     (user.email && user.email[0]) ||
@@ -202,7 +262,7 @@ export default function AccountPage() {
         <header className={styles.header}>
           <div className={styles.title}>Profile &amp; Settings</div>
           <div className={styles.subtitle}>
-            Manage your CSB account details and alert preferences.
+            Manage your CSB account details, email preferences and alerts.
           </div>
         </header>
 
@@ -275,6 +335,56 @@ export default function AccountPage() {
             />
             <div className={styles.hint}>
               Leave blank to use your initial instead of a picture.
+            </div>
+          </div>
+
+          {/* ✉️ Email picks preferences */}
+          <div className={styles.row}>
+            <label className={styles.label}>Email picks &amp; alerts</label>
+            <div style={{ fontSize: 13 }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={emailOptIn}
+                  onChange={(e) => setEmailOptIn(e.target.checked)}
+                />
+                <span>
+                  Send me CSB pick emails (featured cards, premium round-ups
+                  and key account updates).
+                </span>
+              </label>
+              <p className={styles.hint} style={{ marginTop: 6 }}>
+                We typically send at most one featured card email per day,
+                plus any tipster subscription emails you choose to receive.
+              </p>
+
+              {prefsError && (
+                <div className={styles.error} style={{ marginTop: 8 }}>
+                  {prefsError}
+                </div>
+              )}
+              {prefsMessage && (
+                <div className={styles.success} style={{ marginTop: 8 }}>
+                  {prefsMessage}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost || ""}`}
+                onClick={handleSaveEmailPrefs}
+                disabled={savingPrefs}
+                style={{ marginTop: 8 }}
+              >
+                {savingPrefs ? "Saving…" : "Save email preferences"}
+              </button>
             </div>
           </div>
 

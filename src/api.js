@@ -57,6 +57,14 @@ export const sendTestWelcomeEmail = () =>
   api.post("/auth/welcome-email/test").then((r) => r.data);
 
 // -----------------------------
+// Email preferences
+// -----------------------------
+export const updateEmailPreferences = (email_picks_opt_in) =>
+  api
+    .post("/auth/email-preferences", { email_picks_opt_in })
+    .then((r) => r.data);
+
+// -----------------------------
 // Admin: Featured Picks Email
 // -----------------------------
 export const sendFeaturedPicksEmail = async ({ day, premiumOnly = false }) => {
