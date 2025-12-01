@@ -5,6 +5,7 @@ import { useAuth } from "../components/AuthGate";
 import AdminPicks from "./AdminPicks";
 import AdminAddAcca from "./AdminAddAcca";
 import AdminTipsterApplications from "./AdminTipsterApplications";
+import AdminFeaturedEmailPanel from "../components/AdminFeaturedEmailPanel"; // 👈 NEW
 
 export default function AdminPage() {
   const nav = useNavigate();
@@ -199,7 +200,7 @@ export default function AdminPage() {
                 fontSize: "1.1rem",
               }}
             >
-              Featured Picks & Fixtures
+              Featured Picks &amp; Fixtures
             </h2>
             <p
               style={{
@@ -222,6 +223,9 @@ export default function AdminPage() {
             >
               <AdminPicks />
             </div>
+
+            {/* 👇 New email-send panel */}
+            <AdminFeaturedEmailPanel />
           </section>
         )}
 

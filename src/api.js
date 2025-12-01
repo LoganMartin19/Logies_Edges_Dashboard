@@ -57,6 +57,23 @@ export const sendTestWelcomeEmail = () =>
   api.post("/auth/welcome-email/test").then((r) => r.data);
 
 // -----------------------------
+// Admin: Featured Picks Email
+// -----------------------------
+export const sendFeaturedPicksEmail = async ({ day, premiumOnly = false }) => {
+  // day: "2025-11-30" (defaults to today if omitted server-side)
+  const res = await api.post(
+    "/admin/email/featured-picks",
+    null, // no body
+    {
+      params: {
+        day,
+        premium_only: premiumOnly,
+      },
+    }
+  );
+  return res.data;
+};
+// -----------------------------
 // Public helpers
 // -----------------------------
 export const fetchShortlist = () =>
