@@ -59,11 +59,47 @@ export default function FeaturedRecord({ span = "30d" }) {
 
   if (!data) return null;
 
-  // { summary: { record, staked, returned, pnl, roi }, picks: [...] }
-  const s = data.summary || {};
-  const recObj = s.record || {};
-  const rec = `${recObj.won || 0}W-${recObj.lost || 0}L-${recObj.void || 0}V`;
-  const roi = s.roi != null ? s.roi.toFixed(1) : "0.0";
+  // ----- NEW: recompute summary ONLY from settled picks -----
+  const allPicks = data.picks || [];
+
+  const settledPicks = allPicks.filter((p) => {
+    const res = (p.result || "").toLowerCase();
+    return res === "won" || res === "lost" || res === "void";
+  });
+
+  // If literally nothing is settled yet, fall back to empty stats
+  const base = settledPicks;
+
+  let staked = 0;
+  let returned = 0;
+  let won = 0;
+  let lost = 0;
+  let voided = 0;
+
+  base.forEach((p) => {
+    const res = (p.result || "").toLowerCase();
+    const stake = +p.stake || 0;
+    const price = +p.price || 0;
+
+    staked += stake;
+
+    if (res === "won") {
+      won += 1;
+      returned += stake * price; // full return incl stake
+    } else if (res === "lost") {
+      lost += 1;
+      // returned += 0
+    } else if (res === "void") {
+      voided += 1;
+      returned += stake; // stake refunded
+    }
+  });
+
+  const pnl = returned - staked;
+  const roiNum = staked > 0 ? (pnl / staked) * 100 : 0;
+  const roi = roiNum.toFixed(1);
+  const rec = `${won}W-${lost}L-${voided}V`;
+  const settledCount = base.length;
 
   return (
     <>
@@ -71,7 +107,9 @@ export default function FeaturedRecord({ span = "30d" }) {
       <div style={pill} onClick={() => setOpen(true)} title="Click for details">
         <span>Record: {rec}</span>
         <span style={small}>ROI {roi}%</span>
-        <span style={small}>({data.picks?.length || 0} picks / {span})</span>
+        <span style={small}>
+          ({settledCount} settled picks / {span})
+        </span>
       </div>
 
       {/* DRAWER */}
@@ -93,22 +131,25 @@ export default function FeaturedRecord({ span = "30d" }) {
 
             {/* scrollable body */}
             <div className="rec-body">
-              {/* KPIs */}
+              {/* KPIs – also based on settled picks only */}
               <div className="rec-kpis">
                 <div>
-                  <b>Staked:</b> £{(s.staked || 0).toFixed(2)}
+                  <b>Staked:</b> £{staked.toFixed(2)}
                 </div>
                 <div>
-                  <b>Returned:</b> £{(s.returned || 0).toFixed(2)}
+                  <b>Returned:</b> £{returned.toFixed(2)}
                 </div>
                 <div>
-                  <b>P/L:</b> £{(s.pnl || 0).toFixed(2)}
+                  <b>P/L:</b> £{pnl.toFixed(2)}
                 </div>
                 <div>
                   <b>ROI:</b> {roi}%
                 </div>
                 <div>
                   <b>Record:</b> {rec}
+                </div>
+                <div>
+                  <b>Settled picks:</b> {settledCount}
                 </div>
               </div>
 
@@ -137,7 +178,7 @@ export default function FeaturedRecord({ span = "30d" }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {(data.picks || []).map((p) => {
+                    {allPicks.map((p) => {
                       const match = getMatch(p);
                       const comp = p.league || p.comp || "—";
                       const stake = +p.stake || 0;
