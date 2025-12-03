@@ -296,7 +296,7 @@ export default function AdminAddAcca() {
       await api.post("/admin/accas/create", payload);
       setSubmitOk("Acca created successfully ✅");
       setSubmitErr("");
-      // Reset just the acca and legs (keep day/sport if you prefer)
+      // Reset just the acca and legs (keep day/sport)
       setTitle("");
       setNote("");
       setStakeUnits("1.0");
@@ -319,32 +319,27 @@ export default function AdminAddAcca() {
   const handleAutoBuild = async () => {
     setAutoErr("");
     setAutoInfo("");
+
     try {
       const targetDecimal = fractionToDecimal(autoTarget);
-
       setAutoLoading(true);
 
       const res = await api.post("/admin/accas/auto", {
         day,
-        // your backend already defaults a bunch of things – we just pass target_odds:
         target_odds: targetDecimal,
-        // optionally you can tweak these:
-        // legs_min: 3,
-        // legs_max: 4,
-        // min_edge: 0.03,
-        // bookmaker: "bet365",
-        // is_public: false,
         stake_units: parseFloat(stakeUnits) || 1.0,
+        // NOTE: we *don't* send min_edge here,
+        // so backend can work in pure odds mode.
       });
 
-      const ticket = res.ticket || {};
+      const ticket = res.data?.ticket || {};
       const apiLegs = ticket.legs || [];
 
       if (!apiLegs.length) {
         throw new Error("Auto-builder returned no legs.");
       }
 
-      // Map API legs -> local legs with fake fixture objects for UI
+      // Map API legs -> local legs with faux fixture objects for UI
       const mapped = apiLegs.map((leg) => {
         const matchup = leg.matchup || "";
         const [home, away] = matchup.split(" vs ");
@@ -369,7 +364,6 @@ export default function AdminAddAcca() {
 
       setLegs(mapped);
 
-      // Pre-fill title/note if empty so you can just tweak them
       if (!title) {
         setTitle(
           ticket.title ||
@@ -389,7 +383,7 @@ export default function AdminAddAcca() {
       setAutoErr(
         e?.response?.data?.detail ||
           e?.message ||
-          "Failed to auto-build acca from edges."
+          "Failed to auto-build acca."
       );
     } finally {
       setAutoLoading(false);
@@ -463,7 +457,7 @@ export default function AdminAddAcca() {
             </label>
           </div>
 
-          {/* 🔮 Auto-build from model edges */}
+          {/* 🔮 Auto-build from model odds/edges */}
           <div
             style={{
               marginTop: 8,
@@ -478,7 +472,7 @@ export default function AdminAddAcca() {
             }}
           >
             <div style={{ fontSize: 13, fontWeight: 600 }}>
-              Auto-build from model edges
+              Auto-build from edges/odds
             </div>
             <div
               style={{
