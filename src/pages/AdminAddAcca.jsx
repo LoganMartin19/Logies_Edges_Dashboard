@@ -135,6 +135,16 @@ const fractionToDecimal = (s) => {
   return num / den + 1.0;
 };
 
+const TARGET_CHIPS = ["3/1", "4/1", "5/1", "6/1", "8/1"];
+
+const BOOKMAKER_OPTIONS = [
+  { value: "bet365", label: "bet365" },
+  { value: "williamhill", label: "William Hill" },
+  { value: "skybet", label: "Sky Bet" },
+  { value: "paddypower", label: "Paddy Power" },
+  { value: "betfair", label: "Betfair Sportsbook" },
+];
+
 export default function AdminAddAcca() {
   // Acca-level meta
   const [day, setDay] = useState(todayISO());
@@ -157,6 +167,7 @@ export default function AdminAddAcca() {
 
   // 🔮 Auto-builder state
   const [autoTarget, setAutoTarget] = useState("5/1");
+  const [autoBookmaker, setAutoBookmaker] = useState("bet365");
   const [autoLoading, setAutoLoading] = useState(false);
   const [autoErr, setAutoErr] = useState("");
   const [autoInfo, setAutoInfo] = useState("");
@@ -219,7 +230,9 @@ export default function AdminAddAcca() {
     }
 
     const leg = {
-      id: `${fixture.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      id: `${fixture.id}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`,
       fixture_id: fixture.id,
       fixture,
       sport,
@@ -324,15 +337,15 @@ export default function AdminAddAcca() {
       const targetDecimal = fractionToDecimal(autoTarget);
       setAutoLoading(true);
 
-      const res = await api.post("/admin/accas/auto", {
+      const { data } = await api.post("/admin/accas/auto", {
         day,
         target_odds: targetDecimal,
+        bookmaker: autoBookmaker || "bet365",
         stake_units: parseFloat(stakeUnits) || 1.0,
-        // NOTE: we *don't* send min_edge here,
-        // so backend can work in pure odds mode.
+        // backend handles edges/odds + other defaults
       });
 
-      const ticket = res.data?.ticket || {};
+      const ticket = data?.ticket || {};
       const apiLegs = ticket.legs || [];
 
       if (!apiLegs.length) {
@@ -344,7 +357,9 @@ export default function AdminAddAcca() {
         const matchup = leg.matchup || "";
         const [home, away] = matchup.split(" vs ");
         return {
-          id: `${leg.fixture_id}-${Math.random().toString(36).slice(2)}`,
+          id: `${leg.fixture_id}-${Math.random()
+            .toString(36)
+            .slice(2)}`,
           fixture_id: leg.fixture_id,
           fixture: {
             id: leg.fixture_id,
@@ -365,10 +380,7 @@ export default function AdminAddAcca() {
       setLegs(mapped);
 
       if (!title) {
-        setTitle(
-          ticket.title ||
-            `${autoTarget} Acca — ${day}`
-        );
+        setTitle(ticket.title || `${autoTarget} Acca — ${day}`);
       }
       if (!note && ticket.note) {
         setNote(ticket.note);
@@ -377,7 +389,9 @@ export default function AdminAddAcca() {
       const combined = ticket.combined_price || null;
       const explanation = ticket.explanation || "";
       setAutoInfo(
-        `Built ${mapped.length}-leg acca ~${combined || "?"}x · ${explanation}`
+        `Built ${mapped.length}-leg acca ~${combined || "?"}x @ ${
+          autoBookmaker || "bet365"
+        } · ${explanation}`
       );
     } catch (e) {
       setAutoErr(
@@ -457,7 +471,7 @@ export default function AdminAddAcca() {
             </label>
           </div>
 
-          {/* 🔮 Auto-build from model odds/edges */}
+          {/* 🔮 Auto-build from odds/edges */}
           <div
             style={{
               marginTop: 8,
@@ -466,32 +480,85 @@ export default function AdminAddAcca() {
               border: "1px dashed #d1d5db",
               background: "#f9fafb",
               display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              alignItems: "center",
+              flexDirection: "column",
+              gap: 8,
             }}
           >
             <div style={{ fontSize: 13, fontWeight: 600 }}>
               Auto-build from edges/odds
             </div>
+
+            {/* target chips + custom input */}
             <div
               style={{
                 display: "flex",
+                flexWrap: "wrap",
                 gap: 6,
                 alignItems: "center",
-                flexWrap: "wrap",
               }}
             >
               <span style={{ fontSize: 13 }}>Target price:</span>
+              <div
+                style={{
+                  display: "inline-flex",
+                  flexWrap: "wrap",
+                  gap: 6,
+                }}
+              >
+                {TARGET_CHIPS.map((chip) => {
+                  const active = autoTarget.replace(/\s+/g, "") === chip;
+                  return (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setAutoTarget(chip)}
+                      style={{
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        border: active
+                          ? "1px solid #111827"
+                          : "1px solid #d1d5db",
+                        background: active ? "#111827" : "#ffffff",
+                        color: active ? "#ffffff" : "#111827",
+                        fontSize: 12,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {chip}
+                    </button>
+                  );
+                })}
+              </div>
+              <span style={{ fontSize: 12, color: "#4b5563" }}>or</span>
               <input
                 value={autoTarget}
                 onChange={(e) => setAutoTarget(e.target.value)}
                 placeholder="5/1"
                 style={{ width: 70, padding: "3px 6px", fontSize: 13 }}
               />
-              <span style={{ fontSize: 12, color: "#4b5563" }}>
-                (e.g. 4/1, 5/1, 6/1)
-              </span>
+            </div>
+
+            {/* bookmaker selector + build button */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontSize: 13 }}>Bookmaker:</span>
+              <select
+                value={autoBookmaker}
+                onChange={(e) => setAutoBookmaker(e.target.value)}
+                style={{ fontSize: 13, padding: "3px 6px" }}
+              >
+                {BOOKMAKER_OPTIONS.map((bk) => (
+                  <option key={bk.value} value={bk.value}>
+                    {bk.label}
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
                 onClick={handleAutoBuild}
@@ -511,14 +578,10 @@ export default function AdminAddAcca() {
             </div>
 
             {autoErr && (
-              <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 4 }}>
-                {autoErr}
-              </div>
+              <div style={{ fontSize: 12, color: "#b91c1c" }}>{autoErr}</div>
             )}
             {autoInfo && (
-              <div style={{ fontSize: 12, color: "#065f46", marginTop: 4 }}>
-                {autoInfo}
-              </div>
+              <div style={{ fontSize: 12, color: "#065f46" }}>{autoInfo}</div>
             )}
           </div>
 
@@ -627,10 +690,7 @@ export default function AdminAddAcca() {
                   Leg {idx + 1}:{" "}
                   <TeamChip name={l.fixture.home_team} />{" "}
                   <span style={{ color: "#666" }}>vs</span>{" "}
-                  <TeamChip
-                    name={l.fixture.away_team}
-                    align="right"
-                  />
+                  <TeamChip name={l.fixture.away_team} align="right" />
                 </div>
                 <button
                   onClick={() => removeLeg(l.id)}
@@ -653,8 +713,7 @@ export default function AdminAddAcca() {
               </div>
               <div style={{ fontSize: 13, marginBottom: 2 }}>
                 <span style={{ color: "#4b5563" }}>Odds:</span>{" "}
-                <strong>{Number(l.price).toFixed(2)}</strong> @{" "}
-                {l.bookmaker}
+                <strong>{Number(l.price).toFixed(2)}</strong> @ {l.bookmaker}
               </div>
               {l.note && (
                 <div style={{ fontSize: 13, marginTop: 2 }}>
@@ -714,9 +773,7 @@ export default function AdminAddAcca() {
                     <span style={{ color: "#666" }}>vs</span>{" "}
                     <TeamChip name={f.away_team} align="right" />
                   </div>
-                  <div style={{ color: "#666", fontSize: 12 }}>
-                    {f.comp}
-                  </div>
+                  <div style={{ color: "#666", fontSize: 12 }}>{f.comp}</div>
                 </td>
                 <td>{f.comp}</td>
                 <td>
@@ -808,8 +865,8 @@ export default function AdminAddAcca() {
                             color: "#6b7280",
                           }}
                         >
-                          For anytime goalscorer, line/side can be left
-                          blank – it will be stored as{" "}
+                          For anytime goalscorer, line/side can be left blank –
+                          it will be stored as{" "}
                           <em>"Player - Anytime Goalscorer"</em>.
                         </div>
                       </div>
