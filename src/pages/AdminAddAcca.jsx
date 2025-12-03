@@ -124,6 +124,17 @@ const buildPlayerPropMarketLabel = ({ player, type, line, side }) => {
   return `${playerName} - ${sideWord} ${propLine} ${typeLabel}`;
 };
 
+// Fractional "5/1" -> decimal 6.0 helper
+const fractionToDecimal = (s) => {
+  if (!s) throw new Error("Enter a target like 5/1");
+  const parts = s.replace(/\s+/g, "").split("/");
+  if (parts.length !== 2) throw new Error("Use fractional format like 5/1");
+  const num = parseFloat(parts[0]);
+  const den = parseFloat(parts[1]);
+  if (!num || !den) throw new Error("Invalid fraction, e.g. 5/1, 4/1, 6/4");
+  return num / den + 1.0;
+};
+
 export default function AdminAddAcca() {
   // Acca-level meta
   const [day, setDay] = useState(todayISO());
@@ -143,6 +154,12 @@ export default function AdminAddAcca() {
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState("");
   const [submitOk, setSubmitOk] = useState("");
+
+  // 🔮 Auto-builder state
+  const [autoTarget, setAutoTarget] = useState("5/1");
+  const [autoLoading, setAutoLoading] = useState(false);
+  const [autoErr, setAutoErr] = useState("");
+  const [autoInfo, setAutoInfo] = useState("");
 
   const params = useMemo(
     () => ({ day, sport }),
@@ -285,6 +302,7 @@ export default function AdminAddAcca() {
       setStakeUnits("1.0");
       setIsPublic(true);
       setLegs([]);
+      setAutoInfo("");
     } catch (e2) {
       setSubmitErr(
         e2?.response?.data?.detail ||
@@ -295,6 +313,86 @@ export default function AdminAddAcca() {
       setSubmitOk("");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAutoBuild = async () => {
+    setAutoErr("");
+    setAutoInfo("");
+    try {
+      const targetDecimal = fractionToDecimal(autoTarget);
+
+      setAutoLoading(true);
+
+      const res = await api.post("/admin/accas/auto", {
+        day,
+        // your backend already defaults a bunch of things – we just pass target_odds:
+        target_odds: targetDecimal,
+        // optionally you can tweak these:
+        // legs_min: 3,
+        // legs_max: 4,
+        // min_edge: 0.03,
+        // bookmaker: "bet365",
+        // is_public: false,
+        stake_units: parseFloat(stakeUnits) || 1.0,
+      });
+
+      const ticket = res.ticket || {};
+      const apiLegs = ticket.legs || [];
+
+      if (!apiLegs.length) {
+        throw new Error("Auto-builder returned no legs.");
+      }
+
+      // Map API legs -> local legs with fake fixture objects for UI
+      const mapped = apiLegs.map((leg) => {
+        const matchup = leg.matchup || "";
+        const [home, away] = matchup.split(" vs ");
+        return {
+          id: `${leg.fixture_id}-${Math.random().toString(36).slice(2)}`,
+          fixture_id: leg.fixture_id,
+          fixture: {
+            id: leg.fixture_id,
+            home_team: home || "",
+            away_team: away || "",
+            comp: leg.comp || "",
+            kickoff_utc: leg.kickoff_utc,
+          },
+          sport,
+          pickType: "match",
+          market: leg.market,
+          bookmaker: leg.bookmaker,
+          price: leg.price,
+          note: leg.note || null,
+        };
+      });
+
+      setLegs(mapped);
+
+      // Pre-fill title/note if empty so you can just tweak them
+      if (!title) {
+        setTitle(
+          ticket.title ||
+            `${autoTarget} Acca — ${day}`
+        );
+      }
+      if (!note && ticket.note) {
+        setNote(ticket.note);
+      }
+
+      const combined = ticket.combined_price || null;
+      const explanation = ticket.explanation || "";
+      setAutoInfo(
+        `Built ${mapped.length}-leg acca ~${combined || "?"}x · ${explanation}`
+      );
+    } catch (e) {
+      setAutoErr(
+        e?.response?.data?.detail ||
+          e?.message ||
+          "Failed to auto-build acca from edges."
+      );
+    } finally {
+      setAutoLoading(false);
     }
   };
 
@@ -363,6 +461,71 @@ export default function AdminAddAcca() {
               />{" "}
               Public
             </label>
+          </div>
+
+          {/* 🔮 Auto-build from model edges */}
+          <div
+            style={{
+              marginTop: 8,
+              padding: 8,
+              borderRadius: 6,
+              border: "1px dashed #d1d5db",
+              background: "#f9fafb",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 10,
+              alignItems: "center",
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 600 }}>
+              Auto-build from model edges
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <span style={{ fontSize: 13 }}>Target price:</span>
+              <input
+                value={autoTarget}
+                onChange={(e) => setAutoTarget(e.target.value)}
+                placeholder="5/1"
+                style={{ width: 70, padding: "3px 6px", fontSize: 13 }}
+              />
+              <span style={{ fontSize: 12, color: "#4b5563" }}>
+                (e.g. 4/1, 5/1, 6/1)
+              </span>
+              <button
+                type="button"
+                onClick={handleAutoBuild}
+                disabled={autoLoading}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #111827",
+                  background: autoLoading ? "#e5e7eb" : "#111827",
+                  color: "#fff",
+                  cursor: autoLoading ? "default" : "pointer",
+                  fontSize: 13,
+                }}
+              >
+                {autoLoading ? "Building…" : "Auto-build acca"}
+              </button>
+            </div>
+
+            {autoErr && (
+              <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 4 }}>
+                {autoErr}
+              </div>
+            )}
+            {autoInfo && (
+              <div style={{ fontSize: 12, color: "#065f46", marginTop: 4 }}>
+                {autoInfo}
+              </div>
+            )}
           </div>
 
           <div>
@@ -435,7 +598,10 @@ export default function AdminAddAcca() {
       {/* CURRENT LEGS */}
       <h3>Acca Legs ({legs.length})</h3>
       {legs.length === 0 ? (
-        <p style={{ color: "#666" }}>No legs added yet. Use the fixture table below to add legs.</p>
+        <p style={{ color: "#666" }}>
+          No legs added yet. Use the auto-builder above or the fixture table
+          below to add legs.
+        </p>
       ) : (
         <div
           style={{
