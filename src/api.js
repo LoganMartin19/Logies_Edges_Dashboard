@@ -250,6 +250,15 @@ export const fetchTipsterConnectDashboard = (username) =>
     )
     .then((r) => r.data); // { dashboard_url }
 
+
+// ----- Tipster Email -----
+export const sendTipsterPicksEmail = async (username) => {
+  const res = await api.post(
+    `/api/tipsters/${encodeURIComponent(username)}/picks/email`
+  );
+  return res.data; // { ok, sent_count, skipped_count, recipient_count }
+};
+
 // -----------------------------
 // Web Push / Notifications
 // -----------------------------

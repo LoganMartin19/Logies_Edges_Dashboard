@@ -1,7 +1,11 @@
 // src/pages/TipsterAddPick.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { createTipsterPick, fetchDailyFixtures } from "../api";
+import {
+  createTipsterPick,
+  fetchDailyFixtures,
+  sendTipsterPicksEmail, // 👈 NEW
+} from "../api";
 import { useAuth } from "../components/AuthGate";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -88,6 +92,7 @@ export default function TipsterAddPick() {
 
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingMode, setSavingMode] = useState(null); // "post" | "post_and_email" | null
   const [loadingFixtures, setLoadingFixtures] = useState(false);
 
   // ---- helpers ----
@@ -201,10 +206,12 @@ export default function TipsterAddPick() {
     return `${player} - ${sideWord} ${line} ${typeLabel}`;
   };
 
-  const submit = async (e) => {
-    e.preventDefault();
+  // Shared handler used by both "Post" and "Post & email" flows
+  const handleSubmit = async ({ sendEmail = false } = {}) => {
     setErr("");
     setSaving(true);
+    setSavingMode(sendEmail ? "post_and_email" : "post");
+
     try {
       if (!form.fixture_id) {
         throw new Error("Please choose a fixture");
@@ -243,7 +250,28 @@ export default function TipsterAddPick() {
         is_subscriber_only: !!form.is_subscriber_only,
       };
 
+      // 1) Create the pick
       await createTipsterPick(username, payload);
+
+      // 2) Optionally send today's picks email
+      if (sendEmail) {
+        try {
+          const res = await sendTipsterPicksEmail(username);
+          // naive toast/alert for now
+          window.alert(
+            `Email sent ✅\n\nRecipients: ${res.recipient_count}\nSent: ${res.sent_count}\nSkipped: ${res.skipped_count}`
+          );
+        } catch (e3) {
+          console.error("Failed to send tipster picks email", e3);
+          window.alert(
+            `Pick posted, but sending the email failed:\n${
+              e3?.response?.data?.detail || e3.message || "Unknown error"
+            }`
+          );
+        }
+      }
+
+      // 3) Back to tipster page
       nav(`/tipsters/${encodeURIComponent(username)}`);
     } catch (e2) {
       setErr(
@@ -251,6 +279,15 @@ export default function TipsterAddPick() {
       );
     } finally {
       setSaving(false);
+      setSavingMode(null);
+    }
+  };
+
+  // Form submit = just post (no email)
+  const onSubmit = (e) => {
+    e.preventDefault();
+    if (!saving) {
+      handleSubmit({ sendEmail: false });
     }
   };
 
@@ -293,7 +330,7 @@ export default function TipsterAddPick() {
 
       {err && <div style={{ color: "salmon", margin: "10px 0" }}>{err}</div>}
 
-      <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
+      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
         <label>
           Fixture
           <select
@@ -557,11 +594,31 @@ export default function TipsterAddPick() {
           </div>
         </label>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+        <div style={{ display: "flex", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
           <button type="submit" disabled={saving}>
-            {saving ? "Saving…" : "Post Pick"}
+            {saving && savingMode === "post"
+              ? "Saving…"
+              : saving && savingMode === "post_and_email"
+              ? "Posting…"
+              : "Post Pick"}
           </button>
+
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => handleSubmit({ sendEmail: true })}
+          >
+            {saving && savingMode === "post_and_email"
+              ? "Posting & emailing…"
+              : "Post & email today’s picks"}
+          </button>
+
           <Link to={`/tipsters/${encodeURIComponent(username)}`}>Cancel</Link>
+        </div>
+
+        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+          The email button sends all picks you’ve posted <strong>today</strong>{" "}
+          to your followers and active subscribers.
         </div>
       </form>
     </div>
