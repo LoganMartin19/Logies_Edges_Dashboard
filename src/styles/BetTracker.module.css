@@ -10,6 +10,12 @@
   font-size: 0.9rem;
 }
 
+/* Title */
+.title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  color: #eaf4ed;
+}
 
 /* --- KPI Section --------------------------------------------------------- */
 
@@ -23,8 +29,99 @@
   background: rgba(0, 0, 0, 0.45);
 }
 
+/* Old generic rule (kept for backwards compat) */
 .kpis > div {
   min-width: 130px;
+}
+
+/* New KPI card structure */
+.kpiCard {
+  min-width: 130px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(5, 10, 7, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.kpiLabel {
+  font-size: 0.78rem;
+  opacity: 0.78;
+  margin-bottom: 3px;
+}
+
+.kpiValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Colour accents for P/L card */
+.kpiPositive {
+  border-color: rgba(52, 168, 83, 0.7);
+  box-shadow: 0 0 0 1px rgba(52, 168, 83, 0.25);
+}
+
+.kpiNegative {
+  border-color: rgba(234, 67, 53, 0.7);
+  box-shadow: 0 0 0 1px rgba(234, 67, 53, 0.25);
+}
+
+
+/* --- Recent performance strip ------------------------------------------- */
+
+.performance {
+  margin-bottom: 14px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.performanceHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.performanceMeta {
+  opacity: 0.7;
+  font-size: 0.78rem;
+}
+
+.performanceDots {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* little dots for W/L/V/P */
+.dotWon,
+.dotLost,
+.dotVoid,
+.dotPending {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  display: inline-block;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+.dotWon {
+  background: #34a853;
+}
+
+.dotLost {
+  background: #ea4335;
+}
+
+.dotVoid {
+  background: #fbbc04;
+}
+
+.dotPending {
+  background: #9aa0a6;
 }
 
 
@@ -176,6 +273,14 @@
   cursor: pointer;
 }
 
+/* little separator between left/right tools */
+.sep {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.14);
+  margin: 0 2px;
+}
+
 .btnSoft {
   border-color: rgba(166, 167, 60, 0.5);
 }
@@ -194,7 +299,8 @@
   margin-left: auto;
 }
 
-/* --- Fix header + banner colours ---------------------------------------- */
+
+/* --- Header / banner text ----------------------------------------------- */
 
 .wrap h2 {
   margin: 0 0 6px;
@@ -211,6 +317,7 @@
   color: rgba(234, 244, 237, 0.9);
   font-size: 0.82rem;
 }
+
 
 /* --- Hard-override the white table header ------------------------------- */
 
@@ -234,6 +341,10 @@
   .form button {
     grid-column: 1 / -1;
     margin-top: 6px;
+  }
+
+  .kpiCard {
+    min-width: calc(50% - 10px);
   }
 }
 
