@@ -14,10 +14,12 @@ import OddsTable from "../components/OddsTable";
 import MatchPreview from "../components/MatchPreview";
 import styles from "../styles/FixturePage.module.css";
 import { slugifyTeamName } from "../utils/slugify";
-import { api } from "../api";
+import { api, fetchFixtureEdges } from "../api";
 import { useAuth } from "../components/AuthGate";
 
-// ⭐ NEW
+// ⭐ NEW – pill component
+import FixtureAccessPill from "../components/FixtureAccessPill";
+
 import { placeAndTrackEdge } from "../utils/placeAndTrack";
 import { getBookmakerUrl } from "../utils/bookmakers";
 
@@ -33,7 +35,8 @@ const FixturePage = () => {
 
   const fixtureIdNum = Number(id);
   const isAdminView =
-    typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+    typeof window !== "undefined" &&
+    window.location.pathname.startsWith("/admin");
 
   const [data, setData] = useState(null);
   const [leagueFixtures, setLeagueFixtures] = useState([]);
@@ -44,12 +47,14 @@ const FixturePage = () => {
   const [activeTab, setActiveTab] = useState("preview");
   const [lineupTab, setLineupTab] = useState("lineup");
   const [selectedBookmaker, setSelectedBookmaker] = useState("All");
+
   const [edges, setEdges] = useState([]);
+  const [edgesMeta, setEdgesMeta] = useState(null); // 👈 freemium meta
   const [explanations, setExplanations] = useState({});
   const [expandedWhy, setExpandedWhy] = useState(null);
   const [teamStats, setTeamStats] = useState(null);
 
-  // ⭐ NEW: For “Adding…” loading state on individual edge
+  // ⭐ “Adding…” loading state on individual edge
   const [placingKey, setPlacingKey] = useState(null);
 
   const formatKickoff = (utcString) => {
@@ -93,7 +98,6 @@ const FixturePage = () => {
 
     if (syn[x]) return syn[x];
 
-    // Over/Under synonyms: OVER2.5, UNDER2.5 etc.
     const ou =
       x.match(/^O?VER?(\d+(\.\d+)?)$/) ||
       x.match(/^U?N?DER?(\d+(\.\d+)?)$/);
@@ -102,12 +106,10 @@ const FixturePage = () => {
       if (/^U(NDER)?\d/.test(x)) return `U${x.replace(/^U(NDER)?/, "")}`;
     }
 
-    // Already canonical O2.5 / U2.5
     if (/^O\d+(\.\d+)?$/.test(x) || /^U\d+(\.\d+)?$/.test(x)) return x;
 
     return x;
   };
-
 
   // --- LOAD FIXTURE DATA ----------------------------------------------------
   useEffect(() => {
@@ -126,8 +128,12 @@ const FixturePage = () => {
         });
 
         setFormData({
-          home: fj.home ?? { summary: fj.home_form ?? {}, recent: fj.home_recent ?? [] },
-          away: fj.away ?? { summary: fj.away_form ?? {}, recent: fj.away_recent ?? [] },
+          home:
+            fj.home ??
+            { summary: fj.home_form ?? {}, recent: fj.home_recent ?? [] },
+          away:
+            fj.away ??
+            { summary: fj.away_form ?? {}, recent: fj.away_recent ?? [] },
           n: fj.n ?? formN,
         });
       } catch (err) {
@@ -142,10 +148,13 @@ const FixturePage = () => {
     if (!data?.fixture?.comp) return;
     const fetchTable = async () => {
       try {
-        const { data: tableJson } = await api.get(`/api/fixtures/league/table`, {
-          params: { league: data.fixture.comp },
-        });
-        setLeagueTable(Array.isArray(tableJson) ? tableJson : tableJson.table || []);
+        const { data: tableJson } = await api.get(
+          `/api/fixtures/league/table`,
+          { params: { league: data.fixture.comp } }
+        );
+        setLeagueTable(
+          Array.isArray(tableJson) ? tableJson : tableJson.table || []
+        );
       } catch (err) {
         console.error("Error loading league table:", err);
         setLeagueTable([]);
@@ -154,21 +163,31 @@ const FixturePage = () => {
     fetchTable();
   }, [data?.fixture?.comp]);
 
-  // --- LOAD EDGES -----------------------------------------------------------
+  // --- LOAD EDGES (new freemium endpoint) -----------------------------------
   useEffect(() => {
-    const fetchEdges = async () => {
+    const loadEdges = async () => {
       try {
-        const { data: json } = await api.get(`/api/ai/preview/edges`, {
-          params: { fixture_id: id, source: "team_form" },
+        const json = await fetchFixtureEdges(fixtureIdNum);
+
+        const fullEdges = json.edges || json.edges_teaser || [];
+
+        setEdges(Array.isArray(fullEdges) ? fullEdges : []);
+        setEdgesMeta({
+          isPremium: !!json.is_premium,
+          hasAccess: !!json.has_access,
+          usedToday: json.used_today ?? 0,
+          limit: json.limit ?? 0,
+          hasFullAccess: !!(json.is_premium || json.has_access),
+          isTeaser: !json.is_premium && !json.has_access,
         });
-        setEdges(Array.isArray(json) ? json : []);
       } catch (err) {
         console.error("Error fetching edges:", err);
         setEdges([]);
+        setEdgesMeta(null);
       }
     };
-    fetchEdges();
-  }, [id]);
+    if (fixtureIdNum) loadEdges();
+  }, [fixtureIdNum]);
 
   // --- TEAM STATS -----------------------------------------------------------
   useEffect(() => {
@@ -206,31 +225,27 @@ const FixturePage = () => {
   };
 
   // --- PLACE BET BUTTON -----------------------------------------------------
-  // --- PLACE BET BUTTON -----------------------------------------------------
   const handlePlaceEdge = async (edge, key) => {
     if (!user) {
       navigate("/login");
       return;
     }
-  
-    // --- popup must open immediately on click ---
+
     const bmUrl = getBookmakerUrl(edge.bookmaker);
     const openUrl = bmUrl
       ? bmUrl
       : "https://google.com/search?q=" + encodeURIComponent(edge.bookmaker);
-  
-    // 🔥 open tab BEFORE any async code
+
     window.open(openUrl, "_blank", "noopener");
-  
-    // now place the bet
+
     try {
       setPlacingKey(key);
-  
+
       await placeAndTrackEdge(
         { ...edge, fixture_id: fixtureIdNum },
         { stake: 1 }
       );
-  
+
       navigate("/bets");
     } catch (err) {
       console.error("Failed to place bet:", err);
@@ -297,15 +312,17 @@ const FixturePage = () => {
           </p>
 
           <div className={styles.tabs}>
-            {["preview", "table", "predictions", "lineups", "events"].map((tab) => (
-              <button
-                key={tab}
-                className={activeTab === tab ? styles.activeTab : ""}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
+            {["preview", "table", "predictions", "lineups", "events"].map(
+              (tab) => (
+                <button
+                  key={tab}
+                  className={activeTab === tab ? styles.activeTab : ""}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              )
+            )}
           </div>
         </div>
       </div>
@@ -322,7 +339,54 @@ const FixturePage = () => {
                   BEST EDGES SECTION
                  ================================================================ */}
               <div className={styles.bestEdges}>
-                <h3>Best Edges</h3>
+                {/* Header row: title + pill */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  <h3>Best Edges</h3>
+                  {edgesMeta && (
+                    <FixtureAccessPill
+                      meta={edgesMeta}
+                      fixtureId={fixtureIdNum}
+                      variant="default"
+                    />
+                  )}
+                </div>
+
+                {/* 🔐 Freemium banner text underneath */}
+                {edgesMeta && (
+                  <p className={styles.edgesMeta}>
+                    {edgesMeta.hasFullAccess ? (
+                      edgesMeta.isPremium ? (
+                        <>
+                          You’re on <b>CSB Premium</b> – full model edges
+                          unlocked for this fixture.
+                        </>
+                      ) : (
+                        <>
+                          This fixture is unlocked. You’ve used{" "}
+                          <b>{edgesMeta.usedToday}</b> /{" "}
+                          <b>{edgesMeta.limit}</b> free fixture unlocks today.
+                        </>
+                      )
+                    ) : (
+                      <>
+                        Free preview only – showing a small sample of edges.
+                        You’ve used <b>{edgesMeta.usedToday}</b> /{" "}
+                        <b>{edgesMeta.limit}</b> free fixture unlocks today.{" "}
+                        <Link to="/premium" style={{ color: "#FBBF24" }}>
+                          Go Premium →
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                )}
 
                 {uniqueBookmakers.length > 1 && (
                   <div className={styles.bookmakerFilter}>
@@ -351,7 +415,9 @@ const FixturePage = () => {
                       eg &&
                       typeof eg.home === "number" &&
                       typeof eg.away === "number"
-                        ? `Expected goals: ${eg.home.toFixed(2)} + ${eg.away.toFixed(2)} = ${eg.total.toFixed(2)}`
+                        ? `Expected goals: ${eg.home.toFixed(
+                            2
+                          )} + ${eg.away.toFixed(2)} = ${eg.total.toFixed(2)}`
                         : null;
 
                     return (
@@ -367,7 +433,6 @@ const FixturePage = () => {
                           Why?
                         </button>
 
-                        {/* 🔥 NEW “PLACE BET” BUTTON */}
                         <button
                           className={styles.addBetLink}
                           style={{ marginLeft: 8 }}
@@ -430,9 +495,12 @@ const FixturePage = () => {
                         .replace(/[^a-z0-9]/gi, "")
                         .trim();
 
-                    const isHome = normalize(row.team) === normalize(fixture.home_team);
-                    const isAway = normalize(row.team) === normalize(fixture.away_team);
-                    const rowClass = isHome || isAway ? styles.highlightRow : "";
+                    const isHome =
+                      normalize(row.team) === normalize(fixture.home_team);
+                    const isAway =
+                      normalize(row.team) === normalize(fixture.away_team);
+                    const rowClass =
+                      isHome || isAway ? styles.highlightRow : "";
 
                     return (
                       <tr key={i} className={rowClass}>
@@ -497,7 +565,11 @@ const FixturePage = () => {
         </div>
 
         <div className={styles.side}>
-          <Poll fixtureId={id} homeTeam={fixture.home_team} awayTeam={fixture.away_team} />
+          <Poll
+            fixtureId={id}
+            homeTeam={fixture.home_team}
+            awayTeam={fixture.away_team}
+          />
           {formData && (
             <div className={`${styles.formSection} ${styles.staticForm}`}>
               <div
@@ -521,7 +593,9 @@ const FixturePage = () => {
                   ))}
                 </select>
 
-                <label style={{ fontSize: 12, color: "#666", marginLeft: 6 }}>
+                <label
+                  style={{ fontSize: 12, color: "#666", marginLeft: 6 }}
+                >
                   Scope:
                 </label>
                 <select
@@ -535,8 +609,14 @@ const FixturePage = () => {
               </div>
 
               <FormBreakdown
-                home={{ summary: formData.home.summary, recent: formData.home.recent }}
-                away={{ summary: formData.away.summary, recent: formData.away.recent }}
+                home={{
+                  summary: formData.home.summary,
+                  recent: formData.home.recent,
+                }}
+                away={{
+                  summary: formData.away.summary,
+                  recent: formData.away.recent,
+                }}
                 n={formData.n}
               />
             </div>

@@ -81,6 +81,7 @@ export const sendFeaturedPicksEmail = async ({ day, premiumOnly = false }) => {
   );
   return res.data;
 };
+
 // -----------------------------
 // Public helpers
 // -----------------------------
@@ -136,6 +137,12 @@ export const deleteTipsterPick = (pickId) =>
 // ----- Fixtures (single) -----
 export const fetchFixture = (id) =>
   api.get(`/api/fixtures/${id}`).then((r) => r.data);
+
+// ----- 🔐 Fixture edges (freemium gating) -----
+export const fetchFixtureEdges = async (fixtureId) => {
+  const res = await api.get(`/fixture/${fixtureId}/edges`);
+  return res.data; // { fixture_id, is_premium, has_access, used_today, limit, edges or edges_teaser }
+};
 
 // ----- Tipster ACCAs -----
 export const createTipsterAcca = (username, payload) =>
@@ -250,7 +257,6 @@ export const fetchTipsterConnectDashboard = (username) =>
     )
     .then((r) => r.data); // { dashboard_url }
 
-
 // ----- Tipster Email -----
 export const sendTipsterPicksEmail = async (username) => {
   const res = await api.post(
@@ -258,6 +264,12 @@ export const sendTipsterPicksEmail = async (username) => {
   );
   return res.data; // { ok, sent_count, skipped_count, recipient_count }
 };
+
+// -----------------------------------------------------
+// Freemium: daily fixture access summary (Dashboard pill)
+// -----------------------------------------------------
+export const fetchFixtureAccessSummary = () =>
+  api.get("/fixture/access/summary").then((r) => r.data);
 
 // -----------------------------
 // Web Push / Notifications
