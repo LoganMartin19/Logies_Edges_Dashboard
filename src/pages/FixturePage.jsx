@@ -312,17 +312,19 @@ const FixturePage = () => {
           </p>
 
           <div className={styles.tabs}>
-            {["preview", "table", "predictions", "lineups", "events"].map(
-              (tab) => (
-                <button
-                  key={tab}
-                  className={activeTab === tab ? styles.activeTab : ""}
-                  onClick={() => setActiveTab(tab)}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              )
-            )}
+            {["preview", "table", "predictions", "lineups", "events"].map((tab) => (
+              <button
+                key={tab}
+                className={
+                  activeTab === tab
+                    ? `${styles.tabButton} ${styles.activeTab}`
+                    : styles.tabButton
+                }
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
       </div>

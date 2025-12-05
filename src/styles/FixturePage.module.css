@@ -17,7 +17,7 @@
   font-family: "Inter", sans-serif;
 }
 
-/* ✅ Add this: container for main + sidebar */
+/* ✅ container for main + sidebar */
 .body {
   display: flex;
   flex-direction: row; /* ✅ horizontal split */
@@ -345,17 +345,19 @@
   transition: background-color 0.3s ease-in-out;
 }
 
-/* FixturePage.module.css */
+/* --- Tabs --- */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
+  row-gap: 6px;
+  column-gap: 10px;
   border-bottom: 1px solid #ddd;
-  margin: 20px 0;
-  justify-content: center;
+  margin: 24px 0 18px; /* ⬆️ extra space above & below */
+  justify-content: flex-start;
 }
 
 .tabs button {
-  flex: 1;
-  padding: 10px 0;
+  padding: 8px 12px;
   background: none;
   border: none;
   cursor: pointer;
@@ -363,6 +365,8 @@
   color: #666;
   border-bottom: 3px solid transparent;
   transition: all 0.2s ease;
+  flex: 0; /* ⬅ stop stretching full width */
+  font-size: 0.9rem;
 }
 
 .tabs button:hover {
@@ -375,7 +379,7 @@
 }
 
 .tabContent {
-  margin-top: 1rem;
+  margin-top: 1.1rem; /* tiny bit more space from tabs */
   padding: 1rem;
   background: #fff;
   border-radius: 8px;
@@ -412,6 +416,7 @@
   display: flex;
   flex-wrap: wrap;
 }
+
 .playerInfo {
   flex: 1;
 }
@@ -434,9 +439,6 @@
 
 /* prevent header/body from creating overflow */
 .page { overflow-x: hidden; }
-
-/* tabs can wrap on small screens */
-.tabs { flex-wrap: wrap; row-gap: 6px; }
 
 /* mobile: single column, no fixed widths leaking */
 @media (max-width: 900px) {
