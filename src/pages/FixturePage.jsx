@@ -17,6 +17,9 @@ import { slugifyTeamName } from "../utils/slugify";
 import { api, fetchFixtureEdges } from "../api";
 import { useAuth } from "../components/AuthGate";
 
+// ⭐ NEW – preferences hook
+import { usePreferences } from "../context/PreferencesContext";
+
 // ⭐ NEW – pill component
 import FixtureAccessPill from "../components/FixtureAccessPill";
 
@@ -27,6 +30,14 @@ const FixturePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // ⭐ NEW – favourites from context
+  const {
+    favoriteSports,
+    favoriteTeams,
+    favoriteLeagues,
+    updatePreferences,
+  } = usePreferences();
 
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -255,11 +266,62 @@ const FixturePage = () => {
     }
   };
 
+  // --- FAVOURITES TOGGLES ---------------------------------------------------
+  const favTeams = favoriteTeams || [];
+  const favLeagues = favoriteLeagues || [];
+  const favSports = favoriteSports || [];
+
+  const toggleFavouriteTeam = async (teamName) => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    const exists = favTeams.includes(teamName);
+    const nextTeams = exists
+      ? favTeams.filter((t) => t !== teamName)
+      : [...favTeams, teamName];
+
+    try {
+      await updatePreferences({
+        favoriteSports: favSports,
+        favoriteTeams: nextTeams,
+        favoriteLeagues: favLeagues,
+      });
+    } catch (err) {
+      console.error("Failed to update favourite teams from fixture", err);
+    }
+  };
+
+  const toggleFavouriteLeague = async (leagueCode) => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    const exists = favLeagues.includes(leagueCode);
+    const nextLeagues = exists
+      ? favLeagues.filter((l) => l !== leagueCode)
+      : [...favLeagues, leagueCode];
+
+    try {
+      await updatePreferences({
+        favoriteSports: favSports,
+        favoriteTeams: favTeams,
+        favoriteLeagues: nextLeagues,
+      });
+    } catch (err) {
+      console.error("Failed to update favourite leagues from fixture", err);
+    }
+  };
+
   if (!data) return <p className={styles.loading}>Loading…</p>;
   if (!data.fixture) return <p className={styles.error}>Fixture not found.</p>;
 
   const fixture = data.fixture;
   const odds = data.odds ?? [];
+
+  const isHomeFav = favTeams.includes(fixture.home_team);
+  const isAwayFav = favTeams.includes(fixture.away_team);
+  const isLeagueFav = favLeagues.includes(fixture.comp);
 
   const grouped = Array.isArray(odds)
     ? odds.reduce((acc, o) => {
@@ -286,6 +348,7 @@ const FixturePage = () => {
           <button className={styles.backBtn} onClick={goBack}>
             ← Back to Fixtures
           </button>
+
           <div className={styles.headerTeams}>
             <div className={styles.teamWithLogo}>
               <img
@@ -295,6 +358,25 @@ const FixturePage = () => {
                 className={styles.teamLogo}
               />
               {fixture.home_team}
+              {/* ⭐ Favourite team toggle (home) */}
+              <button
+                type="button"
+                onClick={() => toggleFavouriteTeam(fixture.home_team)}
+                style={{
+                  marginLeft: 6,
+                  fontSize: 11,
+                  padding: "2px 6px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: isHomeFav
+                    ? "rgba(52,211,153,0.18)"
+                    : "rgba(0,0,0,0.25)",
+                  color: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                {isHomeFav ? "★ Saved" : "☆ Fav"}
+              </button>
             </div>
             <span>vs</span>
             <div className={styles.teamWithLogo}>
@@ -305,26 +387,67 @@ const FixturePage = () => {
                 className={styles.teamLogo}
               />
               {fixture.away_team}
+              {/* ⭐ Favourite team toggle (away) */}
+              <button
+                type="button"
+                onClick={() => toggleFavouriteTeam(fixture.away_team)}
+                style={{
+                  marginLeft: 6,
+                  fontSize: 11,
+                  padding: "2px 6px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: isAwayFav
+                    ? "rgba(52,211,153,0.18)"
+                    : "rgba(0,0,0,0.25)",
+                  color: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                {isAwayFav ? "★ Saved" : "☆ Fav"}
+              </button>
             </div>
           </div>
+
           <p className={styles.metaLine}>
             {fixture.comp} • {formatKickoff(fixture.kickoff_utc)}
+            {/* ⭐ Favourite league toggle */}
+            <button
+              type="button"
+              onClick={() => toggleFavouriteLeague(fixture.comp)}
+              style={{
+                marginLeft: 10,
+                fontSize: 11,
+                padding: "2px 8px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.25)",
+                background: isLeagueFav
+                  ? "rgba(52,211,153,0.18)"
+                  : "rgba(0,0,0,0.35)",
+                color: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              {isLeagueFav ? "★ League saved" : "☆ Fav league"}
+            </button>
           </p>
 
           <div className={styles.tabs}>
-            {["preview", "table", "predictions", "lineups", "events"].map((tab) => (
-              <button
-                key={tab}
-                className={
-                  activeTab === tab
-                    ? `${styles.tabButton} ${styles.activeTab}`
-                    : styles.tabButton
-                }
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
+            {["preview", "table", "predictions", "lineups", "events"].map(
+              (tab) => (
+                <button
+                  key={tab}
+                  className={
+                    activeTab === tab
+                      ? `${styles.tabButton} ${styles.activeTab}`
+                      : styles.tabButton
+                  }
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              )
+            )}
           </div>
         </div>
       </div>

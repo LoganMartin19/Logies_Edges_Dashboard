@@ -1,4 +1,3 @@
-// --- PART 1 START ---
 // src/pages/PublicDashboard.jsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
@@ -224,10 +223,6 @@ const mobile = {
   },
   comp: { fontSize: 12, color: "#5f6b66", marginTop: 4 },
 };
-
-// --- PART 1 END ---
-
-// --- PART 2 START ---
 
 /* ------------- sub components ---------- */
 const TeamChip = ({ name, align = "left" }) => (
@@ -455,14 +450,10 @@ function AccaBlock({ day }) {
   );
 }
 
-// --- PART 2 END ---
-
-// --- PART 3 START ---
-
 /* --------------------- main page ------------------- */
 export default function PublicDashboard() {
   const { user, isPremium } = useAuth();
-  const { favoriteSports, favoriteTeams, favoriteLeagues } = usePreferences(); // ⭐ NEW
+  const { favoriteSports, favoriteTeams, favoriteLeagues } = usePreferences(); // ⭐
 
   const [day, setDay] = useState(todayISO());
   const [sport, setSport] = useState("all");
@@ -479,6 +470,9 @@ export default function PublicDashboard() {
 
   const [trackingPickKey, setTrackingPickKey] = useState(null);
   const [trackedPickKeys, setTrackedPickKeys] = useState([]);
+
+  // NEW: All vs Favourites toggle
+  const [showFavsOnly, setShowFavsOnly] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -540,38 +534,44 @@ export default function PublicDashboard() {
     };
   }, [user]);
 
-  // ⭐ FAVOURITES-AWARE FIXTURE SORT
-  const fixturesSorted = useMemo(() => {
-    if (!fixtures.length) return [];
-
-    const favSportsSet = new Set(
-      (favoriteSports || []).map((s) => (s || "").toLowerCase())
-    );
-    const favLeaguesSet = new Set(favoriteLeagues || []);
-    const favTeamsSet = new Set(favoriteTeams || []);
-
-    const isFavFixture = (f) => {
+  // helper: does this fixture match user's favourites?
+  const isFavFixture = useCallback(
+    (f) => {
       const sportKey = (f.sport || "").toLowerCase();
+      const favSportsSet = new Set(
+        (favoriteSports || []).map((s) => (s || "").toLowerCase())
+      );
+      const favLeaguesSet = new Set(favoriteLeagues || []);
+      const favTeamsSet = new Set(favoriteTeams || []);
+
       if (favSportsSet.has(sportKey)) return true;
       if (favLeaguesSet.has(f.comp)) return true;
       if (favTeamsSet.has(f.home_team) || favTeamsSet.has(f.away_team))
         return true;
       return false;
-    };
+    },
+    [favoriteSports, favoriteTeams, favoriteLeagues]
+  );
 
+  // FAVOURITES-AWARE FIXTURE SORT
+  const fixturesSorted = useMemo(() => {
+    if (!fixtures.length) return [];
     return [...fixtures].sort((a, b) => {
       const aFav = isFavFixture(a);
       const bFav = isFavFixture(b);
 
       if (aFav !== bFav) {
-        // favourites first
-        return aFav ? -1 : 1;
+        return aFav ? -1 : 1; // favourites first
       }
-
-      // then by kickoff time
       return (a.kickoff_utc || "").localeCompare(b.kickoff_utc || "");
     });
-  }, [fixtures, favoriteSports, favoriteTeams, favoriteLeagues]);
+  }, [fixtures, isFavFixture]);
+
+  // What we actually show (All vs Favourites)
+  const fixturesToShow = useMemo(() => {
+    if (!showFavsOnly) return fixturesSorted;
+    return fixturesSorted.filter((f) => isFavFixture(f));
+  }, [fixturesSorted, showFavsOnly, isFavFixture]);
 
   const fixturesById = useMemo(() => {
     const m = {};
@@ -1034,16 +1034,48 @@ export default function PublicDashboard() {
       {/* ACCAs */}
       <AccaBlock day={day} />
 
-      {/* Fixtures */}
-      <div style={S.sectionTitle}>All Fixtures</div>
+      {/* Fixtures header + toggle */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginTop: 18,
+          marginBottom: 8,
+        }}
+      >
+        <div style={S.sectionTitle}>All Fixtures</div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          <button
+            type="button"
+            style={S.pill(!showFavsOnly)}
+            onClick={() => setShowFavsOnly(false)}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            style={S.pill(showFavsOnly)}
+            onClick={() => setShowFavsOnly(true)}
+          >
+            Favourites
+          </button>
+        </div>
+      </div>
+
       {err && <p style={{ color: "#c00" }}>{err}</p>}
 
       {loading ? (
         <p>Loading…</p>
-      ) : fixturesSorted.length === 0 ? (
+      ) : !fixtures.length ? (
         <p style={S.muted}>No fixtures found.</p>
+      ) : showFavsOnly && !fixturesToShow.length ? (
+        <p style={S.muted}>
+          No fixtures match your favourites yet. Add favourite teams/leagues on
+          your Account page or from a fixture.
+        </p>
       ) : isMobile ? (
-        fixturesSorted.map((f) => (
+        fixturesToShow.map((f) => (
           <div key={f.id} style={{ marginBottom: 12 }}>
             <FixtureCard f={f} />
           </div>
@@ -1060,7 +1092,7 @@ export default function PublicDashboard() {
             </tr>
           </thead>
           <tbody>
-            {fixturesSorted.map((f) => (
+            {fixturesToShow.map((f) => (
               <tr key={f.id}>
                 <td style={S.td}>{toUK(f.kickoff_utc)}</td>
                 <td style={S.td}>
@@ -1086,5 +1118,3 @@ export default function PublicDashboard() {
     </div>
   );
 }
-
-// --- PART 4 END ---
