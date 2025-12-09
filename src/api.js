@@ -278,3 +278,16 @@ export async function registerPushToken(token, platform = "web") {
   const res = await api.post("/api/push/register", { token, platform });
   return res.data;
 }
+
+// -----------------------------
+// User Preferences (favourites)
+// -----------------------------
+export async function getMyPreferences() {
+  const res = await api.get("/api/me/preferences");
+  return res.data; // { favorite_teams: [], favorite_leagues: [] }
+}
+
+export async function saveMyPreferences(prefs) {
+  const res = await api.post("/api/me/preferences", prefs);
+  return res.data;
+}

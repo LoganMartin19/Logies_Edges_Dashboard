@@ -11,6 +11,7 @@ import {
   updateEmailPreferences,
 } from "../api";
 import styles from "../styles/Auth.module.css";
+import { usePreferences } from "../context/PreferencesContext"; // ⭐ NEW
 
 // small helpers for stats
 const number = (x, d = 2) =>
@@ -33,9 +34,21 @@ const urlBase64ToUint8Array = (base64String) => {
   return outputArray;
 };
 
+// Supported sports for favourites
+const ALL_SPORTS = ["football", "nba", "nhl", "nfl", "cfb"];
+
 export default function AccountPage() {
   const { user } = useAuth();
   const nav = useNavigate();
+
+  const {
+    favoriteSports,
+    favoriteTeams,
+    favoriteLeagues,
+    loading: prefsLoading,
+    saving: prefsSavingBackend,
+    updatePreferences,
+  } = usePreferences(); // ⭐ hook into preferences
 
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -61,6 +74,14 @@ export default function AccountPage() {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [prefsMessage, setPrefsMessage] = useState("");
   const [prefsError, setPrefsError] = useState("");
+
+  // ⭐ Favourites local editing state
+  const [favSportsLocal, setFavSportsLocal] = useState([]);
+  const [favTeamsLocal, setFavTeamsLocal] = useState("");
+  const [favLeaguesLocal, setFavLeaguesLocal] = useState("");
+  const [savingFavs, setSavingFavs] = useState(false);
+  const [favsMessage, setFavsMessage] = useState("");
+  const [favsError, setFavsError] = useState("");
 
   // Populate form from Firebase user
   useEffect(() => {
@@ -114,6 +135,14 @@ export default function AccountPage() {
     };
   }, [user]);
 
+  // ⭐ Sync local favourites from context once loaded
+  useEffect(() => {
+    if (prefsLoading) return;
+    setFavSportsLocal(favoriteSports || []);
+    setFavTeamsLocal((favoriteTeams || []).join(", "));
+    setFavLeaguesLocal((favoriteLeagues || []).join(", "));
+  }, [prefsLoading, favoriteSports, favoriteTeams, favoriteLeagues]);
+
   // simple helper for capability check
   const supportsPush =
     typeof window !== "undefined" &&
@@ -152,7 +181,6 @@ export default function AccountPage() {
         photoURL: avatarUrl || null,
       });
 
-      // Optional: refresh user object
       if (auth.currentUser.reload) {
         await auth.currentUser.reload();
       }
@@ -250,6 +278,45 @@ export default function AccountPage() {
     }
   };
 
+  // ⭐ Save favourites → context → backend
+  const handleSaveFavourites = async (e) => {
+    e.preventDefault();
+    setFavsError("");
+    setFavsMessage("");
+    setSavingFavs(true);
+    try {
+      const teams = favTeamsLocal
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const leagues = favLeaguesLocal
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      await updatePreferences({
+        favoriteSports: favSportsLocal,
+        favoriteTeams: teams,
+        favoriteLeagues: leagues,
+      });
+
+      setFavsMessage("Favourites updated ✅");
+    } catch (err) {
+      console.error("Failed to save favourites", err);
+      setFavsError("Failed to save favourites");
+    } finally {
+      setSavingFavs(false);
+    }
+  };
+
+  const toggleSport = (sportKey) => {
+    setFavSportsLocal((prev) =>
+      prev.includes(sportKey)
+        ? prev.filter((s) => s !== sportKey)
+        : [...prev, sportKey]
+    );
+  };
+
   const initial =
     (user.displayName && user.displayName[0]) ||
     (user.email && user.email[0]) ||
@@ -262,7 +329,7 @@ export default function AccountPage() {
         <header className={styles.header}>
           <div className={styles.title}>Profile &amp; Settings</div>
           <div className={styles.subtitle}>
-            Manage your CSB account details, email preferences and alerts.
+            Manage your CSB account details, favourites, email preferences and alerts.
           </div>
         </header>
 
@@ -335,6 +402,109 @@ export default function AccountPage() {
             />
             <div className={styles.hint}>
               Leave blank to use your initial instead of a picture.
+            </div>
+          </div>
+
+          {/* ⭐ FAVOURITES */}
+          <div className={styles.row}>
+            <label className={styles.label}>Favourites</label>
+            <div style={{ fontSize: 13 }}>
+              <p className={styles.hint}>
+                Pick the sports, teams and leagues you care about. Your dashboard
+                will surface these fixtures at the top of Today&apos;s Card.
+              </p>
+
+              {/* Sports pills */}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  marginTop: 6,
+                }}
+              >
+                {ALL_SPORTS.map((s) => {
+                  const active = favSportsLocal.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => toggleSport(s)}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        border: active
+                          ? "1px solid #34d399"
+                          : "1px solid rgba(255,255,255,0.3)",
+                        background: active
+                          ? "rgba(52,211,153,0.18)"
+                          : "transparent",
+                        color: "#fff",
+                        fontSize: 12,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {s.toUpperCase()}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Teams input */}
+              <div style={{ marginTop: 10 }}>
+                <label
+                  style={{ display: "block", fontSize: 12, marginBottom: 4 }}
+                >
+                  Favourite teams (comma separated)
+                </label>
+                <input
+                  className={styles.input}
+                  value={favTeamsLocal}
+                  onChange={(e) => setFavTeamsLocal(e.target.value)}
+                  placeholder="Celtic, Liverpool, 49ers"
+                />
+              </div>
+
+              {/* Leagues input */}
+              <div style={{ marginTop: 10 }}>
+                <label
+                  style={{ display: "block", fontSize: 12, marginBottom: 4 }}
+                >
+                  Favourite leagues (codes, comma separated)
+                </label>
+                <input
+                  className={styles.input}
+                  value={favLeaguesLocal}
+                  onChange={(e) => setFavLeaguesLocal(e.target.value)}
+                  placeholder="EPL, SCO_PREM, NFL"
+                />
+                <p className={styles.hint} style={{ marginTop: 4 }}>
+                  Use the short codes from the site (e.g. EPL, SCO_PREM, NFL).
+                </p>
+              </div>
+
+              {favsError && (
+                <div className={styles.error} style={{ marginTop: 8 }}>
+                  {favsError}
+                </div>
+              )}
+              {favsMessage && (
+                <div className={styles.success} style={{ marginTop: 8 }}>
+                  {favsMessage}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost || ""}`}
+                onClick={handleSaveFavourites}
+                disabled={savingFavs || prefsSavingBackend}
+                style={{ marginTop: 10 }}
+              >
+                {savingFavs || prefsSavingBackend
+                  ? "Saving…"
+                  : "Save favourites"}
+              </button>
             </div>
           </div>
 
@@ -443,15 +613,15 @@ export default function AccountPage() {
           <div className={styles.row}>
             <label className={styles.label}>Coming soon</label>
             <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: 13 }}>
-              <li>Favourite sports &amp; leagues</li>
               <li>More granular notification &amp; email preferences</li>
               <li>Followed tipsters &amp; social features</li>
+              <li>Community feeds by team/league</li>
             </ul>
           </div>
 
           <div className={styles.actions}>
             <button className={styles.btn} type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Save changes"}
+              {saving ? "Saving…" : "Save profile changes"}
             </button>
           </div>
         </form>

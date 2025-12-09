@@ -3,13 +3,18 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import "./styles/global.css";
+import "./styles/preferences.module.css"; // 👈 NEW – styles for favourites modal
+
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import { Analytics } from "@vercel/analytics/react";
 import AuthGate from "./components/AuthGate";
 
-// ⬇️ Add this
 import { auth } from "./firebase";
+// 👇 NEW: Preferences provider
+import { PreferencesProvider } from "./context/PreferencesContext";
+
+// Expose auth for debugging
 if (typeof window !== "undefined") {
   window.auth = auth;
 }
@@ -30,8 +35,11 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
     <AuthGate>
-      <App />
-      <Analytics />
+      {/* 👇 Preferences available everywhere inside the app */}
+      <PreferencesProvider>
+        <App />
+        <Analytics />
+      </PreferencesProvider>
     </AuthGate>
   </React.StrictMode>
 );

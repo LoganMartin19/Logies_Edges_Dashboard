@@ -9,6 +9,7 @@ import { placeAndTrackEdge } from "../utils/placeAndTrack";
 import PremiumUpsellBanner from "../components/PremiumUpsellBanner";
 import { getBookmakerUrl } from "../utils/bookmakers";
 import FixtureAccessPill from "../components/FixtureAccessPill";
+import { usePreferences } from "../context/PreferencesContext"; // ⭐ NEW
 
 /* ---------------- utils ---------------- */
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -289,10 +290,7 @@ const FixtureCard = ({ f }) => (
 
     {/* ⭐ NEW: Compact pill under each fixture (mobile only) */}
     <div style={{ marginTop: 8 }}>
-      <FixtureAccessPill
-        variant="compact"
-        fixtureId={f.id}
-      />
+      <FixtureAccessPill variant="compact" fixtureId={f.id} />
     </div>
   </div>
 );
@@ -407,8 +405,7 @@ function AccaBlock({ day }) {
                 </div>
                 <div style={{ textAlign: "right" }}>{l.market}</div>
                 <div style={{ textAlign: "right" }}>
-                  {l.price?.toFixed(2)}{" "}
-                  {l.bookmaker ? `(${l.bookmaker})` : ""}
+                  {l.price?.toFixed(2)} {l.bookmaker ? `(${l.bookmaker})` : ""}
                 </div>
               </div>
             ))}
@@ -465,6 +462,7 @@ function AccaBlock({ day }) {
 /* --------------------- main page ------------------- */
 export default function PublicDashboard() {
   const { user, isPremium } = useAuth();
+  const { favoriteSports, favoriteTeams, favoriteLeagues } = usePreferences(); // ⭐ NEW
 
   const [day, setDay] = useState(todayISO());
   const [sport, setSport] = useState("all");
@@ -488,7 +486,9 @@ export default function PublicDashboard() {
     try {
       const [{ data: fxJ }, { data: pkJ }] = await Promise.all([
         api.get("/api/public/fixtures/daily", { params: { day, sport } }),
-        api.get("/api/public/picks/daily", { params: { day, sport, limit: 50 } }),
+        api.get("/api/public/picks/daily", {
+          params: { day, sport, limit: 50 },
+        }),
       ]);
 
       setFixtures(fxJ?.fixtures || []);
@@ -540,13 +540,38 @@ export default function PublicDashboard() {
     };
   }, [user]);
 
-  const fixturesSorted = useMemo(
-    () =>
-      [...fixtures].sort((a, b) =>
-        (a.kickoff_utc || "").localeCompare(b.kickoff_utc || "")
-      ),
-    [fixtures]
-  );
+  // ⭐ FAVOURITES-AWARE FIXTURE SORT
+  const fixturesSorted = useMemo(() => {
+    if (!fixtures.length) return [];
+
+    const favSportsSet = new Set(
+      (favoriteSports || []).map((s) => (s || "").toLowerCase())
+    );
+    const favLeaguesSet = new Set(favoriteLeagues || []);
+    const favTeamsSet = new Set(favoriteTeams || []);
+
+    const isFavFixture = (f) => {
+      const sportKey = (f.sport || "").toLowerCase();
+      if (favSportsSet.has(sportKey)) return true;
+      if (favLeaguesSet.has(f.comp)) return true;
+      if (favTeamsSet.has(f.home_team) || favTeamsSet.has(f.away_team))
+        return true;
+      return false;
+    };
+
+    return [...fixtures].sort((a, b) => {
+      const aFav = isFavFixture(a);
+      const bFav = isFavFixture(b);
+
+      if (aFav !== bFav) {
+        // favourites first
+        return aFav ? -1 : 1;
+      }
+
+      // then by kickoff time
+      return (a.kickoff_utc || "").localeCompare(b.kickoff_utc || "");
+    });
+  }, [fixtures, favoriteSports, favoriteTeams, favoriteLeagues]);
 
   const fixturesById = useMemo(() => {
     const m = {};
@@ -600,7 +625,8 @@ export default function PublicDashboard() {
     const bmUrl = getBookmakerUrl(p.bookmaker);
     const openUrl = bmUrl
       ? bmUrl
-      : "https://google.com/search?q=" + encodeURIComponent(p.bookmaker || "bet365");
+      : "https://google.com/search?q=" +
+        encodeURIComponent(p.bookmaker || "bet365");
 
     window.open(openUrl, "_blank", "noopener");
 
@@ -731,7 +757,9 @@ export default function PublicDashboard() {
                         src={logoUrl(d.home)}
                         width={20}
                         alt=""
-                        onError={(e) => (e.currentTarget.style.display = "none")}
+                        onError={(e) =>
+                          (e.currentTarget.style.display = "none")
+                        }
                       />{" "}
                       {d.home}
                     </div>
@@ -741,13 +769,17 @@ export default function PublicDashboard() {
                         {prettyComp(d.comp)}
                       </div>
                     </div>
-                    <div style={{ ...S.pickTeam, justifyContent: "flex-end" }}>
+                    <div
+                      style={{ ...S.pickTeam, justifyContent: "flex-end" }}
+                    >
                       {d.away}{" "}
                       <img
                         src={logoUrl(d.away)}
                         width={20}
                         alt=""
-                        onError={(e) => (e.currentTarget.style.display = "none")}
+                        onError={(e) =>
+                          (e.currentTarget.style.display = "none")
+                        }
                       />
                     </div>
 
@@ -761,7 +793,13 @@ export default function PublicDashboard() {
                         gap: 8,
                       }}
                     >
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
                         {p.market}
                         {p.is_premium_only && (
                           <span
@@ -790,10 +828,16 @@ export default function PublicDashboard() {
                         <button
                           type="button"
                           style={{ ...S.btn, fontSize: 12, padding: "4px 10px" }}
-                          onClick={(evt) => handleTrackPick(p, d, pickKey, evt)}
+                          onClick={(evt) =>
+                            handleTrackPick(p, d, pickKey, evt)
+                          }
                           disabled={tracking}
                         >
-                          {tracking ? "Tracking…" : tracked ? "Tracked ✓" : "Track"}
+                          {tracking
+                            ? "Tracking…"
+                            : tracked
+                            ? "Tracked ✓"
+                            : "Track"}
                         </button>
                       )}
                     </div>
@@ -823,9 +867,14 @@ export default function PublicDashboard() {
             marginBottom: 8,
           }}
         >
-          <div style={{ fontWeight: 700, fontSize: 16 }}>From tipsters you follow</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>
+            From tipsters you follow
+          </div>
           <div style={{ marginLeft: "auto", fontSize: 12 }}>
-            <Link to="/following" style={{ color: "#9be7ff", textDecoration: "none" }}>
+            <Link
+              to="/following"
+              style={{ color: "#9be7ff", textDecoration: "none" }}
+            >
               View full feed →
             </Link>
           </div>
@@ -833,7 +882,10 @@ export default function PublicDashboard() {
 
         {!user && (
           <div style={{ fontSize: 13, color: "#d7e6db" }}>
-            <Link to="/login" style={{ color: "#9be7ff", textDecoration: "none" }}>
+            <Link
+              to="/login"
+              style={{ color: "#9be7ff", textDecoration: "none" }}
+            >
               Log in
             </Link>{" "}
             to see picks from tipsters you follow.
@@ -841,10 +893,10 @@ export default function PublicDashboard() {
         )}
 
         {user && followingErr && (
-          <div style={{ fontSize: 13, color: "#ffb3b3" }}>{followingErr}</div>
+          <div style={{ fontSize: 13, color: "#ffb3b3" }}>
+            {followingErr}
+          </div>
         )}
-
-        {/* ... table rendering continues in PART 4 ... */}
 
         {user && !followingErr && followingFeed.length > 0 && (
           <div style={{ overflowX: "auto" }}>
@@ -897,7 +949,8 @@ export default function PublicDashboard() {
                                 padding: "2px 6px",
                                 borderRadius: 999,
                                 background: "rgba(255,255,255,0.06)",
-                                border: "1px solid rgba(251,191,36,0.7)",
+                                border:
+                                  "1px solid rgba(251,191,36,0.7)",
                                 color: "#FBBF24",
                                 fontSize: 10,
                               }}
@@ -930,7 +983,8 @@ export default function PublicDashboard() {
                                   padding: "2px 6px",
                                   borderRadius: 999,
                                   background: "rgba(255,255,255,0.06)",
-                                  border: "1px solid rgba(251,191,36,0.7)",
+                                  border:
+                                    "1px solid rgba(251,191,36,0.7)",
                                   color: "#FBBF24",
                                   fontSize: 10,
                                 }}
@@ -991,16 +1045,7 @@ export default function PublicDashboard() {
       ) : isMobile ? (
         fixturesSorted.map((f) => (
           <div key={f.id} style={{ marginBottom: 12 }}>
-            {/* MOBILE FIXTURE CARD + ACCESS PILL */}
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <FixtureCard f={f} />
-              <div style={{ marginLeft: 8, alignSelf: "center" }}>
-                <FixtureAccessPill
-                  variant="compact"
-                  fixtureId={f.id}
-                />
-              </div>
-            </div>
+            <FixtureCard f={f} />
           </div>
         ))
       ) : (
@@ -1018,7 +1063,6 @@ export default function PublicDashboard() {
             {fixturesSorted.map((f) => (
               <tr key={f.id}>
                 <td style={S.td}>{toUK(f.kickoff_utc)}</td>
-
                 <td style={S.td}>
                   <Link
                     to={routeFor(f)}
@@ -1029,16 +1073,10 @@ export default function PublicDashboard() {
                     <TeamChip name={f.away_team} align="right" />
                   </Link>
                 </td>
-
                 <td style={S.td}>{prettyComp(f.comp)}</td>
                 <td style={S.td}>{(f.sport || "").toUpperCase()}</td>
-
-                {/* The Access Pill */}
                 <td style={S.td}>
-                  <FixtureAccessPill
-                    variant="compact"
-                    fixtureId={f.id}
-                  />
+                  <FixtureAccessPill variant="compact" fixtureId={f.id} />
                 </td>
               </tr>
             ))}
