@@ -3,6 +3,7 @@ import React from "react";
 import BetTracker from "../components/BetTracker";
 import { useAuth } from "../components/AuthGate";
 import PremiumUpsellBanner from "../components/PremiumUpsellBanner";
+import StakingGuide from "../components/StakingGuide"; // ⭐ NEW
 
 export default function BetTrackerPage() {
   const { isPremium } = useAuth();
@@ -14,13 +15,15 @@ export default function BetTrackerPage() {
         View and track all your bets. Edit stake, settle results, or delete old ones.
       </p>
 
-      {/* Soft upsell – only for non-premium users */}
       {!isPremium && (
         <PremiumUpsellBanner
           mode="link"
           message="Upgrade to CSB Premium to unlock deeper stats, long-term charts and extra model edges on your tracked bets."
         />
       )}
+
+      {/* 📚 Staking / Kelly guide */}
+      <StakingGuide />
 
       <BetTracker />
     </div>
