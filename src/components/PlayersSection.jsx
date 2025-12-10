@@ -126,9 +126,8 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
         const pid = sp?.player?.id;
         return {
           ...sp,
-          // these come from your cached season endpoint
-          seasonTotal: sp.total || null,
-          competitions: sp.competitions || [],
+          seasonTotal: sp.total || null,          // {apps, minutes, goals, assists, shots, shots_on, yellow, red}
+          competitions: sp.competitions || [],    // per-competition breakdown
           props: propsMap[pid] || {},
         };
       });
@@ -202,14 +201,19 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
       <div className={styles.lineupBlock}>
         <ul className={styles.playerList}>
           {scored.map((p, i) => {
-            // first statistics block = main competition
-            const s = p.statistics?.[0] || {};
-            const games = s.games || {};
-            const shots = s.shots || {};
-            const goals = s.goals || {};
-            const passes = s.passes || {};
-            const cards = s.cards || {};
-            const pos = games.position || "?";
+            const mainComp = p.competitions?.[0] || {};
+            const games = mainComp.games || {};
+            const pos = games.position || p.player?.position || "?";
+
+            const season = p.seasonTotal || {};
+            const appsSeason = season.apps ?? 0;
+            const minsSeason = season.minutes ?? 0;
+            const goalsSeason = season.goals ?? 0;
+            const assistsSeason = season.assists ?? 0;
+            const shotsSeason = season.shots ?? 0;
+            const shotsOnSeason = season.shots_on ?? 0;
+            const ycSeason = season.yellow ?? 0;
+            const rcSeason = season.red ?? 0;
 
             return (
               <li
@@ -248,32 +252,31 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
                     </span>
                   </div>
 
-                  {/* season snapshot from main comp */}
+                  {/* full season snapshot */}
                   <div
                     className={styles.playerStatsLine}
                     style={{ fontSize: 12 }}
                   >
-                    ⚽ {goals.total ?? 0} | 🅰{" "}
-                    {goals.assists ?? 0} | 🎯 {shots.total ?? 0} (
-                    {shots.on ?? 0} on) | 🟨 {cards.yellow ?? 0}/🟥{" "}
-                    {cards.red ?? 0}
+                    ⚽ {goalsSeason} | 🅰 {assistsSeason} | 🎯{" "}
+                    {shotsSeason} ({shotsOnSeason} on) | 🟨 {ycSeason}/🟥{" "}
+                    {rcSeason}
                   </div>
 
-                  {/* full season totals across comps */}
+                  {/* season totals line */}
                   {p.seasonTotal && (
                     <div
                       className={styles.playerSubline}
                       style={{ fontSize: 11, opacity: 0.8 }}
                     >
-                      Season:{" "}
-                      {p.seasonTotal?.games?.appearences ?? 0} apps,{" "}
-                      {p.seasonTotal?.goals?.total ?? 0} goals,{" "}
-                      {p.seasonTotal?.goals?.assists ?? 0} assists
+                      Season: {appsSeason} apps, {goalsSeason} goals,{" "}
+                      {assistsSeason} assists, {minsSeason} min
                     </div>
                   )}
 
+                  {/* props row */}
                   {renderPropsRow(p)}
 
+                  {/* competition breakdown (optional expand) */}
                   {p.competitions?.length > 0 && (
                     <details style={{ marginTop: 4 }}>
                       <summary style={{ fontSize: 11 }}>
@@ -294,7 +297,9 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
                             <tr key={j}>
                               <td>{c.league}</td>
                               <td>
-                                {c?.games?.appearences ?? 0}
+                                {c?.games?.appearences ??
+                                  c?.games?.appearances ??
+                                  0}
                               </td>
                               <td>{c?.goals?.total ?? 0}</td>
                               <td>{c?.assists ?? 0}</td>
