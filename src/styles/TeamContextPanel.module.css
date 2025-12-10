@@ -1,0 +1,132 @@
+/* src/styles/TeamContextPanel.module.css */
+
+.wrapper {
+  margin-top: 16px;
+}
+
+.card {
+  background: #050915;
+  border-radius: 10px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.headerRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #e0f7ff;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: rgba(200, 221, 255, 0.7);
+}
+
+.loading,
+.error {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.error {
+  color: #ff6b6b;
+}
+
+.sidesRow {
+  display: flex;
+  gap: 18px;
+}
+
+.side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.divider {
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+}
+
+.sideHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.sideName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.form {
+  font-size: 11px;
+  color: rgba(200, 221, 255, 0.8);
+}
+
+.form span {
+  font-family: "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(22, 123, 255, 0.08);
+}
+
+.rowBlock {
+  border-radius: 8px;
+  background: rgba(10, 16, 32, 0.9);
+  padding: 8px 10px;
+}
+
+.blockTitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(185, 214, 255, 0.85);
+  margin-bottom: 4px;
+}
+
+.blockBody {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 12px;
+}
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: rgba(223, 235, 255, 0.9);
+}
+
+.kv span:first-child {
+  color: rgba(172, 191, 226, 0.9);
+}
+
+@media (max-width: 900px) {
+  .sidesRow {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .divider {
+    display: none;
+  }
+}

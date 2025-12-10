@@ -23,6 +23,9 @@ import { usePreferences } from "../context/PreferencesContext";
 // ⭐ pill component
 import FixtureAccessPill from "../components/FixtureAccessPill";
 
+// ⭐ NEW: team context panel
+import TeamContextPanel from "../components/TeamContextPanel";
+
 import { placeAndTrackEdge } from "../utils/placeAndTrack";
 import { getBookmakerUrl } from "../utils/bookmakers";
 
@@ -63,7 +66,6 @@ const FixturePage = () => {
   const [edgesMeta, setEdgesMeta] = useState(null); // freemium meta
   const [explanations, setExplanations] = useState({});
   const [expandedWhy, setExpandedWhy] = useState(null);
-  const [teamStats, setTeamStats] = useState(null);
 
   // “Adding…” loading state on individual edge
   const [placingKey, setPlacingKey] = useState(null);
@@ -199,21 +201,6 @@ const FixturePage = () => {
     };
     if (fixtureIdNum) loadEdges();
   }, [fixtureIdNum]);
-
-  // --- TEAM STATS -----------------------------------------------------------
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const { data: json } = await api.get(`/football/team-stats`, {
-          params: { fixture_id: id },
-        });
-        setTeamStats(json);
-      } catch (err) {
-        console.error("Error fetching team stats:", err);
-      }
-    };
-    fetchStats();
-  }, [id]);
 
   // --- WHY EXPLANATION ------------------------------------------------------
   const fetchExplanation = async (rawMarket, index) => {
@@ -743,6 +730,7 @@ const FixturePage = () => {
             homeTeam={fixture.home_team}
             awayTeam={fixture.away_team}
           />
+
           {formData && (
             <div className={`${styles.formSection} ${styles.staticForm}`}>
               <div
@@ -794,6 +782,13 @@ const FixturePage = () => {
               />
             </div>
           )}
+
+          {/* ⭐ NEW: Team stats + pace context panel */}
+          <TeamContextPanel
+            fixtureId={fixtureIdNum}
+            homeTeam={fixture.home_team}
+            awayTeam={fixture.away_team}
+          />
 
           <LeagueFixtures fixtures={leagueFixtures} />
         </div>
