@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { Link } from "react-router-dom";
 import styles from "../styles/FixturePage.module.css";
-import { api } from "../api"; // ✅ env-based axios client
+import { api } from "../api";
 
 const fmtPct = (p) =>
   p == null ? "—" : `${(Number(p) * 100).toFixed(0)}%`;
@@ -25,41 +25,32 @@ const fmtEdgeVal = (edge, p, price) =>
     : "—";
 
 export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
-  const [matchData, setMatchData] = useState({ home: [], away: [] });
+  // ✅ season-level data only
   const [seasonData, setSeasonData] = useState({ home: [], away: [] });
   const [lineupIds, setLineupIds] = useState({ home: null, away: null });
   const [propsMap, setPropsMap] = useState({});
-  const [activeTeam, setActiveTeam] = useState("home"); // ⭐ NEW – per-team tab
+  const [activeTeam, setActiveTeam] = useState("home");
 
   useEffect(() => {
     let mounted = true;
 
     async function fetchAll() {
       try {
-        // 1) Match-specific players
-        const matchRes = await api.get("/football/players", {
-          params: { fixture_id: fixtureId },
-        });
-        const matchJson = matchRes.data;
-
-        // 2) Season totals
+        // 1) Season totals (cached)
         const seasonRes = await api.get("/football/season-players", {
           params: { fixture_id: fixtureId },
         });
         const seasonJson = seasonRes.data;
         const seasonPlayers = seasonJson?.players || { home: [], away: [] };
 
-        // 3) Lineups
+        // 2) Lineups – only used to filter down the season list
         const lineRes = await api.get("/football/lineups", {
           params: { fixture_id: fixtureId },
         });
         const lineJson = lineRes.data;
 
         if (!mounted) return;
-        setMatchData({
-          home: matchJson?.players?.home || [],
-          away: matchJson?.players?.away || [],
-        });
+
         setSeasonData({
           home: seasonPlayers.home || [],
           away: seasonPlayers.away || [],
@@ -89,7 +80,7 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
         }
         setLineupIds({ home: toIdSet(homeLine), away: toIdSet(awayLine) });
 
-        // 4) Player props
+        // 3) Player props (shots / SoT / fouls / cards)
         const [homePropsRes, awayPropsRes] = await Promise.all([
           api.get("/football/player-props/fair", {
             params: { fixture_id: fixtureId, team: "home" },
@@ -124,24 +115,21 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
     };
   }, [fixtureId, homeTeam, awayTeam]);
 
-  // ✅ merge match + season + props
-  const mergeStats = useCallback(
-    (matchList, seasonList, idSet) => {
-      const seasonMap = new Map(
-        seasonList.map((p) => [p?.player?.id, p])
-      );
+  // ✅ Season-only merge (optionally filtered to lineup)
+  const mergeSeason = useCallback(
+    (seasonList, idSet) => {
       const filtered = idSet
-        ? matchList.filter((p) => idSet.has(p?.player?.id))
-        : matchList;
+        ? seasonList.filter((p) => idSet.has(p?.player?.id))
+        : seasonList;
 
-      return filtered.map((mp) => {
-        const sid = mp?.player?.id;
-        const season = seasonMap.get(sid);
+      return filtered.map((sp) => {
+        const pid = sp?.player?.id;
         return {
-          ...mp,
-          seasonTotal: season?.total || null,
-          competitions: season?.competitions || [],
-          props: propsMap[sid] || {},
+          ...sp,
+          // these come from your cached season endpoint
+          seasonTotal: sp.total || null,
+          competitions: sp.competitions || [],
+          props: propsMap[pid] || {},
         };
       });
     },
@@ -149,13 +137,13 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
   );
 
   const homePlayers = useMemo(
-    () => mergeStats(matchData.home, seasonData.home, lineupIds.home),
-    [matchData, seasonData, lineupIds, mergeStats]
+    () => mergeSeason(seasonData.home, lineupIds.home),
+    [seasonData, lineupIds, mergeSeason]
   );
 
   const awayPlayers = useMemo(
-    () => mergeStats(matchData.away, seasonData.away, lineupIds.away),
-    [matchData, seasonData, lineupIds, mergeStats]
+    () => mergeSeason(seasonData.away, lineupIds.away),
+    [seasonData, lineupIds, mergeSeason]
   );
 
   const renderPropsRow = (p) => {
@@ -188,7 +176,7 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
     if (!list.length) {
       return (
         <p style={{ fontSize: 13, opacity: 0.7 }}>
-          No player stats found for {label}.
+          No season stats found for {label}.
         </p>
       );
     }
@@ -214,6 +202,7 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
       <div className={styles.lineupBlock}>
         <ul className={styles.playerList}>
           {scored.map((p, i) => {
+            // first statistics block = main competition
             const s = p.statistics?.[0] || {};
             const games = s.games || {};
             const shots = s.shots || {};
@@ -259,7 +248,7 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
                     </span>
                   </div>
 
-                  {/* compact key stats line */}
+                  {/* season snapshot from main comp */}
                   <div
                     className={styles.playerStatsLine}
                     style={{ fontSize: 12 }}
@@ -270,7 +259,7 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
                     {cards.red ?? 0}
                   </div>
 
-                  {/* season summary */}
+                  {/* full season totals across comps */}
                   {p.seasonTotal && (
                     <div
                       className={styles.playerSubline}
@@ -283,10 +272,8 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
                     </div>
                   )}
 
-                  {/* props row */}
                   {renderPropsRow(p)}
 
-                  {/* competition breakdown hidden behind details */}
                   {p.competitions?.length > 0 && (
                     <details style={{ marginTop: 4 }}>
                       <summary style={{ fontSize: 11 }}>
@@ -398,8 +385,9 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
       </div>
 
       <p style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>
-        Showing props and season stats for <strong>{activeLabel}</strong>.
-        Tap a player for full dashboard.
+        Showing props and <strong>full season stats</strong> for{" "}
+        <strong>{activeLabel}</strong>. Tap a player for their full
+        dashboard.
       </p>
 
       {renderTeam(activeLabel, activePlayers)}
