@@ -778,6 +778,8 @@ const FixturePage = () => {
                   summary: formData.away.summary,
                   recent: formData.away.recent,
                 }}
+                homeName={fixture.home_team}
+                awayName={fixture.away_team}
                 n={formData.n}
               />
             </div>
