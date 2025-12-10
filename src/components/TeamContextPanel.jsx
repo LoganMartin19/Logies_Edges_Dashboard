@@ -62,18 +62,35 @@ export default function TeamContextPanel({ fixtureId, homeTeam, awayTeam }) {
     if (!teamStats || !pace) return null;
 
     const sumHome = teamStats.summary?.home || {};
-    const oppHome = pace.home_context || pace.home_context || pace.home_ctx; // just in case
     const foulsHome = pace.home_context?.fouls_avgs || {};
     const attHome = pace.home_context?.attack_avgs || {};
+
+    // 🔥 Prefer “all competitions” fields if backend provides them
+    const gf =
+      sumHome.gf_all ??
+      sumHome.gf ??
+      0;
+    const ga =
+      sumHome.ga_all ??
+      sumHome.ga ??
+      0;
+    const avg_gf =
+      sumHome.avg_gf_all ??
+      sumHome.avg_gf ??
+      0;
+    const avg_ga =
+      sumHome.avg_ga_all ??
+      sumHome.avg_ga ??
+      0;
 
     return {
       name: homeTeam || teamStats.home_team || "Home",
       played: sumHome.played_total ?? 0,
       record: fmtRecord(sumHome),
-      gf: sumHome.gf ?? 0,
-      ga: sumHome.ga ?? 0,
-      avg_gf: sumHome.avg_gf ?? 0,
-      avg_ga: sumHome.avg_ga ?? 0,
+      gf,
+      ga,
+      avg_gf,
+      avg_ga,
       form: sumHome.form,
       attack: {
         shots: attHome.shots_for,
@@ -102,14 +119,31 @@ export default function TeamContextPanel({ fixtureId, homeTeam, awayTeam }) {
     const foulsAway = pace.away_context?.fouls_avgs || {};
     const attAway = pace.away_context?.attack_avgs || {};
 
+    const gf =
+      sumAway.gf_all ??
+      sumAway.gf ??
+      0;
+    const ga =
+      sumAway.ga_all ??
+      sumAway.ga ??
+      0;
+    const avg_gf =
+      sumAway.avg_gf_all ??
+      sumAway.avg_gf ??
+      0;
+    const avg_ga =
+      sumAway.avg_ga_all ??
+      sumAway.avg_ga ??
+      0;
+
     return {
       name: awayTeam || teamStats.away_team || "Away",
       played: sumAway.played_total ?? 0,
       record: fmtRecord(sumAway),
-      gf: sumAway.gf ?? 0,
-      ga: sumAway.ga ?? 0,
-      avg_gf: sumAway.avg_gf ?? 0,
-      avg_ga: sumAway.avg_ga ?? 0,
+      gf,
+      ga,
+      avg_gf,
+      avg_ga,
       form: sumAway.form,
       attack: {
         shots: attAway.shots_for,
