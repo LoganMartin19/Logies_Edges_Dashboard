@@ -1,5 +1,5 @@
 // src/pages/PlayerPage.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import styles from "../styles/PlayerPage.module.css";
 import { api } from "../api";
@@ -32,7 +32,13 @@ function getPositionTag(pmeta = {}, sBlock = {}) {
   if (r.includes("defender") || r === "d" || r === "df" || r.includes("back"))
     return "DF";
   if (r.includes("midfielder") || r === "m" || r === "mf") return "MF";
-  if (r.includes("forward") || r.includes("wing") || r.includes("striker") || r === "f" || r === "fw")
+  if (
+    r.includes("forward") ||
+    r.includes("wing") ||
+    r.includes("striker") ||
+    r === "f" ||
+    r === "fw"
+  )
     return "FW";
 
   return raw.toString().slice(0, 3).toUpperCase();
@@ -371,7 +377,10 @@ export default function PlayerPage() {
   const fixtureId = sp.get("fixture_id");
 
   const [summary, setSummary] = useState(null);
-  const [matchPlayers, setMatchPlayers] = useState(null);
+  const [seasonTeams, setSeasonTeams] = useState({
+    home: "Home",
+    away: "Away",
+  });
   const [gameLog, setGameLog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastN] = useState(8);
@@ -382,15 +391,22 @@ export default function PlayerPage() {
 
     async function loadAll() {
       try {
-        const [sumRes, pmRes] = await Promise.all([
+        // ✅ both of these use cached data on the backend
+        const [sumRes, seasonRes] = await Promise.all([
           api.get("/football/player/summary", {
             params: { fixture_id: fixtureId, player_id: id },
           }),
-          api.get("/football/players", { params: { fixture_id: fixtureId } }),
+          api.get("/football/season-players", {
+            params: { fixture_id: fixtureId },
+          }),
         ]);
         if (!alive) return;
+
         setSummary(sumRes.data);
-        setMatchPlayers(pmRes.data?.players || { home: [], away: [] });
+        setSeasonTeams({
+          home: seasonRes.data?.home_team || "Home",
+          away: seasonRes.data?.away_team || "Away",
+        });
       } catch (e) {
         console.error("PlayerPage core fetch failed:", e);
       } finally {
@@ -414,7 +430,7 @@ export default function PlayerPage() {
         });
         if (!alive) return;
         setGameLog(j?.games || []);
-      } catch {
+      } catch (e) {
         if (alive) setGameLog([]);
       }
     })();
@@ -425,31 +441,32 @@ export default function PlayerPage() {
 
   if (loading) return <p className={styles.loading}>Loading player…</p>;
 
-  const matchRow =
-    matchPlayers?.home?.find((p) => String(p?.player?.id) === id) ||
-    matchPlayers?.away?.find((p) => String(p?.player?.id) === id);
+  const fixtureIdNum = Number(fixtureId);
 
-  const pmeta = matchRow?.player || summary?.player || {};
-  const sBlock = matchRow?.statistics?.[0] || {};
-  const teamName = sBlock?.team?.name || summary?.team?.name || "—";
-
+  // ✅ primary metadata from summary (season + per-90)
+  const pmeta = summary?.player || {};
+  const teamName = summary?.team?.name || "—";
   const seasonTotals = summary?.season_stats?.totals || null;
   const competitions = summary?.season_stats?.competitions || [];
 
-  const goals = sBlock?.goals || {};
-  const shots = sBlock?.shots || {};
-  const cards = sBlock?.cards || {};
+  // ✅ this specific match row from the game-log (cached per fixture)
+  const thisMatch =
+    gameLog.find((g) => Number(g.fixture_id) === fixtureIdNum) || null;
 
-  const matchGoals = `${goals.total || 0} G · ${shots.total || 0} Sh`;
-  const matchSot = `${shots.on || 0} on target`;
-  const matchCards = `${cards.yellow || 0}Y · ${cards.red || 0}R`;
+  const matchGoals = thisMatch
+    ? `${thisMatch.goals || 0} G · ${thisMatch.shots || 0} Sh`
+    : "0 G · 0 Sh";
+  const matchSot = thisMatch
+    ? `${thisMatch.sot || 0} on target`
+    : "0 on target";
+  const matchCards = thisMatch
+    ? `${thisMatch.yellow || 0}Y · ${thisMatch.red || 0}R`
+    : "0Y · 0R";
 
-  const homeTeamName =
-    matchPlayers?.home?.[0]?.team?.name || "Home";
-  const awayTeamName =
-    matchPlayers?.away?.[0]?.team?.name || "Away";
+  const posTag = getPositionTag(pmeta, summary?.match_stats || {});
 
-  const posTag = getPositionTag(pmeta, sBlock);
+  const homeTeamName = seasonTeams.home;
+  const awayTeamName = seasonTeams.away;
 
   return (
     <div className={`${styles.page} scrollX`}>
