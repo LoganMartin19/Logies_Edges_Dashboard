@@ -1,12 +1,22 @@
 // src/components/PlayersSection.jsx
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 import { Link } from "react-router-dom";
 import styles from "../styles/FixturePage.module.css";
 import { api } from "../api"; // ✅ env-based axios client
 
-const fmtPct = (p) => (p == null ? "—" : `${(Number(p) * 100).toFixed(0)}%`);
+const fmtPct = (p) =>
+  p == null ? "—" : `${(Number(p) * 100).toFixed(0)}%`;
 const fmtOdds = (o) =>
-  o == null ? "—" : Number(o) >= 100 ? Number(o).toFixed(0) : Number(o).toFixed(2);
+  o == null
+    ? "—"
+    : Number(o) >= 100
+    ? Number(o).toFixed(0)
+    : Number(o).toFixed(2);
 const fmtEdgeVal = (edge, p, price) =>
   edge != null
     ? `${(Number(edge) * 100).toFixed(1)}%`
@@ -19,6 +29,7 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
   const [seasonData, setSeasonData] = useState({ home: [], away: [] });
   const [lineupIds, setLineupIds] = useState({ home: null, away: null });
   const [propsMap, setPropsMap] = useState({});
+  const [activeTeam, setActiveTeam] = useState("home"); // ⭐ NEW – per-team tab
 
   useEffect(() => {
     let mounted = true;
@@ -57,14 +68,20 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
         const toIdSet = (teamBlock) => {
           if (!teamBlock) return null;
           const ids = new Set();
-          (teamBlock.startXI || []).forEach((x) => x?.player?.id && ids.add(x.player.id));
-          (teamBlock.substitutes || []).forEach((x) => x?.player?.id && ids.add(x.player.id));
+          (teamBlock.startXI || []).forEach(
+            (x) => x?.player?.id && ids.add(x.player.id)
+          );
+          (teamBlock.substitutes || []).forEach(
+            (x) => x?.player?.id && ids.add(x.player.id)
+          );
           return ids;
         };
 
         let homeLine = null,
           awayLine = null;
-        const arr = Array.isArray(lineJson?.response) ? lineJson.response : [];
+        const arr = Array.isArray(lineJson?.response)
+          ? lineJson.response
+          : [];
         for (const t of arr) {
           const tname = t?.team?.name?.toLowerCase?.() || "";
           if (tname === (homeTeam || "").toLowerCase()) homeLine = t;
@@ -74,8 +91,12 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
 
         // 4) Player props
         const [homePropsRes, awayPropsRes] = await Promise.all([
-          api.get("/football/player-props/fair", { params: { fixture_id: fixtureId, team: "home" } }),
-          api.get("/football/player-props/fair", { params: { fixture_id: fixtureId, team: "away" } }),
+          api.get("/football/player-props/fair", {
+            params: { fixture_id: fixtureId, team: "home" },
+          }),
+          api.get("/football/player-props/fair", {
+            params: { fixture_id: fixtureId, team: "away" },
+          }),
         ]);
         const homeProps = homePropsRes.data;
         const awayProps = awayPropsRes.data;
@@ -103,11 +124,15 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
     };
   }, [fixtureId, homeTeam, awayTeam]);
 
-  // ✅ Wrapped in useCallback so useMemo deps are valid
+  // ✅ merge match + season + props
   const mergeStats = useCallback(
     (matchList, seasonList, idSet) => {
-      const seasonMap = new Map(seasonList.map((p) => [p?.player?.id, p]));
-      const filtered = idSet ? matchList.filter((p) => idSet.has(p?.player?.id)) : matchList;
+      const seasonMap = new Map(
+        seasonList.map((p) => [p?.player?.id, p])
+      );
+      const filtered = idSet
+        ? matchList.filter((p) => idSet.has(p?.player?.id))
+        : matchList;
 
       return filtered.map((mp) => {
         const sid = mp?.player?.id;
@@ -140,17 +165,18 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
     const fouls = pr["fouls_over_0.5"];
     const card = pr["to_be_booked"];
 
-    const cell = (label, r) => (
-      <span>
-        {label}: {fmtPct(r?.prob)} (fair {fmtOdds(r?.fair_odds)}){" "}
-        {r?.best_price ? `@${fmtOdds(r.best_price)}` : ""}{" "}
-        {r ? `| ${fmtEdgeVal(r.edge, r.prob, r.best_price)}` : ""}
-      </span>
-    );
+    const cell = (label, r) =>
+      r ? (
+        <span>
+          {label}: {fmtPct(r?.prob)} (fair {fmtOdds(r?.fair_odds)}){" "}
+          {r?.best_price ? `@${fmtOdds(r.best_price)}` : ""}{" "}
+          {r ? `· ${fmtEdgeVal(r.edge, r.prob, r.best_price)}` : ""}
+        </span>
+      ) : null;
 
     return (
       <div className={styles.playerPropsLine}>
-        {cell("Shots 1.5", shots)}
+        {cell("Sh 1.5", shots)}
         {cell("SoT 0.5", sot)}
         {cell("Fouls 0.5", fouls)}
         {cell("Card", card)}
@@ -159,7 +185,13 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
   };
 
   const renderTeam = (label, list) => {
-    if (!list.length) return null;
+    if (!list.length) {
+      return (
+        <p style={{ fontSize: 13, opacity: 0.7 }}>
+          No player stats found for {label}.
+        </p>
+      );
+    }
 
     const getMaxEdge = (pl) =>
       Math.max(
@@ -180,7 +212,6 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
 
     return (
       <div className={styles.lineupBlock}>
-        <h3>{label}</h3>
         <ul className={styles.playerList}>
           {scored.map((p, i) => {
             const s = p.statistics?.[0] || {};
@@ -192,34 +223,75 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
             const pos = games.position || "?";
 
             return (
-              <li key={p.player?.id ?? i} className={styles.playerRow}>
+              <li
+                key={p.player?.id ?? i}
+                className={styles.playerRow}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "40px 1fr",
+                  gap: 8,
+                  padding: "8px 6px",
+                  borderBottom:
+                    "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
                 <img
                   src={p.player?.photo}
                   alt={p.player?.name}
                   className={styles.playerPhotoTiny}
-                  onError={(e) => (e.currentTarget.style.display = "none")}
+                  style={{ width: 38, height: 38, borderRadius: "50%" }}
+                  onError={(e) =>
+                    (e.currentTarget.style.display = "none")
+                  }
                 />
                 <div className={styles.playerMeta}>
                   <div className={styles.playerNameLine}>
                     <strong>
-                      <Link to={`/player/${p.player?.id}?fixture_id=${fixtureId}`}>{p.player?.name}</Link>
+                      <Link
+                        to={`/player/${p.player?.id}?fixture_id=${fixtureId}`}
+                      >
+                        {p.player?.name}
+                      </Link>
                     </strong>
-                    <span className={styles.playerPos}> ({pos})</span>
+                    <span className={styles.playerPos}>
+                      {" "}
+                      ({pos})
+                    </span>
                   </div>
-                  <div className={styles.playerStatsLine}>
-                    ⚽ {goals.total ?? 0} | 🅰 {goals.assists ?? 0} | 🎯 {shots.total ?? 0} (On: {shots.on ?? 0}) | 📊{" "}
-                    {passes.accuracy ?? 0}% | 🟨 {cards.yellow ?? 0}/🟥 {cards.red ?? 0}
+
+                  {/* compact key stats line */}
+                  <div
+                    className={styles.playerStatsLine}
+                    style={{ fontSize: 12 }}
+                  >
+                    ⚽ {goals.total ?? 0} | 🅰{" "}
+                    {goals.assists ?? 0} | 🎯 {shots.total ?? 0} (
+                    {shots.on ?? 0} on) | 🟨 {cards.yellow ?? 0}/🟥{" "}
+                    {cards.red ?? 0}
                   </div>
+
+                  {/* season summary */}
                   {p.seasonTotal && (
-                    <div className={styles.playerSubline}>
-                      Season: {p.seasonTotal?.games?.appearences ?? 0} apps, {p.seasonTotal?.goals?.total ?? 0} goals,{" "}
+                    <div
+                      className={styles.playerSubline}
+                      style={{ fontSize: 11, opacity: 0.8 }}
+                    >
+                      Season:{" "}
+                      {p.seasonTotal?.games?.appearences ?? 0} apps,{" "}
+                      {p.seasonTotal?.goals?.total ?? 0} goals,{" "}
                       {p.seasonTotal?.goals?.assists ?? 0} assists
                     </div>
                   )}
+
+                  {/* props row */}
                   {renderPropsRow(p)}
+
+                  {/* competition breakdown hidden behind details */}
                   {p.competitions?.length > 0 && (
-                    <details>
-                      <summary>Show breakdown</summary>
+                    <details style={{ marginTop: 4 }}>
+                      <summary style={{ fontSize: 11 }}>
+                        Show competition breakdown
+                      </summary>
                       <table className={styles.oddsTable}>
                         <thead>
                           <tr>
@@ -234,7 +306,9 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
                           {p.competitions.map((c, j) => (
                             <tr key={j}>
                               <td>{c.league}</td>
-                              <td>{c?.games?.appearences ?? 0}</td>
+                              <td>
+                                {c?.games?.appearences ?? 0}
+                              </td>
                               <td>{c?.goals?.total ?? 0}</td>
                               <td>{c?.assists ?? 0}</td>
                               <td>{c?.games?.minutes ?? 0}</td>
@@ -253,13 +327,82 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
     );
   };
 
-  if (!homePlayers.length && !awayPlayers.length) return <p>No player stats available.</p>;
+  if (!homePlayers.length && !awayPlayers.length)
+    return <p>No player stats available.</p>;
+
+  const activePlayers =
+    activeTeam === "home" ? homePlayers : awayPlayers;
+  const activeLabel = activeTeam === "home" ? homeTeam : awayTeam;
 
   return (
     <div className={styles.tabContent}>
-      <h3>Player Stats</h3>
-      {renderTeam(homeTeam, homePlayers)}
-      {renderTeam(awayTeam, awayPlayers)}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 10,
+          flexWrap: "wrap",
+        }}
+      >
+        <h3 style={{ margin: 0 }}>Player Stats</h3>
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "inline-flex",
+            borderRadius: 999,
+            padding: 2,
+            background: "rgba(15,23,42,0.8)",
+            border: "1px solid rgba(148,163,184,0.5)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTeam("home")}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 999,
+              border: "none",
+              fontSize: 12,
+              cursor: "pointer",
+              background:
+                activeTeam === "home"
+                  ? "rgba(34,197,94,0.9)"
+                  : "transparent",
+              color:
+                activeTeam === "home" ? "#fff" : "rgba(226,232,240,0.9)",
+            }}
+          >
+            {homeTeam}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTeam("away")}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 999,
+              border: "none",
+              fontSize: 12,
+              cursor: "pointer",
+              background:
+                activeTeam === "away"
+                  ? "rgba(34,197,94,0.9)"
+                  : "transparent",
+              color:
+                activeTeam === "away" ? "#fff" : "rgba(226,232,240,0.9)",
+            }}
+          >
+            {awayTeam}
+          </button>
+        </div>
+      </div>
+
+      <p style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>
+        Showing props and season stats for <strong>{activeLabel}</strong>.
+        Tap a player for full dashboard.
+      </p>
+
+      {renderTeam(activeLabel, activePlayers)}
     </div>
   );
 }
