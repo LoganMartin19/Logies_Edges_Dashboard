@@ -69,3 +69,31 @@
   white-space: nowrap;
   overflow: hidden;
 }
+
+/* 📱 Mobile layout fix — stack the Home / Away boxes */
+@media (max-width: 768px) {
+  .form-breakdown {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .team-form {
+    width: 100%;
+  }
+
+  .form-match {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .form-match-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .comp-badge {
+    max-width: 100%;
+  }
+}
