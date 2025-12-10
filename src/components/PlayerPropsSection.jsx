@@ -25,6 +25,7 @@ const MARKET_LABELS = {
   "shots_over_1.5": "Shots O 1.5",
   "sot_over_0.5": "SoT O 0.5",
   "fouls_over_0.5": "Fouls O 0.5",
+  "fouls_drawn_over_0.5": "Fouls drawn O 0.5", // 👈 NEW
   "to_be_booked": "To be booked",
 };
 
@@ -130,9 +131,9 @@ export default function PlayerPropsSection({
     return enriched
       .filter((r) =>
         restrictToPlayer && initialSearch
-          ? (r.player || "").toLowerCase().includes(
-              initialSearch.toLowerCase()
-            )
+          ? (r.player || "")
+              .toLowerCase()
+              .includes(initialSearch.toLowerCase())
           : true
       )
       .filter((r) =>
@@ -166,12 +167,21 @@ export default function PlayerPropsSection({
     const oppFoulsDrawn90 = Number.isFinite(r.opp_fouls_drawn_per90)
       ? r.opp_fouls_drawn_per90
       : null;
+    const oppFoulsCommitted90 = Number.isFinite(
+      r.opp_fouls_committed_per90
+    )
+      ? r.opp_fouls_committed_per90
+      : null;
     const refFactor = Number.isFinite(r.ref_factor) ? r.ref_factor : null;
 
     const maybeContextBits = [];
     if (oppFoulsDrawn90 != null)
       maybeContextBits.push(
         `Opp fouls drawn/90: ${fmtNum(oppFoulsDrawn90)}`
+      );
+    if (oppFoulsCommitted90 != null)
+      maybeContextBits.push(
+        `Opp fouls committed/90: ${fmtNum(oppFoulsCommitted90)}`
       );
     if (Number.isFinite(r.opponent_factor))
       maybeContextBits.push(
@@ -191,7 +201,9 @@ export default function PlayerPropsSection({
         "sot_over_0.5":
           "We estimate shots on target from an event rate scaled by projected minutes (Bernoulli→Poisson approx).",
         "fouls_over_0.5":
-          "Fouls are modeled with a Poisson rate from fouls committed per 90; probability is at least 1 foul.",
+          "Fouls committed are modeled with a Poisson rate from fouls committed per 90; probability is at least 1 foul.",
+        "fouls_drawn_over_0.5":
+          "Fouls drawn are modeled from fouls drawn per 90, adjusted by opponent fouls committed and referee tendencies.",
         "to_be_booked":
           "Booking probability comes from cards per 90, adjusted by context when available.",
       }[r.market] ||
@@ -201,6 +213,8 @@ export default function PlayerPropsSection({
     if (r.per90_shots != null) inputs.push(`Shots/90: ${r.per90_shots}`);
     if (r.per90_sot != null) inputs.push(`SoT/90: ${r.per90_sot}`);
     if (r.per90_fouls != null) inputs.push(`Fouls/90: ${r.per90_fouls}`);
+    if (r.per90_fouls_drawn != null)
+      inputs.push(`Fouls drawn/90: ${r.per90_fouls_drawn}`); // 👈 NEW INPUT
     if (r.cards_per90 != null) inputs.push(`Cards/90: ${r.cards_per90}`);
     inputs.push(`Projected minutes: ${mins}m`);
 
