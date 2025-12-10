@@ -25,7 +25,6 @@ const fmtEdgeVal = (edge, p, price) =>
     : "—";
 
 export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
-  // ✅ season-level data only
   const [seasonData, setSeasonData] = useState({ home: [], away: [] });
   const [lineupIds, setLineupIds] = useState({ home: null, away: null });
   const [propsMap, setPropsMap] = useState({});
@@ -122,12 +121,72 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
         ? seasonList.filter((p) => idSet.has(p?.player?.id))
         : seasonList;
 
+      const n = (x) => Number(x || 0);
+
       return filtered.map((sp) => {
         const pid = sp?.player?.id;
+        const competitions = sp.competitions || [];
+
+        // try direct totals first
+        let seasonTotal = sp.total || null;
+
+        // 🔥 fallback: compute season totals by summing competitions
+        if (!seasonTotal && competitions.length) {
+          const apps = competitions.reduce(
+            (sum, c) =>
+              sum +
+              n(
+                c?.games?.appearences ??
+                  c?.games?.appearances ??
+                  0
+              ),
+            0
+          );
+          const minutes = competitions.reduce(
+            (sum, c) => sum + n(c?.games?.minutes),
+            0
+          );
+          const goals = competitions.reduce(
+            (sum, c) => sum + n(c?.goals?.total),
+            0
+          );
+          const assists = competitions.reduce(
+            (sum, c) => sum + n(c?.assists),
+            0
+          );
+          const shots = competitions.reduce(
+            (sum, c) => sum + n(c?.shots?.total),
+            0
+          );
+          const shots_on = competitions.reduce(
+            (sum, c) => sum + n(c?.shots?.on),
+            0
+          );
+          const yellow = competitions.reduce(
+            (sum, c) => sum + n(c?.cards?.yellow),
+            0
+          );
+          const red = competitions.reduce(
+            (sum, c) => sum + n(c?.cards?.red),
+            0
+          );
+
+          seasonTotal = {
+            apps,
+            minutes,
+            goals,
+            assists,
+            shots,
+            shots_on,
+            yellow,
+            red,
+          };
+        }
+
         return {
           ...sp,
-          seasonTotal: sp.total || null,          // {apps, minutes, goals, assists, shots, shots_on, yellow, red}
-          competitions: sp.competitions || [],    // per-competition breakdown
+          seasonTotal,
+          competitions,
           props: propsMap[pid] || {},
         };
       });
@@ -273,10 +332,8 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
                     </div>
                   )}
 
-                  {/* props row */}
                   {renderPropsRow(p)}
 
-                  {/* competition breakdown (optional expand) */}
                   {p.competitions?.length > 0 && (
                     <details style={{ marginTop: 4 }}>
                       <summary style={{ fontSize: 11 }}>
