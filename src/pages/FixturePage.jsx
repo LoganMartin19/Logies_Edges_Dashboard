@@ -17,10 +17,10 @@ import { slugifyTeamName } from "../utils/slugify";
 import { api, fetchFixtureEdges } from "../api";
 import { useAuth } from "../components/AuthGate";
 
-// ⭐ NEW – preferences hook
+// ⭐ preferences hook
 import { usePreferences } from "../context/PreferencesContext";
 
-// ⭐ NEW – pill component
+// ⭐ pill component
 import FixtureAccessPill from "../components/FixtureAccessPill";
 
 import { placeAndTrackEdge } from "../utils/placeAndTrack";
@@ -31,7 +31,7 @@ const FixturePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // ⭐ NEW – favourites from context
+  // ⭐ favourites from context
   const {
     favoriteSports,
     favoriteTeams,
@@ -60,12 +60,12 @@ const FixturePage = () => {
   const [selectedBookmaker, setSelectedBookmaker] = useState("All");
 
   const [edges, setEdges] = useState([]);
-  const [edgesMeta, setEdgesMeta] = useState(null); // 👈 freemium meta
+  const [edgesMeta, setEdgesMeta] = useState(null); // freemium meta
   const [explanations, setExplanations] = useState({});
   const [expandedWhy, setExpandedWhy] = useState(null);
   const [teamStats, setTeamStats] = useState(null);
 
-  // ⭐ “Adding…” loading state on individual edge
+  // “Adding…” loading state on individual edge
   const [placingKey, setPlacingKey] = useState(null);
 
   const formatKickoff = (utcString) => {
@@ -432,8 +432,9 @@ const FixturePage = () => {
             </button>
           </p>
 
+          {/* ⭐ TOP-LEVEL TABS – now includes Players */}
           <div className={styles.tabs}>
-            {["preview", "table", "predictions", "lineups", "events"].map(
+            {["preview", "table", "predictions", "lineups", "players", "events"].map(
               (tab) => (
                 <button
                   key={tab}
@@ -458,6 +459,45 @@ const FixturePage = () => {
             <>
               <div className={styles.tabContent}>
                 <MatchPreview fixtureId={fixtureIdNum} isAdmin={isAdminView} />
+              </div>
+
+              {/* ⭐ Player stats teaser so people discover it */}
+              <div
+                style={{
+                  margin: "12px 0 16px",
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background:
+                    "linear-gradient(135deg, rgba(20,83,45,0.8), rgba(15,23,42,0.9))",
+                  color: "#e5f4eb",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ fontSize: 13, flex: 1, minWidth: 200 }}>
+                  <strong>Player stats & props</strong>
+                  <br />
+                  See shots, cards and season breakdowns for every player in
+                  this match – great for props and same-game accas.
+                </div>
+                <button
+                  onClick={() => setActiveTab("players")}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(34,197,94,0.9)",
+                    background: "rgba(22,163,74,0.9)",
+                    color: "#fff",
+                    fontSize: 13,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Open player stats →
+                </button>
               </div>
 
               {/* ================================================================
@@ -652,11 +692,15 @@ const FixturePage = () => {
             </div>
           )}
 
-          {activeTab === "predictions" && <PredictionsSection fixtureId={id} />}
+          {activeTab === "predictions" && (
+            <PredictionsSection fixtureId={id} />
+          )}
+
           {activeTab === "lineups" && (
             <div className={styles.tabContent}>
               <div className={styles.subTabs}>
-                {["lineup", "players", "injuries", "props"].map((sub) => (
+                {/* players removed from sub-tabs (now top-level) */}
+                {["lineup", "injuries", "props"].map((sub) => (
                   <button
                     key={sub}
                     className={lineupTab === sub ? styles.activeTab : ""}
@@ -668,14 +712,9 @@ const FixturePage = () => {
               </div>
 
               {lineupTab === "lineup" && <LineupsSection fixtureId={id} />}
-              {lineupTab === "players" && (
-                <PlayersSection
-                  fixtureId={id}
-                  homeTeam={fixture.home_team}
-                  awayTeam={fixture.away_team}
-                />
+              {lineupTab === "injuries" && (
+                <InjuriesSection fixtureId={id} />
               )}
-              {lineupTab === "injuries" && <InjuriesSection fixtureId={id} />}
               {lineupTab === "props" && (
                 <PlayerPropsSection
                   fixtureId={id}
@@ -684,6 +723,15 @@ const FixturePage = () => {
                 />
               )}
             </div>
+          )}
+
+          {/* ⭐ new top-level Players tab */}
+          {activeTab === "players" && (
+            <PlayersSection
+              fixtureId={id}
+              homeTeam={fixture.home_team}
+              awayTeam={fixture.away_team}
+            />
           )}
 
           {activeTab === "events" && <EventsSection fixtureId={id} />}
