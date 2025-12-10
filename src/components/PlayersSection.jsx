@@ -29,12 +29,15 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
   const [lineupIds, setLineupIds] = useState({ home: null, away: null });
   const [propsMap, setPropsMap] = useState({});
   const [activeTeam, setActiveTeam] = useState("home");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
     async function fetchAll() {
       try {
+        setLoading(true);
+
         // 1) Season totals (cached)
         const seasonRes = await api.get("/football/season-players", {
           params: { fixture_id: fixtureId },
@@ -105,6 +108,8 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
         setPropsMap({ ...buildMap(homeProps), ...buildMap(awayProps) });
       } catch (err) {
         console.error("PlayersSection fetch error:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
     }
 
@@ -376,8 +381,26 @@ export default function PlayersSection({ fixtureId, homeTeam, awayTeam }) {
     );
   };
 
-  if (!homePlayers.length && !awayPlayers.length)
-    return <p>No player stats available.</p>;
+  // 🔄 Loading state vs empty state
+  if (loading) {
+    return (
+      <div className={styles.tabContent}>
+        <p style={{ fontSize: 13, opacity: 0.8 }}>
+          Loading player stats…
+        </p>
+      </div>
+    );
+  }
+
+  if (!homePlayers.length && !awayPlayers.length) {
+    return (
+      <div className={styles.tabContent}>
+        <p style={{ fontSize: 13, opacity: 0.8 }}>
+          No player stats available for this fixture.
+        </p>
+      </div>
+    );
+  }
 
   const activePlayers =
     activeTeam === "home" ? homePlayers : awayPlayers;
