@@ -422,7 +422,7 @@ function AccaBlock({ day }) {
             {user ? (
               <button
                 style={{ ...S.btn, fontSize: 12, padding: "6px 10px" }}
-                onClick={handleTrackAcca}
+                onClick={() => handleTrackAcca(t)}
                 disabled={trackingAccaId === t.id}
               >
                 {trackingAccaId === t.id
