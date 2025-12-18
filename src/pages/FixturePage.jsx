@@ -29,6 +29,9 @@ import TeamContextPanel from "../components/TeamContextPanel";
 import { placeAndTrackEdge } from "../utils/placeAndTrack";
 import { getBookmakerUrl } from "../utils/bookmakers";
 
+// ✅ NEW: odds display helper (decimal + fractional)
+import { formatOddsBoth } from "../utils/oddsFormat";
+
 const FixturePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -323,8 +326,6 @@ const FixturePage = () => {
       ? edges
       : edges.filter((e) => e.bookmaker === selectedBookmaker);
 
-  const matchLabel = `${fixture.home_team} v ${fixture.away_team}`;
-
   // ==========================================================================
   // RENDER
   // ==========================================================================
@@ -345,7 +346,6 @@ const FixturePage = () => {
                 className={styles.teamLogo}
               />
               {fixture.home_team}
-              {/* ⭐ Favourite team toggle (home) */}
               <button
                 type="button"
                 onClick={() => toggleFavouriteTeam(fixture.home_team)}
@@ -374,7 +374,6 @@ const FixturePage = () => {
                 className={styles.teamLogo}
               />
               {fixture.away_team}
-              {/* ⭐ Favourite team toggle (away) */}
               <button
                 type="button"
                 onClick={() => toggleFavouriteTeam(fixture.away_team)}
@@ -398,7 +397,6 @@ const FixturePage = () => {
 
           <p className={styles.metaLine}>
             {fixture.comp} • {formatKickoff(fixture.kickoff_utc)}
-            {/* ⭐ Favourite league toggle */}
             <button
               type="button"
               onClick={() => toggleFavouriteLeague(fixture.comp)}
@@ -419,7 +417,6 @@ const FixturePage = () => {
             </button>
           </p>
 
-          {/* ⭐ TOP-LEVEL TABS – now includes Players */}
           <div className={styles.tabs}>
             {["preview", "table", "predictions", "lineups", "players", "events"].map(
               (tab) => (
@@ -448,7 +445,6 @@ const FixturePage = () => {
                 <MatchPreview fixtureId={fixtureIdNum} isAdmin={isAdminView} />
               </div>
 
-              {/* ⭐ Player stats teaser so people discover it */}
               <div
                 style={{
                   margin: "12px 0 16px",
@@ -487,11 +483,7 @@ const FixturePage = () => {
                 </button>
               </div>
 
-              {/* ================================================================
-                  BEST EDGES SECTION
-                 ================================================================ */}
               <div className={styles.bestEdges}>
-                {/* Header row: title + pill */}
                 <div
                   style={{
                     display: "flex",
@@ -511,7 +503,6 @@ const FixturePage = () => {
                   )}
                 </div>
 
-                {/* 🔐 Freemium banner text underneath */}
                 {edgesMeta && (
                   <p className={styles.edgesMeta}>
                     {edgesMeta.hasFullAccess ? (
@@ -574,9 +565,15 @@ const FixturePage = () => {
 
                     return (
                       <li key={key}>
-                        <b>{e.market}</b> — {e.bookmaker} @ {e.price} (
-                        {(e.edge * 100).toFixed(1)}% edge, model p{" "}
-                        {(e.prob * 100).toFixed(1)}%)
+                        <b>{e.market}</b> — {e.bookmaker} @{" "}
+                        <b>{formatOddsBoth(e.price)}</b>{" "}
+                        {typeof e.edge === "number" && typeof e.prob === "number" ? (
+                          <>
+                            ({(e.edge * 100).toFixed(1)}% edge, model p{" "}
+                            {(e.prob * 100).toFixed(1)}%)
+                          </>
+                        ) : null}
+
                         <button
                           className={styles.whyButton}
                           onClick={() => fetchExplanation(e.market, i)}
@@ -686,7 +683,6 @@ const FixturePage = () => {
           {activeTab === "lineups" && (
             <div className={styles.tabContent}>
               <div className={styles.subTabs}>
-                {/* players removed from sub-tabs (now top-level) */}
                 {["lineup", "injuries", "props"].map((sub) => (
                   <button
                     key={sub}
@@ -699,9 +695,7 @@ const FixturePage = () => {
               </div>
 
               {lineupTab === "lineup" && <LineupsSection fixtureId={id} />}
-              {lineupTab === "injuries" && (
-                <InjuriesSection fixtureId={id} />
-              )}
+              {lineupTab === "injuries" && <InjuriesSection fixtureId={id} />}
               {lineupTab === "props" && (
                 <PlayerPropsSection
                   fixtureId={id}
@@ -712,7 +706,6 @@ const FixturePage = () => {
             </div>
           )}
 
-          {/* ⭐ new top-level Players tab */}
           {activeTab === "players" && (
             <PlayersSection
               fixtureId={id}
@@ -754,9 +747,7 @@ const FixturePage = () => {
                   ))}
                 </select>
 
-                <label
-                  style={{ fontSize: 12, color: "#666", marginLeft: 6 }}
-                >
+                <label style={{ fontSize: 12, color: "#666", marginLeft: 6 }}>
                   Scope:
                 </label>
                 <select
@@ -785,7 +776,6 @@ const FixturePage = () => {
             </div>
           )}
 
-          {/* ⭐ NEW: Team stats + pace context panel */}
           <TeamContextPanel
             fixtureId={fixtureIdNum}
             homeTeam={fixture.home_team}

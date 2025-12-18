@@ -2,6 +2,9 @@
 import React, { useState } from "react";
 import styles from "../styles/FixturePage.module.css";
 
+// ✅ NEW: decimal + fractional formatter
+import { formatOddsBoth } from "../utils/oddsFormat";
+
 const OddsTable = ({ grouped }) => {
   const [expandedMarkets, setExpandedMarkets] = useState({});
 
@@ -17,6 +20,7 @@ const OddsTable = ({ grouped }) => {
           <h4 onClick={() => toggleMarket(market)}>
             {market} {expandedMarkets[market] ? "▲" : "▼"}
           </h4>
+
           {expandedMarkets[market] && (
             <table className={styles.oddsTable}>
               <thead>
@@ -26,23 +30,30 @@ const OddsTable = ({ grouped }) => {
                   <th>Last Seen</th>
                 </tr>
               </thead>
+
               <tbody>
                 {grouped[market].map((o, i) => {
-                  const ts = o.last_seen.endsWith("Z")
+                  const ts = (o.last_seen || "").endsWith("Z")
                     ? o.last_seen
-                    : o.last_seen + "Z";
+                    : (o.last_seen || "") + "Z";
+
                   return (
                     <tr key={i}>
                       <td>{o.bookmaker}</td>
-                      <td>{o.price}</td>
                       <td>
-                        {new Date(ts).toLocaleString(navigator.language, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          day: "numeric",
-                          month: "short",
-                          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                        })}
+                        <b>{formatOddsBoth(o.price)}</b>
+                      </td>
+                      <td>
+                        {o.last_seen
+                          ? new Date(ts).toLocaleString(navigator.language, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              day: "numeric",
+                              month: "short",
+                              timeZone:
+                                Intl.DateTimeFormat().resolvedOptions().timeZone,
+                            })
+                          : "—"}
                       </td>
                     </tr>
                   );
