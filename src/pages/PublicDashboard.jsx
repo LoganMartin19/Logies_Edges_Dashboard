@@ -104,6 +104,15 @@ const routeFor = (f) => {
   return `/fixture/${f.id}`;
 };
 
+// normalize bookmaker name for filtering comparisons
+const normBook = (name) =>
+  String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
+// ✅ hard exclusion
+const isWilliamHill = (name) => normBook(name) === "williamhill";
+
 /* ----------- responsive hook ---------- */
 const useIsMobile = (bp = 640) => {
   const [m, setM] = useState(
@@ -222,7 +231,6 @@ const mobile = {
     gap: 6,
   },
   comp: { fontSize: 12, color: "#5f6b66", marginTop: 4 },
-  topEdge: { fontSize: 12, marginTop: 4, color: "#1f7a3a" },
 };
 
 /* ------------- sub components ---------- */
@@ -252,9 +260,12 @@ const TeamChip = ({ name, align = "left" }) => (
   </span>
 );
 
-const FixtureCard = ({ f }) => (
+const FixtureCard = ({ f, topEdge }) => (
   <div style={mobile.card}>
-    <Link to={routeFor(f)} style={{ textDecoration: "none", color: "inherit" }}>
+    <Link
+      to={routeFor(f)}
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
       <div style={mobile.row}>
         <div>
           <div style={{ fontSize: 16, lineHeight: 1.25, color: "#0f1f14" }}>
@@ -266,31 +277,27 @@ const FixtureCard = ({ f }) => (
             {prettyComp(f.comp)} • {(f.sport || "").toUpperCase()}
           </div>
 
-          {/* ⭐ NEW: show top edge if present */}
-          {typeof f.top_edge === "number" && isFinite(f.top_edge) && (
-            <div style={mobile.topEdge}>
-              <b>Top edge:</b> {(f.top_edge * 100).toFixed(1)}%{" "}
-              <span style={{ opacity: 0.75 }}>
-                ({f.top_edge_bookmaker} {f.top_edge_market})
-              </span>
-            </div>
-          )}
+          {/* ⭐ NEW: show top edge hint on mobile */}
+          <div style={{ marginTop: 6, fontSize: 12, color: "#334" }}>
+            <b>Top edge:</b>{" "}
+            {topEdge?.edge != null
+              ? `${(topEdge.edge * 100).toFixed(1)}%`
+              : "—"}
+            {topEdge?.market ? ` • ${topEdge.market}` : ""}
+          </div>
         </div>
-
         <div style={{ textAlign: "right", minWidth: 62 }}>
           <div style={{ fontWeight: 700, color: "#0f1f14" }}>
             {toUK(f.kickoff_utc)}
           </div>
           <div style={{ fontSize: 11, color: "#7a847f" }}>
-            {toUK(f.kickoff_utc, { withZone: true })
-              .split(" ")
-              .slice(-1)[0]}
+            {toUK(f.kickoff_utc, { withZone: true }).split(" ").slice(-1)[0]}
           </div>
         </div>
       </div>
     </Link>
 
-    {/* Compact pill under each fixture */}
+    {/* ⭐ Compact pill under each fixture (mobile only) */}
     <div style={{ marginTop: 8 }}>
       <FixtureAccessPill variant="compact" fixtureId={f.id} />
     </div>
@@ -327,7 +334,10 @@ function AccaBlock({ day }) {
           bookmaker: "ACCA",
           price: Number(t.combined_price),
         },
-        { stake, sourceTipsterId: t.tipster_id || null }
+        {
+          stake,
+          sourceTipsterId: t.tipster_id || null,
+        }
       );
 
       setTrackedAccaIds((prev) => (prev.includes(t.id) ? prev : [...prev, t.id]));
@@ -448,7 +458,7 @@ function AccaBlock({ day }) {
 /* --------------------- main page ------------------- */
 export default function PublicDashboard() {
   const { user, isPremium } = useAuth();
-  const { favoriteSports, favoriteTeams, favoriteLeagues } = usePreferences();
+  const { favoriteSports, favoriteTeams, favoriteLeagues } = usePreferences(); // ⭐
 
   const [day, setDay] = useState(todayISO());
   const [sport, setSport] = useState("all");
@@ -466,12 +476,13 @@ export default function PublicDashboard() {
   const [trackingPickKey, setTrackingPickKey] = useState(null);
   const [trackedPickKeys, setTrackedPickKeys] = useState([]);
 
+  // All vs Favourites toggle
   const [showFavsOnly, setShowFavsOnly] = useState(false);
 
-  // ⭐ NEW: top edge sort/filter
+  // ⭐ NEW: sorting by top edge
   const [sortMode, setSortMode] = useState("kickoff"); // "kickoff" | "top_edge"
-  const [minEdgePct, setMinEdgePct] = useState(0);     // 0..N (%)
-  const [bestEdgeByFixture, setBestEdgeByFixture] = useState({});
+  const [minEdgePct, setMinEdgePct] = useState(0); // in %
+  const [bestEdgeByFixture, setBestEdgeByFixture] = useState({}); // { [fixtureId]: { edge, market, bookmaker, price, prob } }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -481,6 +492,7 @@ export default function PublicDashboard() {
         api.get("/api/public/fixtures/daily", { params: { day, sport } }),
         api.get("/api/public/picks/daily", { params: { day, sport, limit: 50 } }),
       ]);
+
       setFixtures(fxJ?.fixtures || []);
       setPicks(pkJ?.picks || []);
     } catch (e) {
@@ -496,33 +508,33 @@ export default function PublicDashboard() {
     load();
   }, [load]);
 
-  // ⭐ NEW: fetch best edges per fixture (for dashboard sorting)
+  // ⭐ NEW: fetch best edges for the day (powers "Top edge" sorting)
   useEffect(() => {
     let cancelled = false;
 
-    async function loadBestEdges() {
+    (async () => {
       try {
-        // Adjust this path if your API base differs:
-        // - "/shortlist/best" (common)
-        // - "/api/shortlist/best" (if you prefixed routes)
-        const { data } = await api.get("/shortlist/best", {
-          params: {
-            hours_ahead: 48,
-            per_fixture: true,
-            limit: 300,
-            min_edge: 0, // keep 0 so we get true "top" edge per fixture
-          },
-        });
+        const params = {
+          day,
+          per_fixture: true,
+          limit: 1500,
+          min_edge: Number(minEdgePct || 0) / 100, // backend expects decimal
+        };
 
-        const rows = Array.isArray(data) ? data : data?.edges || data?.items || [];
+        if (sport && sport !== "all") params.sport = sport;
+
+        const { data } = await api.get("/shortlist/best", { params });
+
+        const rows = Array.isArray(data?.rows) ? data.rows : [];
+
+        // ✅ hard exclude William Hill here too
+        const filtered = rows.filter((r) => !isWilliamHill(r.bookmaker));
+
         const map = {};
-
-        for (const r of rows) {
-          const fid = Number(r.fixture_id ?? r.id);
-          if (!fid) continue;
-
-          const edge = typeof r.edge === "number" ? r.edge : Number(r.edge);
-          if (!isFinite(edge)) continue;
+        for (const r of filtered) {
+          const fid = Number(r.fixture_id);
+          const edge = Number(r.edge);
+          if (!fid || !isFinite(edge)) continue;
 
           if (!map[fid] || edge > map[fid].edge) {
             map[fid] = {
@@ -530,23 +542,26 @@ export default function PublicDashboard() {
               market: r.market,
               bookmaker: r.bookmaker,
               price: r.price,
-              prob: r.prob,
+              prob: r.model_prob,
             };
           }
         }
 
         if (!cancelled) setBestEdgeByFixture(map);
       } catch (e) {
+        console.warn(
+          "Failed to load /shortlist/best:",
+          e?.response?.status,
+          e?.message
+        );
         if (!cancelled) setBestEdgeByFixture({});
       }
-    }
-
-    if (fixtures?.length) loadBestEdges();
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [fixtures, day, sport]);
+  }, [day, sport, minEdgePct]);
 
   // Following mini feed
   useEffect(() => {
@@ -601,26 +616,22 @@ export default function PublicDashboard() {
     [favoriteSports, favoriteTeams, favoriteLeagues]
   );
 
-  // ⭐ UPDATED: favourites-aware + optional top-edge sorting
+  // FAVOURITES-AWARE + SORT MODE FIXTURE SORT
   const fixturesSorted = useMemo(() => {
     if (!fixtures.length) return [];
 
-    const withEdge = fixtures.map((f) => {
+    const withTop = fixtures.map((f) => {
       const top = bestEdgeByFixture[Number(f.id)];
       return {
         ...f,
         top_edge: top?.edge ?? null,
         top_edge_market: top?.market ?? null,
         top_edge_bookmaker: top?.bookmaker ?? null,
+        top_edge_price: top?.price ?? null,
       };
     });
 
-    const minEdge = (Number(minEdgePct) || 0) / 100;
-    const filtered = minEdge > 0
-      ? withEdge.filter((f) => (typeof f.top_edge === "number" ? f.top_edge : -999) >= minEdge)
-      : withEdge;
-
-    return [...filtered].sort((a, b) => {
+    return [...withTop].sort((a, b) => {
       const aFav = isFavFixture(a);
       const bFav = isFavFixture(b);
 
@@ -629,11 +640,13 @@ export default function PublicDashboard() {
       if (sortMode === "top_edge") {
         const ae = typeof a.top_edge === "number" ? a.top_edge : -999;
         const be = typeof b.top_edge === "number" ? b.top_edge : -999;
-        if (be !== ae) return be - ae;
+        if (ae !== be) return be - ae; // higher edge first
       }
+
+      // default: kickoff asc
       return (a.kickoff_utc || "").localeCompare(b.kickoff_utc || "");
     });
-  }, [fixtures, bestEdgeByFixture, minEdgePct, sortMode, isFavFixture]);
+  }, [fixtures, isFavFixture, bestEdgeByFixture, sortMode]);
 
   // What we actually show (All vs Favourites)
   const fixturesToShow = useMemo(() => {
@@ -693,8 +706,7 @@ export default function PublicDashboard() {
     const bmUrl = getBookmakerUrl(p.bookmaker);
     const openUrl = bmUrl
       ? bmUrl
-      : "https://google.com/search?q=" +
-        encodeURIComponent(p.bookmaker || "bet365");
+      : "https://google.com/search?q=" + encodeURIComponent(p.bookmaker || "bet365");
 
     window.open(openUrl, "_blank", "noopener");
 
@@ -712,9 +724,7 @@ export default function PublicDashboard() {
         { stake, sourceTipsterId: p.tipster_id || null }
       );
 
-      setTrackedPickKeys((prev) =>
-        prev.includes(pickKey) ? prev : [...prev, pickKey]
-      );
+      setTrackedPickKeys((prev) => (prev.includes(pickKey) ? prev : [...prev, pickKey]));
     } catch (e) {
       console.error("Failed to track featured pick", e);
       alert("Could not add this pick to your bet tracker.");
@@ -765,11 +775,7 @@ export default function PublicDashboard() {
           <div style={{ width: "100%" }}>
             <div style={S.pillRow}>
               {sportOptions.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSport(s)}
-                  style={S.pill(sport === s)}
-                >
+                <button key={s} onClick={() => setSport(s)} style={S.pill(sport === s)}>
                   {s.toUpperCase()}
                 </button>
               ))}
@@ -778,6 +784,7 @@ export default function PublicDashboard() {
         )}
       </div>
 
+      {/* ⭐ Premium Upsell Banner */}
       <PremiumUpsellBanner
         mode="link"
         message="Go Premium to unlock full CSB model edges, extra featured picks, and deeper stats across today’s card."
@@ -952,6 +959,7 @@ export default function PublicDashboard() {
               <tbody>
                 {followingFeed.map((p) => {
                   const locked = p.is_premium_only && !isPremium;
+
                   return (
                     <tr key={p.id}>
                       <td style={S.td}>
@@ -963,6 +971,8 @@ export default function PublicDashboard() {
                         </Link>
                       </td>
                       <td style={S.td}>{p.fixture_label}</td>
+
+                      {/* Market column */}
                       <td style={S.td}>
                         {locked ? (
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}>
@@ -979,7 +989,14 @@ export default function PublicDashboard() {
                             >
                               🔒
                             </span>
-                            <Link to="/premium" style={{ color: "#FBBF24", textDecoration: "underline", fontSize: 11 }}>
+                            <Link
+                              to="/premium"
+                              style={{
+                                color: "#FBBF24",
+                                textDecoration: "underline",
+                                fontSize: 11,
+                              }}
+                            >
                               Unlock +
                             </Link>
                           </span>
@@ -1003,18 +1020,30 @@ export default function PublicDashboard() {
                           </span>
                         )}
                       </td>
+
                       <td style={S.td}>{locked ? "—" : p.bookmaker || "—"}</td>
-                      <td style={S.td}>{locked ? "—" : p.price?.toFixed?.(2) ?? p.price ?? "—"}</td>
+                      <td style={S.td}>
+                        {locked ? "—" : p.price?.toFixed?.(2) ?? p.price ?? "—"}
+                      </td>
                       <td style={S.td}>{locked ? "—" : p.stake ?? 1}</td>
                       <td style={S.td}>{locked ? "—" : p.result || "—"}</td>
+
                       <td
                         style={{
                           ...S.td,
                           textAlign: "right",
-                          color: locked ? "#eaf4ed" : (p.profit ?? 0) >= 0 ? "#1db954" : "#d23b3b",
+                          color: locked
+                            ? "#eaf4ed"
+                            : (p.profit ?? 0) >= 0
+                            ? "#1db954"
+                            : "#d23b3b",
                         }}
                       >
-                        {locked ? "—" : typeof p.profit === "number" ? p.profit.toFixed(2) : "0.00"}
+                        {locked
+                          ? "—"
+                          : typeof p.profit === "number"
+                          ? p.profit.toFixed(2)
+                          : "0.00"}
                       </td>
                     </tr>
                   );
@@ -1028,37 +1057,61 @@ export default function PublicDashboard() {
       {/* ACCAs */}
       <AccaBlock day={day} />
 
-      {/* Fixtures header + toggle + NEW sort/filter */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 18, marginBottom: 8, flexWrap: "wrap" }}>
+      {/* Fixtures header + toggle + NEW SORT CONTROLS */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginTop: 18,
+          marginBottom: 8,
+          flexWrap: "wrap",
+        }}
+      >
         <div style={S.sectionTitle}>All Fixtures</div>
 
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#eaf4ed" }}>
-            Sort:
-            <select style={S.select} value={sortMode} onChange={(e) => setSortMode(e.target.value)}>
+        {/* NEW controls */}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <label style={{ color: "#eaf4ed", fontSize: 13 }}>
+            Sort:&nbsp;
+            <select
+              style={S.select}
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value)}
+            >
               <option value="kickoff">Kickoff</option>
               <option value="top_edge">Top edge</option>
             </select>
           </label>
 
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#eaf4ed" }}>
-            Min edge %:
+          <label style={{ color: "#eaf4ed", fontSize: 13 }}>
+            Min edge %:&nbsp;
             <input
               style={{ ...S.input, width: 90 }}
               type="number"
-              min="0"
               step="0.5"
+              min="0"
               value={minEdgePct}
-              onChange={(e) => setMinEdgePct(e.target.value)}
+              onChange={(e) => setMinEdgePct(Number(e.target.value))}
             />
           </label>
 
-          <button type="button" style={S.pill(!showFavsOnly)} onClick={() => setShowFavsOnly(false)}>
-            All
-          </button>
-          <button type="button" style={S.pill(showFavsOnly)} onClick={() => setShowFavsOnly(true)}>
-            Favourites
-          </button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              type="button"
+              style={S.pill(!showFavsOnly)}
+              onClick={() => setShowFavsOnly(false)}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              style={S.pill(showFavsOnly)}
+              onClick={() => setShowFavsOnly(true)}
+            >
+              Favourites
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1070,12 +1123,13 @@ export default function PublicDashboard() {
         <p style={S.muted}>No fixtures found.</p>
       ) : showFavsOnly && !fixturesToShow.length ? (
         <p style={S.muted}>
-          No fixtures match your favourites yet. Add favourite teams/leagues on your Account page or from a fixture.
+          No fixtures match your favourites yet. Add favourite teams/leagues on
+          your Account page or from a fixture.
         </p>
       ) : isMobile ? (
         fixturesToShow.map((f) => (
           <div key={f.id} style={{ marginBottom: 12 }}>
-            <FixtureCard f={f} />
+            <FixtureCard f={f} topEdge={bestEdgeByFixture[Number(f.id)]} />
           </div>
         ))
       ) : (
@@ -1091,34 +1145,48 @@ export default function PublicDashboard() {
             </tr>
           </thead>
           <tbody>
-            {fixturesToShow.map((f) => (
-              <tr key={f.id}>
-                <td style={S.td}>{toUK(f.kickoff_utc)}</td>
-                <td style={S.td}>
-                  <Link to={routeFor(f)} style={{ color: "#d7e6db", textDecoration: "none" }}>
-                    <TeamChip name={f.home_team} /> <span style={{ opacity: 0.6 }}>vs</span>{" "}
-                    <TeamChip name={f.away_team} align="right" />
-                  </Link>
-                </td>
-                <td style={S.td}>{prettyComp(f.comp)}</td>
-                <td style={S.td}>{(f.sport || "").toUpperCase()}</td>
-                <td style={S.td}>
-                  {typeof f.top_edge === "number" && isFinite(f.top_edge) ? (
-                    <span>
-                      <b>{(f.top_edge * 100).toFixed(1)}%</b>{" "}
-                      <span style={{ opacity: 0.75 }}>
-                        {f.top_edge_bookmaker} {f.top_edge_market}
+            {fixturesToShow.map((f) => {
+              const top = bestEdgeByFixture[Number(f.id)];
+              return (
+                <tr key={f.id}>
+                  <td style={S.td}>{toUK(f.kickoff_utc)}</td>
+
+                  <td style={S.td}>
+                    <Link to={routeFor(f)} style={{ color: "#d7e6db", textDecoration: "none" }}>
+                      <TeamChip name={f.home_team} />{" "}
+                      <span style={{ opacity: 0.6 }}>vs</span>{" "}
+                      <TeamChip name={f.away_team} align="right" />
+                    </Link>
+                  </td>
+
+                  <td style={S.td}>{prettyComp(f.comp)}</td>
+                  <td style={S.td}>{(f.sport || "").toUpperCase()}</td>
+
+                  <td style={S.td}>
+                    {top?.edge != null ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <b>{(top.edge * 100).toFixed(1)}%</b>
+                        <span style={{ opacity: 0.9 }}>
+                          {top.market}
+                        </span>
+                        {/* bookmaker hidden if somehow WH sneaks in */}
+                        {top.bookmaker && !isWilliamHill(top.bookmaker) ? (
+                          <span style={{ opacity: 0.75 }}>
+                            • {top.bookmaker}
+                          </span>
+                        ) : null}
                       </span>
-                    </span>
-                  ) : (
-                    <span style={{ opacity: 0.7 }}>—</span>
-                  )}
-                </td>
-                <td style={S.td}>
-                  <FixtureAccessPill variant="compact" fixtureId={f.id} />
-                </td>
-              </tr>
-            ))}
+                    ) : (
+                      <span style={{ opacity: 0.75 }}>—</span>
+                    )}
+                  </td>
+
+                  <td style={S.td}>
+                    <FixtureAccessPill variant="compact" fixtureId={f.id} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
