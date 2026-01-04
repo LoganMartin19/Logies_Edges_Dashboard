@@ -517,7 +517,7 @@ export default function PublicDashboard() {
         const params = {
           day,
           per_fixture: true,
-          limit: 1500,
+          limit: 1000,
           min_edge: Number(minEdgePct || 0) / 100, // backend expects decimal
         };
 
