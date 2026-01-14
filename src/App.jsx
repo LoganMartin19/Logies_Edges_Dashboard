@@ -23,6 +23,7 @@ import Tennis from "./pages/Tennis";
 import TennisMatch from "./pages/TennisMatch";
 import Basketball from "./pages/Basketball";
 import BasketballFixture from "./pages/BasketballFixture";
+import ClubPage from "./pages/ClubPage";
 
 import PublicDashboard from "./pages/PublicDashboard";
 import Performance from "./pages/Performance";
@@ -75,6 +76,7 @@ function App() {
 
             {/* Fixture + sports pages */}
             <Route path="/fixture/:id" element={<FixturePage />} />
+            <Route path="/club/:teamId/:slug" element={<ClubPage />} />
             <Route path="/fixtures" element={<Fixtures />} />
             <Route path="/bets" element={<BetTrackerPage />} />
             <Route path="/about" element={<AboutPage />} />

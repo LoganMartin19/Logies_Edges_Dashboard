@@ -345,7 +345,14 @@ const FixturePage = () => {
                 alt={fixture.home_team}
                 className={styles.teamLogo}
               />
-              {fixture.home_team}
+              {/* ✅ NEW: clickable team name */}
+              <Link
+                to={`/clubs/${slugifyTeamName(fixture.home_team)}`}
+                className={styles.teamLink}
+                title={`Open ${fixture.home_team}`}
+              >
+                {fixture.home_team}
+              </Link>
               <button
                 type="button"
                 onClick={() => toggleFavouriteTeam(fixture.home_team)}
@@ -373,7 +380,14 @@ const FixturePage = () => {
                 alt={fixture.away_team}
                 className={styles.teamLogo}
               />
-              {fixture.away_team}
+              {/* ✅ NEW: clickable team name */}
+              <Link
+                to={`/clubs/${slugifyTeamName(fixture.away_team)}`}
+                className={styles.teamLink}
+                title={`Open ${fixture.away_team}`}
+              >
+                {fixture.away_team}
+              </Link>
               <button
                 type="button"
                 onClick={() => toggleFavouriteTeam(fixture.away_team)}
@@ -418,21 +432,26 @@ const FixturePage = () => {
           </p>
 
           <div className={styles.tabs}>
-            {["preview", "table", "predictions", "lineups", "players", "events"].map(
-              (tab) => (
-                <button
-                  key={tab}
-                  className={
-                    activeTab === tab
-                      ? `${styles.tabButton} ${styles.activeTab}`
-                      : styles.tabButton
-                  }
-                  onClick={() => setActiveTab(tab)}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              )
-            )}
+            {[
+              "preview",
+              "table",
+              "predictions",
+              "lineups",
+              "players",
+              "events",
+            ].map((tab) => (
+              <button
+                key={tab}
+                className={
+                  activeTab === tab
+                    ? `${styles.tabButton} ${styles.activeTab}`
+                    : styles.tabButton
+                }
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -514,8 +533,8 @@ const FixturePage = () => {
                       ) : (
                         <>
                           This fixture is unlocked. You’ve used{" "}
-                          <b>{edgesMeta.usedToday}</b> /{" "}
-                          <b>{edgesMeta.limit}</b> free fixture unlocks today.
+                          <b>{edgesMeta.usedToday}</b> / <b>{edgesMeta.limit}</b>{" "}
+                          free fixture unlocks today.
                         </>
                       )
                     ) : (
@@ -567,13 +586,13 @@ const FixturePage = () => {
                       <li key={key}>
                         <b>{e.market}</b> — {e.bookmaker} @{" "}
                         <b>{formatOddsBoth(e.price)}</b>{" "}
-                        {typeof e.edge === "number" && typeof e.prob === "number" ? (
+                        {typeof e.edge === "number" &&
+                        typeof e.prob === "number" ? (
                           <>
                             ({(e.edge * 100).toFixed(1)}% edge, model p{" "}
                             {(e.prob * 100).toFixed(1)}%)
                           </>
                         ) : null}
-
                         <button
                           className={styles.whyButton}
                           onClick={() => fetchExplanation(e.market, i)}
@@ -581,7 +600,6 @@ const FixturePage = () => {
                         >
                           Why?
                         </button>
-
                         <button
                           className={styles.addBetLink}
                           style={{ marginLeft: 8 }}
@@ -655,7 +673,14 @@ const FixturePage = () => {
                       <tr key={i} className={rowClass}>
                         <td>{row.position}</td>
                         <td className={styles.teamName}>
-                          {row.team}
+                          {/* ✅ OPTIONAL: clickable team in table */}
+                          <Link
+                            to={`/clubs/${slugifyTeamName(row.team)}`}
+                            className={styles.teamLink}
+                            title={`Open ${row.team}`}
+                          >
+                            {row.team}
+                          </Link>
                           {isHome && <span> 🏠</span>}
                           {isAway && <span> 🛫</span>}
                         </td>
@@ -676,9 +701,7 @@ const FixturePage = () => {
             </div>
           )}
 
-          {activeTab === "predictions" && (
-            <PredictionsSection fixtureId={id} />
-          )}
+          {activeTab === "predictions" && <PredictionsSection fixtureId={id} />}
 
           {activeTab === "lineups" && (
             <div className={styles.tabContent}>

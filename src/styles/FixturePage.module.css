@@ -558,3 +558,12 @@
 .staticForm {
   margin-top: 10px;
 }
+
+.teamLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.teamLink:hover {
+  text-decoration: underline;
+}
