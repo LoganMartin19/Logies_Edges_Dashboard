@@ -381,7 +381,7 @@ const FixturePage = () => {
               />
 
               {/* ✅ FIXED: correct route (/club/:teamId/:slug) + clickable */}
-              {homeTeamId ? (
+              {clubHref(homeTeamId, fixture.home_team) ? (
                 <Link
                   to={clubHref(homeTeamId, fixture.home_team)}
                   className={styles.teamLink}
@@ -426,7 +426,7 @@ const FixturePage = () => {
               />
 
               {/* ✅ FIXED: correct route (/club/:teamId/:slug) + clickable */}
-              {awayTeamId ? (
+              {clubHref(awayTeamId, fixture.away_team) ? (
                 <Link
                   to={clubHref(awayTeamId, fixture.away_team)}
                   className={styles.teamLink}
@@ -728,9 +728,9 @@ const FixturePage = () => {
                           {/* ✅ FIXED: table team now links only if we can map to an id
                               If you don’t have ids in leagueTable rows, this stays as slug-only.
                            */}
-                          {row?.team_id ? (
+                          {row.team_id ? (
                             <Link
-                              to={clubHref(row.team_id, row.team)}
+                              to={`/club/${row.team_id}/${slugifyTeamName(row.team)}`}
                               className={styles.teamLink}
                               title={`Open ${row.team}`}
                             >
