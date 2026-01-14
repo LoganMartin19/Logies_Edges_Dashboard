@@ -1,5 +1,5 @@
 // File: FixturePage.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import LeagueFixtures from "../components/LeagueFixtures";
 import Poll from "../components/Poll";
@@ -84,18 +84,6 @@ const FixturePage = () => {
       minute: "2-digit",
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
-  };
-
-  // ✅ helper to build club link in the format ClubPage expects:
-  // route: /club/:teamId/:slug  and supports query params ?season=YYYY&league=ID
-  const clubUrl = (teamId, teamName, season, leagueId) => {
-    if (!teamId) return null;
-    const qs = new URLSearchParams();
-    if (season) qs.set("season", String(season));
-    if (leagueId) qs.set("league", String(leagueId));
-    const slug = slugifyTeamName(teamName || "team");
-    const q = qs.toString();
-    return `/club/${teamId}/${slug}${q ? `?${q}` : ""}`;
   };
 
   const normalizeExplainMarket = (raw) => {
@@ -321,22 +309,34 @@ const FixturePage = () => {
   const fixture = data.fixture;
   const odds = data.odds ?? [];
 
+  // ✅ IMPORTANT: get team ids + context for ClubPage route
+  const homeTeamId =
+    fixture.provider_home_team_id ??
+    fixture.home_team_id ??
+    fixture.home_id ??
+    fixture.homeTeamId;
+
+  const awayTeamId =
+    fixture.provider_away_team_id ??
+    fixture.away_team_id ??
+    fixture.away_id ??
+    fixture.awayTeamId;
+
+  const season =
+    fixture.season ??
+    fixture.league_season ??
+    fixture.year ??
+    2025;
+
+  const leagueId =
+    fixture.league_id ??
+    fixture.provider_league_id ??
+    fixture.api_league_id ??
+    null;
+
   const isHomeFav = favTeams.includes(fixture.home_team);
   const isAwayFav = favTeams.includes(fixture.away_team);
   const isLeagueFav = favLeagues.includes(fixture.comp);
-
-  // ✅ figure out season + league_id for query params if present in your JSON
-  // fallbacks are safe defaults
-  const season = fixture.season || 2025;
-  const leagueId = fixture.league_id || null;
-
-  const homeTeamId =
-    fixture.provider_home_team_id || fixture.home_team_id || fixture.home_id;
-  const awayTeamId =
-    fixture.provider_away_team_id || fixture.away_team_id || fixture.away_id;
-
-  const homeClubLink = clubUrl(homeTeamId, fixture.home_team, season, leagueId);
-  const awayClubLink = clubUrl(awayTeamId, fixture.away_team, season, leagueId);
 
   const grouped = Array.isArray(odds)
     ? odds.reduce((acc, o) => {
@@ -350,6 +350,15 @@ const FixturePage = () => {
     selectedBookmaker === "All"
       ? edges
       : edges.filter((e) => e.bookmaker === selectedBookmaker);
+
+  const clubHref = (teamId, teamName) => {
+    const slug = slugifyTeamName(teamName);
+    const params = new URLSearchParams();
+    if (season) params.set("season", String(season));
+    if (leagueId) params.set("league", String(leagueId));
+    const qs = params.toString();
+    return `/club/${teamId}/${slug}${qs ? `?${qs}` : ""}`;
+  };
 
   // ==========================================================================
   // RENDER
@@ -371,17 +380,19 @@ const FixturePage = () => {
                 className={styles.teamLogo}
               />
 
-              {/* ✅ FIXED: link to /club/:teamId/:slug (not /clubs/:slug) */}
-              {homeClubLink ? (
+              {/* ✅ FIXED: correct route (/club/:teamId/:slug) + clickable */}
+              {homeTeamId ? (
                 <Link
-                  to={homeClubLink}
+                  to={clubHref(homeTeamId, fixture.home_team)}
                   className={styles.teamLink}
                   title={`Open ${fixture.home_team}`}
                 >
                   {fixture.home_team}
                 </Link>
               ) : (
-                <span className={styles.teamLink}>{fixture.home_team}</span>
+                <span className={styles.teamLink} title="Team id missing">
+                  {fixture.home_team}
+                </span>
               )}
 
               <button
@@ -414,17 +425,19 @@ const FixturePage = () => {
                 className={styles.teamLogo}
               />
 
-              {/* ✅ FIXED: link to /club/:teamId/:slug (not /clubs/:slug) */}
-              {awayClubLink ? (
+              {/* ✅ FIXED: correct route (/club/:teamId/:slug) + clickable */}
+              {awayTeamId ? (
                 <Link
-                  to={awayClubLink}
+                  to={clubHref(awayTeamId, fixture.away_team)}
                   className={styles.teamLink}
                   title={`Open ${fixture.away_team}`}
                 >
                   {fixture.away_team}
                 </Link>
               ) : (
-                <span className={styles.teamLink}>{fixture.away_team}</span>
+                <span className={styles.teamLink} title="Team id missing">
+                  {fixture.away_team}
+                </span>
               )}
 
               <button
@@ -711,14 +724,24 @@ const FixturePage = () => {
                     return (
                       <tr key={i} className={rowClass}>
                         <td>{row.position}</td>
-
-                        {/* ✅ FIX: remove broken /clubs/ links (table rows don't have team IDs) */}
                         <td className={styles.teamName}>
-                          {row.team}
+                          {/* ✅ FIXED: table team now links only if we can map to an id
+                              If you don’t have ids in leagueTable rows, this stays as slug-only.
+                           */}
+                          {row?.team_id ? (
+                            <Link
+                              to={clubHref(row.team_id, row.team)}
+                              className={styles.teamLink}
+                              title={`Open ${row.team}`}
+                            >
+                              {row.team}
+                            </Link>
+                          ) : (
+                            <span className={styles.teamLink}>{row.team}</span>
+                          )}
                           {isHome && <span> 🏠</span>}
                           {isAway && <span> 🛫</span>}
                         </td>
-
                         <td>{row.played}</td>
                         <td>{row.win}</td>
                         <td>{row.draw}</td>

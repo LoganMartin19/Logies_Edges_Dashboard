@@ -559,11 +559,5 @@
   margin-top: 10px;
 }
 
-.teamLink {
-  color: inherit;
-  text-decoration: none;
-}
-
-.teamLink:hover {
-  text-decoration: underline;
-}
+.teamWithLogo { position: relative; z-index: 2; }
+.teamLink { position: relative; z-index: 5; pointer-events: auto; }
