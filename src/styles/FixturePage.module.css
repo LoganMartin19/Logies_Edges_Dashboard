@@ -561,3 +561,25 @@
 
 .teamWithLogo { position: relative; z-index: 2; }
 .teamLink { position: relative; z-index: 5; pointer-events: auto; }
+
+.headerBar,
+.headerInner,
+.headerTeams {
+  position: relative;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+.teamWithLogo {
+  position: relative;
+  z-index: 60;
+}
+
+.teamLink {
+  position: relative;
+  z-index: 70;
+  pointer-events: auto;
+  cursor: pointer;
+  display: inline-block;
+  text-decoration: underline;
+}
