@@ -1,5 +1,5 @@
 // File: FixturePage.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import LeagueFixtures from "../components/LeagueFixtures";
 import Poll from "../components/Poll";
@@ -84,6 +84,18 @@ const FixturePage = () => {
       minute: "2-digit",
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
+  };
+
+  // ✅ helper to build club link in the format ClubPage expects:
+  // route: /club/:teamId/:slug  and supports query params ?season=YYYY&league=ID
+  const clubUrl = (teamId, teamName, season, leagueId) => {
+    if (!teamId) return null;
+    const qs = new URLSearchParams();
+    if (season) qs.set("season", String(season));
+    if (leagueId) qs.set("league", String(leagueId));
+    const slug = slugifyTeamName(teamName || "team");
+    const q = qs.toString();
+    return `/club/${teamId}/${slug}${q ? `?${q}` : ""}`;
   };
 
   const normalizeExplainMarket = (raw) => {
@@ -313,6 +325,19 @@ const FixturePage = () => {
   const isAwayFav = favTeams.includes(fixture.away_team);
   const isLeagueFav = favLeagues.includes(fixture.comp);
 
+  // ✅ figure out season + league_id for query params if present in your JSON
+  // fallbacks are safe defaults
+  const season = fixture.season || 2025;
+  const leagueId = fixture.league_id || null;
+
+  const homeTeamId =
+    fixture.provider_home_team_id || fixture.home_team_id || fixture.home_id;
+  const awayTeamId =
+    fixture.provider_away_team_id || fixture.away_team_id || fixture.away_id;
+
+  const homeClubLink = clubUrl(homeTeamId, fixture.home_team, season, leagueId);
+  const awayClubLink = clubUrl(awayTeamId, fixture.away_team, season, leagueId);
+
   const grouped = Array.isArray(odds)
     ? odds.reduce((acc, o) => {
         (acc[o.market] ||= []).push(o);
@@ -345,14 +370,20 @@ const FixturePage = () => {
                 alt={fixture.home_team}
                 className={styles.teamLogo}
               />
-              {/* ✅ NEW: clickable team name */}
-              <Link
-                to={`/clubs/${slugifyTeamName(fixture.home_team)}`}
-                className={styles.teamLink}
-                title={`Open ${fixture.home_team}`}
-              >
-                {fixture.home_team}
-              </Link>
+
+              {/* ✅ FIXED: link to /club/:teamId/:slug (not /clubs/:slug) */}
+              {homeClubLink ? (
+                <Link
+                  to={homeClubLink}
+                  className={styles.teamLink}
+                  title={`Open ${fixture.home_team}`}
+                >
+                  {fixture.home_team}
+                </Link>
+              ) : (
+                <span className={styles.teamLink}>{fixture.home_team}</span>
+              )}
+
               <button
                 type="button"
                 onClick={() => toggleFavouriteTeam(fixture.home_team)}
@@ -372,7 +403,9 @@ const FixturePage = () => {
                 {isHomeFav ? "★ Saved" : "☆ Fav"}
               </button>
             </div>
+
             <span>vs</span>
+
             <div className={styles.teamWithLogo}>
               <img
                 src={`/logos/${slugifyTeamName(fixture.away_team)}.png`}
@@ -380,14 +413,20 @@ const FixturePage = () => {
                 alt={fixture.away_team}
                 className={styles.teamLogo}
               />
-              {/* ✅ NEW: clickable team name */}
-              <Link
-                to={`/clubs/${slugifyTeamName(fixture.away_team)}`}
-                className={styles.teamLink}
-                title={`Open ${fixture.away_team}`}
-              >
-                {fixture.away_team}
-              </Link>
+
+              {/* ✅ FIXED: link to /club/:teamId/:slug (not /clubs/:slug) */}
+              {awayClubLink ? (
+                <Link
+                  to={awayClubLink}
+                  className={styles.teamLink}
+                  title={`Open ${fixture.away_team}`}
+                >
+                  {fixture.away_team}
+                </Link>
+              ) : (
+                <span className={styles.teamLink}>{fixture.away_team}</span>
+              )}
+
               <button
                 type="button"
                 onClick={() => toggleFavouriteTeam(fixture.away_team)}
@@ -672,18 +711,14 @@ const FixturePage = () => {
                     return (
                       <tr key={i} className={rowClass}>
                         <td>{row.position}</td>
+
+                        {/* ✅ FIX: remove broken /clubs/ links (table rows don't have team IDs) */}
                         <td className={styles.teamName}>
-                          {/* ✅ OPTIONAL: clickable team in table */}
-                          <Link
-                            to={`/clubs/${slugifyTeamName(row.team)}`}
-                            className={styles.teamLink}
-                            title={`Open ${row.team}`}
-                          >
-                            {row.team}
-                          </Link>
+                          {row.team}
                           {isHome && <span> 🏠</span>}
                           {isAway && <span> 🛫</span>}
                         </td>
+
                         <td>{row.played}</td>
                         <td>{row.win}</td>
                         <td>{row.draw}</td>
