@@ -1,228 +1,268 @@
+/* File: src/styles/ClubPage.module.css */
+
 .page {
-  padding: 18px 18px 28px;
-  color: #e9eef3;
+  padding: 14px 16px 30px;
 }
 
 .loading,
 .error {
-  padding: 24px;
-  color: #e9eef3;
+  padding: 16px;
 }
 
 .error {
-  color: #ffb4b4;
+  opacity: 0.9;
 }
 
 .topRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .backBtn {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.10);
-  color: #e9eef3;
-  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  padding: 8px 10px;
   border-radius: 10px;
   cursor: pointer;
 }
 
-.backBtn:hover {
-  background: rgba(255,255,255,0.09);
-}
-
-.rightMeta {
+.controls {
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.seasonChip,
-.leagueChip {
+.controlPill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.controlLabel {
+  opacity: 0.75;
   font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.10);
-  color: rgba(233, 238, 243, 0.92);
+}
+
+.controlValue {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.select {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.toggleBtn {
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  padding: 8px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.toggleBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toggleOn {
+  border-color: rgba(140, 255, 180, 0.35);
+  background: rgba(140, 255, 180, 0.08);
 }
 
 .hero {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
   gap: 14px;
-  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 16px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  margin-bottom: 14px;
-}
-
-@media (max-width: 980px) {
-  .hero {
-    grid-template-columns: 1fr;
-  }
+  padding: 12px 12px;
+  margin-bottom: 12px;
 }
 
 .heroLeft {
   display: flex;
-  gap: 14px;
   align-items: center;
+  gap: 12px;
+  min-width: 320px;
 }
 
-.logoWrap {
-  width: 62px;
-  height: 62px;
+.badge {
+  width: 58px;
+  height: 58px;
   border-radius: 14px;
-  background: rgba(0,0,0,0.25);
-  border: 1px solid rgba(255,255,255,0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.15);
+  display: grid;
+  place-items: center;
   overflow: hidden;
   flex: 0 0 auto;
 }
 
 .logo {
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
 }
 
 .logoFallback {
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.10);
-  font-weight: 700;
-  font-size: 22px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  opacity: 0.9;
 }
 
-.heroText {
+.heroMeta {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .title {
-  font-size: 26px;
   margin: 0;
-  line-height: 1.05;
-  text-transform: lowercase;
+  font-size: 22px;
+  line-height: 1.15;
 }
 
-.subline {
+.subRow {
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
-}
-
-.subItem {
+  opacity: 0.85;
   font-size: 13px;
-  color: rgba(233, 238, 243, 0.90);
 }
 
-.subItemDim {
-  font-size: 13px;
-  color: rgba(233, 238, 243, 0.60);
+.subText {
+  opacity: 0.9;
 }
 
-.dim {
-  color: rgba(233, 238, 243, 0.65);
+.dot {
+  opacity: 0.5;
 }
 
-.pillsRow {
-  margin-top: 4px;
+.formRow {
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 10px;
+  margin-top: 2px;
 }
 
-.pillsLabel {
+.formLabel {
   font-size: 12px;
-  color: rgba(233, 238, 243, 0.65);
+  opacity: 0.75;
 }
 
-.pills {
+.formPills {
   display: flex;
+  align-items: center;
   gap: 6px;
-  align-items: center;
 }
 
-.pillW,
-.pillD,
-.pillL,
-.pillX {
-  font-size: 12px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.05);
-}
-
-.pillW { color: #bff3c7; }
-.pillD { color: #ffe7a8; }
-.pillL { color: #ffb4b4; }
-.pillX { color: rgba(233,238,243,0.7); }
-
-.statGrid {
+.pill {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  place-items: center;
+  font-weight: 800;
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.05);
 }
 
-@media (max-width: 980px) {
-  .statGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.pillW {
+  border-color: rgba(120, 255, 170, 0.28);
+  background: rgba(120, 255, 170, 0.10);
+}
+
+.pillD {
+  border-color: rgba(255, 240, 140, 0.28);
+  background: rgba(255, 240, 140, 0.10);
+}
+
+.pillL {
+  border-color: rgba(255, 130, 130, 0.28);
+  background: rgba(255, 130, 130, 0.10);
+}
+
+.heroRight {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 10px;
+  flex: 1;
+  align-content: center;
 }
 
 .statCard {
-  padding: 12px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.10);
   border-radius: 14px;
-  background: rgba(0,0,0,0.22);
-  border: 1px solid rgba(255,255,255,0.08);
+  padding: 10px 10px;
 }
 
 .statLabel {
   font-size: 12px;
-  color: rgba(233, 238, 243, 0.65);
-  margin-bottom: 6px;
+  opacity: 0.75;
 }
 
 .statVal {
   font-size: 18px;
-  font-weight: 700;
-  color: rgba(233, 238, 243, 0.95);
+  font-weight: 800;
+  margin-top: 3px;
 }
 
-.bodyGrid {
+.statHint {
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+.grid {
   display: grid;
-  grid-template-columns: 0.9fr 1.3fr;
-  gap: 14px;
-}
-
-@media (max-width: 980px) {
-  .bodyGrid {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: 1fr 1.25fr;
+  gap: 12px;
 }
 
 .card {
-  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 16px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  padding: 12px 12px;
 }
 
 .cardHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cardHeaderRow {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -235,14 +275,14 @@
   font-size: 16px;
 }
 
-.cardHint {
-  font-size: 12px;
-  color: rgba(233, 238, 243, 0.60);
-  white-space: nowrap;
+.cardTitleSmall {
+  margin: 0;
+  font-size: 14px;
 }
 
-.muted {
-  color: rgba(233, 238, 243, 0.60);
+.cardSub {
+  font-size: 12px;
+  opacity: 0.6;
 }
 
 .kv {
@@ -253,26 +293,74 @@
 
 .kvRow {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding: 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  background: rgba(0,0,0,0.22);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0, 0, 0, 0.10);
 }
 
-.kvKey {
+.k {
+  opacity: 0.75;
+  font-size: 12px;
+}
+
+.v {
+  font-weight: 700;
   font-size: 13px;
-  color: rgba(233, 238, 243, 0.70);
 }
 
-.kvVal {
+.divider {
+  height: 1px;
+  margin: 12px 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.seasonGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.seasonStat,
+.seasonStatWide {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.10);
+  padding: 10px 10px;
+}
+
+.seasonStatWide {
+  grid-column: 1 / -1;
+}
+
+.seasonLabel {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.seasonVal {
+  font-size: 16px;
+  font-weight: 800;
+  margin-top: 3px;
+}
+
+.seasonValMono {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  opacity: 0.9;
+  margin-top: 5px;
+}
+
+.muted {
+  opacity: 0.65;
   font-size: 13px;
-  color: rgba(233, 238, 243, 0.95);
-  font-weight: 600;
 }
 
-.fxList {
+.list {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -281,86 +369,58 @@
   gap: 8px;
 }
 
-.fxItem {
+.listItem {
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
+  background: rgba(0, 0, 0, 0.10);
   overflow: hidden;
 }
 
 .fxLink {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 12px;
+  display: block;
+  padding: 10px 10px;
   text-decoration: none;
-  color: #e9eef3;
-  background: rgba(0,0,0,0.22);
-  border: 1px solid rgba(255,255,255,0.08);
+  color: inherit;
 }
 
-.fxLink:hover {
-  background: rgba(0,0,0,0.30);
-}
-
-.resW,
-.resD,
-.resL,
-.resX {
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
+.fxRow {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 12px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.05);
-  flex: 0 0 auto;
-}
-
-.resW { color: #bff3c7; }
-.resD { color: #ffe7a8; }
-.resL { color: #ffb4b4; }
-.resX { color: rgba(233,238,243,0.7); }
-
-.fxMain {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  flex: 1;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .fxTeams {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 14px;
-  font-weight: 650;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fxTeamStrong {
-  color: rgba(233, 238, 243, 0.95);
-}
-
-.fxScore {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.10);
-  font-size: 12px;
   font-weight: 800;
+  font-size: 13px;
+}
+
+.score {
+  opacity: 0.85;
+  margin: 0 6px;
 }
 
 .fxMeta {
+  display: block;
+  margin-top: 4px;
   font-size: 12px;
-  color: rgba(233, 238, 243, 0.60);
+  opacity: 0.65;
 }
 
 .chev {
+  opacity: 0.55;
   font-size: 18px;
-  opacity: 0.65;
+  font-weight: 800;
+}
+
+@media (max-width: 1050px) {
+  .hero {
+    flex-direction: column;
+  }
+  .heroRight {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
