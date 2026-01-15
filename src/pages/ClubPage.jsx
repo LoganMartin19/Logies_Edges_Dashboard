@@ -19,11 +19,27 @@ function fmtFloat(x, dp = 2) {
   return n === null ? "—" : n.toFixed(dp);
 }
 
+/**
+ * ✅ Robust extractor for /football/club/stats payloads
+ * Supports common wrapper shapes:
+ * - { stats: { response: {...} } }
+ * - { stats: { response: [ {...} ] } }
+ * - { response: {...} }
+ * - { response: [ {...} ] }
+ */
 function pickLeagueSummary(statsPayload) {
-  // /football/club/stats returns: { stats: <_get_team_stats_cached result> }
-  // cached result shape is whatever your service returns; commonly { response: {...} } or direct payload.
-  const raw = statsPayload?.stats || statsPayload || null;
-  const r = raw?.response || raw?.stats?.response || raw?.data?.response || raw?.response || raw;
+  const raw = statsPayload?.stats ?? statsPayload ?? null;
+
+  // resolve "response" regardless of wrapper
+  let r =
+    raw?.response ??
+    raw?.data?.response ??
+    raw?.stats?.response ??
+    raw?.stats?.data?.response ??
+    raw;
+
+  // sometimes response is an array (API-Football style)
+  if (Array.isArray(r)) r = r[0];
 
   if (!r || typeof r !== "object") return null;
 
@@ -38,6 +54,7 @@ function pickLeagueSummary(statsPayload) {
   const gf = safeNum(goals?.for?.total?.total, 0);
   const ga = safeNum(goals?.against?.total?.total, 0);
 
+  // API-Football averages often come through as strings, safeNum handles it
   const avgGf = safeNum(goals?.for?.average?.total, 0);
   const avgGa = safeNum(goals?.against?.average?.total, 0);
 
@@ -46,10 +63,17 @@ function pickLeagueSummary(statsPayload) {
   return { played, wins, draws, losses, gf, ga, avgGf, avgGa, form };
 }
 
+function inferLeagueIdFromFixtures(fixturesPayload) {
+  const played = Array.isArray(fixturesPayload?.played) ? fixturesPayload.played : [];
+  const withLeague = played.find((m) => Number.isFinite(Number(m.league_id)));
+  return withLeague ? Number(withLeague.league_id) : null;
+}
+
 const LOOKBACK_OPTIONS = [5, 10, 15];
 
 export default function ClubPage() {
-  const { teamId, slug } = useParams(); // route: /clubs/:teamId/:slug
+  // ✅ route should match App.jsx: "/clubs/:teamId/:slug"
+  const { teamId, slug } = useParams();
   const navigate = useNavigate();
   const [sp, setSp] = useSearchParams();
 
@@ -58,6 +82,7 @@ export default function ClubPage() {
   // Query params (shareable links)
   const season = safeNum(sp.get("season"), 2025);
   const league_id = sp.get("league") ? safeNum(sp.get("league"), null) : null;
+
   const lookback = safeNum(sp.get("lookback"), 5);
   const scope = (sp.get("scope") || "all").toLowerCase(); // "all" | "league"
 
@@ -80,7 +105,10 @@ export default function ClubPage() {
 
   const formSummary = overview?.form_summary || {};
   const recentStats = {
-    played: safeNum(formSummary.wins, 0) + safeNum(formSummary.draws, 0) + safeNum(formSummary.losses, 0),
+    played:
+      safeNum(formSummary.wins, 0) +
+      safeNum(formSummary.draws, 0) +
+      safeNum(formSummary.losses, 0),
     wins: safeNum(formSummary.wins, 0),
     draws: safeNum(formSummary.draws, 0),
     losses: safeNum(formSummary.losses, 0),
@@ -94,6 +122,24 @@ export default function ClubPage() {
     if (!leagueStats) return null;
     return pickLeagueSummary(leagueStats);
   }, [leagueStats]);
+
+  // ---------- query helper ----------
+  function setQuery(next) {
+    const cur = Object.fromEntries([...sp.entries()]);
+    const merged = { ...cur, ...next };
+
+    // clean empties
+    Object.keys(merged).forEach((k) => {
+      if (merged[k] === undefined || merged[k] === null || merged[k] === "") delete merged[k];
+    });
+
+    setSp(merged, { replace: true });
+  }
+
+  function onToggleScope() {
+    if (!league_id) return; // can’t go league-only without league_id
+    setQuery({ scope: leagueOnly ? "all" : "league" });
+  }
 
   // ---------- LOAD ----------
   useEffect(() => {
@@ -109,7 +155,6 @@ export default function ClubPage() {
             params: {
               team_id,
               season,
-              // if you pass league_id here it also returns league_stats inside overview, but we’ll use dedicated /club/stats for “full season”
               league_id: league_id ?? undefined,
               lookback: effectiveLookback,
             },
@@ -126,7 +171,7 @@ export default function ClubPage() {
           }),
         ];
 
-        // Full season league-only stats panel (only when league_id is known)
+        // ✅ Full-season league stats (only when league_id is known)
         if (league_id) {
           calls.push(
             api.get("/football/club/stats", {
@@ -151,25 +196,20 @@ export default function ClubPage() {
     };
 
     if (team_id) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [team_id, season, league_id, effectiveLookback, leagueOnly]);
 
-  // ---------- UI actions ----------
-  function setQuery(next) {
-    const cur = Object.fromEntries([...sp.entries()]);
-    const merged = { ...cur, ...next };
+  // ✅ V2: auto-infer league_id from fixtures + update URL (shareable)
+  useEffect(() => {
+    if (league_id) return; // already have it
+    if (!fixtures) return;
 
-    // clean empties
-    Object.keys(merged).forEach((k) => {
-      if (merged[k] === undefined || merged[k] === null || merged[k] === "") delete merged[k];
-    });
+    const inferred = inferLeagueIdFromFixtures(fixtures);
+    if (!inferred) return;
 
-    setSp(merged, { replace: true });
-  }
-
-  function onToggleScope() {
-    if (!league_id) return; // can’t go league-only without league_id
-    setQuery({ scope: leagueOnly ? "all" : "league" });
-  }
+    setQuery({ league: String(inferred) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixtures, league_id]);
 
   if (err) return <p className={styles.error}>{err}</p>;
   if (!overview || !fixtures) return <p className={styles.loading}>Loading…</p>;
@@ -209,7 +249,7 @@ export default function ClubPage() {
             className={`${styles.toggleBtn} ${leagueOnly ? styles.toggleOn : ""}`}
             onClick={onToggleScope}
             disabled={!league_id}
-            title={league_id ? "Toggle league-only fixtures" : "Pass ?league=XX to enable league-only"}
+            title={league_id ? "Toggle league-only fixtures" : "League is auto-detected from fixtures"}
           >
             {leagueOnly ? "League-only: ON" : "League-only: OFF"}
           </button>
@@ -240,7 +280,7 @@ export default function ClubPage() {
               {venue?.capacity ? <span className={styles.subText}>{fmtInt(venue.capacity)} cap</span> : null}
             </div>
 
-            {/* Form pills like FixturePage */}
+            {/* Form pills */}
             <div className={styles.formRow}>
               <span className={styles.formLabel}>Form</span>
               <div className={styles.formPills}>
@@ -331,13 +371,12 @@ export default function ClubPage() {
             </div>
           </div>
 
-          {/* Full season (league-only) stats */}
           <div className={styles.divider} />
 
           <div className={styles.cardHeader}>
             <h3 className={styles.cardTitleSmall}>Season Stats</h3>
             <span className={styles.cardSub}>
-              {league_id ? `League-only (league_id=${league_id})` : "Pass ?league=XX to enable league stats"}
+              {league_id ? `League-only (league_id=${league_id})` : "Detecting league from fixtures…"}
             </span>
           </div>
 
@@ -353,24 +392,28 @@ export default function ClubPage() {
                 <div className={styles.seasonLabel}>Played</div>
                 <div className={styles.seasonVal}>{seasonLeagueSummary.played}</div>
               </div>
+
               <div className={styles.seasonStat}>
                 <div className={styles.seasonLabel}>W-D-L</div>
                 <div className={styles.seasonVal}>
                   {seasonLeagueSummary.wins}-{seasonLeagueSummary.draws}-{seasonLeagueSummary.losses}
                 </div>
               </div>
+
               <div className={styles.seasonStat}>
                 <div className={styles.seasonLabel}>GF / GA</div>
                 <div className={styles.seasonVal}>
                   {seasonLeagueSummary.gf} / {seasonLeagueSummary.ga}
                 </div>
               </div>
+
               <div className={styles.seasonStat}>
                 <div className={styles.seasonLabel}>Avg GF / Avg GA</div>
                 <div className={styles.seasonVal}>
                   {fmtFloat(seasonLeagueSummary.avgGf, 2)} / {fmtFloat(seasonLeagueSummary.avgGa, 2)}
                 </div>
               </div>
+
               {seasonLeagueSummary.form ? (
                 <div className={styles.seasonStatWide}>
                   <div className={styles.seasonLabel}>Provider Form String</div>
@@ -405,8 +448,7 @@ export default function ClubPage() {
                           {fx.away}
                         </span>
                         <span className={styles.fxMeta}>
-                          {fx.league || "—"} •{" "}
-                          {fx.date ? new Date(fx.date).toLocaleString() : ""}
+                          {fx.league || "—"} • {fx.date ? new Date(fx.date).toLocaleString() : ""}
                         </span>
                       </div>
                       <span className={styles.chev}>›</span>
