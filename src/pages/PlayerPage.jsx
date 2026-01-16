@@ -1,5 +1,5 @@
 // src/pages/PlayerPage.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState} from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import styles from "../styles/PlayerPage.module.css";
 import { api } from "../api";

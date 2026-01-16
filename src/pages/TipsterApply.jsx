@@ -84,7 +84,7 @@ function AvatarUploader({ value, onChange }) {
 /* ---------- Main page ---------- */
 export default function TipsterApply() {
   const { user } = useAuth();
-  const nav = useNavigate();
+  // const nav = useNavigate();
 
   const suggested = useMemo(
     () => sanitise(user?.displayName) || sanitise(user?.email?.split("@")[0]),
