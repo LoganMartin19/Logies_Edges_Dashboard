@@ -1,6 +1,6 @@
 // src/pages/TipsterApply.jsx
 import React, { useMemo, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../components/AuthGate";
 import { api } from "../api";
 import styles from "../styles/Auth.module.css";
