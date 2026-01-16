@@ -1,6 +1,7 @@
-// File: FixturePage.jsx
-import React, { useEffect, useState, useMemo } from "react";
+// File: src/pages/FixturePage.jsx
+import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+
 import LeagueFixtures from "../components/LeagueFixtures";
 import Poll from "../components/Poll";
 import FormBreakdown from "../components/FormBreakdown";
@@ -32,63 +33,14 @@ import { getBookmakerUrl } from "../utils/bookmakers";
 // ✅ NEW: odds display helper (decimal + fractional)
 import { formatOddsBoth } from "../utils/oddsFormat";
 
-/**
- * Robust logo resolver.
- * We try a bunch of likely shapes from your fixture JSON first,
- * THEN fall back to local /logos/<slug>.png (optional).
- */
-function resolveTeamLogo({ fixture, side, teamName }) {
-  if (!fixture) return null;
-  const s = side === "home" ? "home" : "away";
-
-  // Direct explicit fields (recommended backend output)
-  const direct =
-    s === "home"
-      ? fixture.home_logo || fixture.homeTeamLogo || fixture.home_team_logo
-      : fixture.away_logo || fixture.awayTeamLogo || fixture.away_team_logo;
-
-  // Common provider-style nested shapes
-  const nested =
-    s === "home"
-      ? fixture.teams?.home?.logo ||
-        fixture.team_home?.logo ||
-        fixture.home?.logo ||
-        fixture.home_team?.logo
-      : fixture.teams?.away?.logo ||
-        fixture.team_away?.logo ||
-        fixture.away?.logo ||
-        fixture.away_team?.logo;
-
-  // Sometimes fixtures include arrays/objects for teams
-  const alt =
-    s === "home"
-      ? fixture?.providers?.home?.logo ||
-        fixture?.meta?.home_logo ||
-        fixture?.meta?.home?.logo
-      : fixture?.providers?.away?.logo ||
-        fixture?.meta?.away_logo ||
-        fixture?.meta?.away?.logo;
-
-  const url = direct || nested || alt;
-  if (typeof url === "string" && url.trim()) return url;
-
-  // Last resort: your local static slug logos
-  if (teamName) return `/logos/${slugifyTeamName(teamName)}.png`;
-  return null;
-}
-
 const FixturePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
   // ⭐ favourites from context
-  const {
-    favoriteSports,
-    favoriteTeams,
-    favoriteLeagues,
-    updatePreferences,
-  } = usePreferences();
+  const { favoriteSports, favoriteTeams, favoriteLeagues, updatePreferences } =
+    usePreferences();
 
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -189,12 +141,14 @@ const FixturePage = () => {
         });
 
         setFormData({
-          home:
-            fj.home ??
-            { summary: fj.home_form ?? {}, recent: fj.home_recent ?? [] },
-          away:
-            fj.away ??
-            { summary: fj.away_form ?? {}, recent: fj.away_recent ?? [] },
+          home: fj.home ?? {
+            summary: fj.home_form ?? {},
+            recent: fj.home_recent ?? [],
+          },
+          away: fj.away ?? {
+            summary: fj.away_form ?? {},
+            recent: fj.away_recent ?? [],
+          },
           n: fj.n ?? formN,
         });
       } catch (err) {
@@ -212,9 +166,7 @@ const FixturePage = () => {
         const { data: tableJson } = await api.get(`/api/fixtures/league/table`, {
           params: { league: data.fixture.comp },
         });
-        setLeagueTable(
-          Array.isArray(tableJson) ? tableJson : tableJson.table || []
-        );
+        setLeagueTable(Array.isArray(tableJson) ? tableJson : tableJson.table || []);
       } catch (err) {
         console.error("Error loading league table:", err);
         setLeagueTable([]);
@@ -284,7 +236,9 @@ const FixturePage = () => {
 
     try {
       setPlacingKey(key);
+
       await placeAndTrackEdge({ ...edge, fixture_id: fixtureIdNum }, { stake: 1 });
+
       navigate("/bets");
     } catch (err) {
       console.error("Failed to place bet:", err);
@@ -305,9 +259,7 @@ const FixturePage = () => {
       return;
     }
     const exists = favTeams.includes(teamName);
-    const nextTeams = exists
-      ? favTeams.filter((t) => t !== teamName)
-      : [...favTeams, teamName];
+    const nextTeams = exists ? favTeams.filter((t) => t !== teamName) : [...favTeams, teamName];
 
     try {
       await updatePreferences({
@@ -326,9 +278,7 @@ const FixturePage = () => {
       return;
     }
     const exists = favLeagues.includes(leagueCode);
-    const nextLeagues = exists
-      ? favLeagues.filter((l) => l !== leagueCode)
-      : [...favLeagues, leagueCode];
+    const nextLeagues = exists ? favLeagues.filter((l) => l !== leagueCode) : [...favLeagues, leagueCode];
 
     try {
       await updatePreferences({
@@ -341,13 +291,18 @@ const FixturePage = () => {
     }
   };
 
+  // -------------------------------------------------------------------------
+  // Early returns (NO hooks below this line)
+  // -------------------------------------------------------------------------
   if (!data) return <p className={styles.loading}>Loading…</p>;
   if (!data.fixture) return <p className={styles.error}>Fixture not found.</p>;
 
+  // -------------------------------------------------------------------------
+  // Derived values (safe to compute after early returns)
+  // -------------------------------------------------------------------------
   const fixture = data.fixture;
   const odds = data.odds ?? [];
 
-  // ✅ IMPORTANT: get team ids + context for ClubPage route
   const homeTeamId =
     fixture.provider_home_team_id ??
     fixture.home_team_id ??
@@ -383,6 +338,7 @@ const FixturePage = () => {
       : edges.filter((e) => e.bookmaker === selectedBookmaker);
 
   const clubHref = (teamId, teamName) => {
+    if (!teamId) return null;
     const slug = slugifyTeamName(teamName);
     const params = new URLSearchParams();
     if (season) params.set("season", String(season));
@@ -391,15 +347,41 @@ const FixturePage = () => {
     return `/club/${teamId}/${slug}${qs ? `?${qs}` : ""}`;
   };
 
-  // ✅ Logos resolved from API payload (with fallback)
-  const homeLogo = useMemo(
-    () => resolveTeamLogo({ fixture, side: "home", teamName: fixture.home_team }),
-    [fixture]
-  );
-  const awayLogo = useMemo(
-    () => resolveTeamLogo({ fixture, side: "away", teamName: fixture.away_team }),
-    [fixture]
-  );
+  // ✅ Prefer logo URLs that already came back on the fixture payload
+  const pickLogoFromFixture = (side /* "home" | "away" */) => {
+    const candidates =
+      side === "home"
+        ? [
+            fixture.home_logo,
+            fixture.homeTeamLogo,
+            fixture.home_team_logo,
+            fixture.home_logo_url,
+            fixture.home_team?.logo,
+            fixture.home?.logo,
+            fixture.home_team_badge,
+          ]
+        : [
+            fixture.away_logo,
+            fixture.awayTeamLogo,
+            fixture.away_team_logo,
+            fixture.away_logo_url,
+            fixture.away_team?.logo,
+            fixture.away?.logo,
+            fixture.away_team_badge,
+          ];
+
+    for (const c of candidates) {
+      if (typeof c === "string" && c.trim()) return c;
+    }
+    return null;
+  };
+
+  const homeLogoUrl = pickLogoFromFixture("home");
+  const awayLogoUrl = pickLogoFromFixture("away");
+
+  // fallback to local logos folder by slug if API didn’t provide it
+  const homeLogoFallback = `/logos/${slugifyTeamName(fixture.home_team)}.png`;
+  const awayLogoFallback = `/logos/${slugifyTeamName(fixture.away_team)}.png`;
 
   // ==========================================================================
   // RENDER
@@ -414,15 +396,12 @@ const FixturePage = () => {
 
           <div className={styles.headerTeams}>
             <div className={styles.teamWithLogo}>
-              {homeLogo ? (
-                <img
-                  src={homeLogo}
-                  onError={(e) => (e.currentTarget.style.display = "none")}
-                  alt={fixture.home_team}
-                  className={styles.teamLogo}
-                  loading="lazy"
-                />
-              ) : null}
+              <img
+                src={homeLogoUrl || homeLogoFallback}
+                onError={(e) => (e.currentTarget.style.display = "none")}
+                alt={fixture.home_team}
+                className={styles.teamLogo}
+              />
 
               {clubHref(homeTeamId, fixture.home_team) ? (
                 <Link
@@ -447,9 +426,7 @@ const FixturePage = () => {
                   padding: "2px 6px",
                   borderRadius: 999,
                   border: "1px solid rgba(255,255,255,0.2)",
-                  background: isHomeFav
-                    ? "rgba(52,211,153,0.18)"
-                    : "rgba(0,0,0,0.25)",
+                  background: isHomeFav ? "rgba(52,211,153,0.18)" : "rgba(0,0,0,0.25)",
                   color: "#fff",
                   cursor: "pointer",
                 }}
@@ -461,15 +438,12 @@ const FixturePage = () => {
             <span>vs</span>
 
             <div className={styles.teamWithLogo}>
-              {awayLogo ? (
-                <img
-                  src={awayLogo}
-                  onError={(e) => (e.currentTarget.style.display = "none")}
-                  alt={fixture.away_team}
-                  className={styles.teamLogo}
-                  loading="lazy"
-                />
-              ) : null}
+              <img
+                src={awayLogoUrl || awayLogoFallback}
+                onError={(e) => (e.currentTarget.style.display = "none")}
+                alt={fixture.away_team}
+                className={styles.teamLogo}
+              />
 
               {clubHref(awayTeamId, fixture.away_team) ? (
                 <Link
@@ -494,9 +468,7 @@ const FixturePage = () => {
                   padding: "2px 6px",
                   borderRadius: 999,
                   border: "1px solid rgba(255,255,255,0.2)",
-                  background: isAwayFav
-                    ? "rgba(52,211,153,0.18)"
-                    : "rgba(0,0,0,0.25)",
+                  background: isAwayFav ? "rgba(52,211,153,0.18)" : "rgba(0,0,0,0.25)",
                   color: "#fff",
                   cursor: "pointer",
                 }}
@@ -517,9 +489,7 @@ const FixturePage = () => {
                 padding: "2px 8px",
                 borderRadius: 999,
                 border: "1px solid rgba(255,255,255,0.25)",
-                background: isLeagueFav
-                  ? "rgba(52,211,153,0.18)"
-                  : "rgba(0,0,0,0.35)",
+                background: isLeagueFav ? "rgba(52,211,153,0.18)" : "rgba(0,0,0,0.35)",
                 color: "#fff",
                 cursor: "pointer",
               }}
@@ -529,21 +499,19 @@ const FixturePage = () => {
           </p>
 
           <div className={styles.tabs}>
-            {["preview", "table", "predictions", "lineups", "players", "events"].map(
-              (tab) => (
-                <button
-                  key={tab}
-                  className={
-                    activeTab === tab
-                      ? `${styles.tabButton} ${styles.activeTab}`
-                      : styles.tabButton
-                  }
-                  onClick={() => setActiveTab(tab)}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              )
-            )}
+            {["preview", "table", "predictions", "lineups", "players", "events"].map((tab) => (
+              <button
+                key={tab}
+                className={
+                  activeTab === tab
+                    ? `${styles.tabButton} ${styles.activeTab}`
+                    : styles.tabButton
+                }
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -574,8 +542,7 @@ const FixturePage = () => {
                 <div style={{ fontSize: 13, flex: 1, minWidth: 200 }}>
                   <strong>Player stats & props</strong>
                   <br />
-                  See shots, cards and season breakdowns for every player in this
-                  match – great for props and same-game accas.
+                  See shots, cards and season breakdowns for every player in this match.
                 </div>
                 <button
                   onClick={() => setActiveTab("players")}
@@ -606,11 +573,7 @@ const FixturePage = () => {
                 >
                   <h3>Best Edges</h3>
                   {edgesMeta && (
-                    <FixtureAccessPill
-                      meta={edgesMeta}
-                      fixtureId={fixtureIdNum}
-                      variant="default"
-                    />
+                    <FixtureAccessPill meta={edgesMeta} fixtureId={fixtureIdNum} variant="default" />
                   )}
                 </div>
 
@@ -619,21 +582,18 @@ const FixturePage = () => {
                     {edgesMeta.hasFullAccess ? (
                       edgesMeta.isPremium ? (
                         <>
-                          You’re on <b>CSB Premium</b> – full model edges unlocked
-                          for this fixture.
+                          You’re on <b>CSB Premium</b> – full model edges unlocked for this fixture.
                         </>
                       ) : (
                         <>
-                          This fixture is unlocked. You’ve used{" "}
-                          <b>{edgesMeta.usedToday}</b> / <b>{edgesMeta.limit}</b>{" "}
-                          free fixture unlocks today.
+                          This fixture is unlocked. You’ve used <b>{edgesMeta.usedToday}</b> /{" "}
+                          <b>{edgesMeta.limit}</b> free fixture unlocks today.
                         </>
                       )
                     ) : (
                       <>
-                        Free preview only – showing a small sample of edges. You’ve
-                        used <b>{edgesMeta.usedToday}</b> / <b>{edgesMeta.limit}</b>{" "}
-                        free fixture unlocks today.{" "}
+                        Free preview only – showing a small sample of edges. You’ve used{" "}
+                        <b>{edgesMeta.usedToday}</b> / <b>{edgesMeta.limit}</b> free fixture unlocks today.{" "}
                         <Link to="/premium" style={{ color: "#FBBF24" }}>
                           Go Premium →
                         </Link>
@@ -666,22 +626,16 @@ const FixturePage = () => {
                     const eg = exp?.form?.expected_goals;
 
                     const egLine =
-                      eg &&
-                      typeof eg.home === "number" &&
-                      typeof eg.away === "number"
-                        ? `Expected goals: ${eg.home.toFixed(2)} + ${eg.away.toFixed(
-                            2
-                          )} = ${eg.total.toFixed(2)}`
+                      eg && typeof eg.home === "number" && typeof eg.away === "number"
+                        ? `Expected goals: ${eg.home.toFixed(2)} + ${eg.away.toFixed(2)} = ${eg.total.toFixed(2)}`
                         : null;
 
                     return (
                       <li key={key}>
-                        <b>{e.market}</b> — {e.bookmaker} @{" "}
-                        <b>{formatOddsBoth(e.price)}</b>{" "}
+                        <b>{e.market}</b> — {e.bookmaker} @ <b>{formatOddsBoth(e.price)}</b>{" "}
                         {typeof e.edge === "number" && typeof e.prob === "number" ? (
                           <>
-                            ({(e.edge * 100).toFixed(1)}% edge, model p{" "}
-                            {(e.prob * 100).toFixed(1)}%)
+                            ({(e.edge * 100).toFixed(1)}% edge, model p {(e.prob * 100).toFixed(1)}%)
                           </>
                         ) : null}
                         <button
@@ -753,12 +707,9 @@ const FixturePage = () => {
                         .replace(/[^a-z0-9]/gi, "")
                         .trim();
 
-                    const isHome =
-                      normalize(row.team) === normalize(fixture.home_team);
-                    const isAway =
-                      normalize(row.team) === normalize(fixture.away_team);
-                    const rowClass =
-                      isHome || isAway ? styles.highlightRow : "";
+                    const isHome = normalize(row.team) === normalize(fixture.home_team);
+                    const isAway = normalize(row.team) === normalize(fixture.away_team);
+                    const rowClass = isHome || isAway ? styles.highlightRow : "";
 
                     return (
                       <tr key={i} className={rowClass}>
@@ -814,21 +765,13 @@ const FixturePage = () => {
               {lineupTab === "lineup" && <LineupsSection fixtureId={id} />}
               {lineupTab === "injuries" && <InjuriesSection fixtureId={id} />}
               {lineupTab === "props" && (
-                <PlayerPropsSection
-                  fixtureId={id}
-                  homeTeam={fixture.home_team}
-                  awayTeam={fixture.away_team}
-                />
+                <PlayerPropsSection fixtureId={id} homeTeam={fixture.home_team} awayTeam={fixture.away_team} />
               )}
             </div>
           )}
 
           {activeTab === "players" && (
-            <PlayersSection
-              fixtureId={id}
-              homeTeam={fixture.home_team}
-              awayTeam={fixture.away_team}
-            />
+            <PlayersSection fixtureId={id} homeTeam={fixture.home_team} awayTeam={fixture.away_team} />
           )}
 
           {activeTab === "events" && <EventsSection fixtureId={id} />}
@@ -839,14 +782,7 @@ const FixturePage = () => {
 
           {formData && (
             <div className={`${styles.formSection} ${styles.staticForm}`}>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  marginBottom: 8,
-                }}
-              >
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
                 <label style={{ fontSize: 12, color: "#666" }}>Form:</label>
                 <select
                   value={formN}
@@ -860,9 +796,7 @@ const FixturePage = () => {
                   ))}
                 </select>
 
-                <label style={{ fontSize: 12, color: "#666", marginLeft: 6 }}>
-                  Scope:
-                </label>
+                <label style={{ fontSize: 12, color: "#666", marginLeft: 6 }}>Scope:</label>
                 <select
                   value={formScopeAll}
                   onChange={(e) => setFormScopeAll(Number(e.target.value))}
