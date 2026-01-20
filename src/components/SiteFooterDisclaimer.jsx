@@ -42,7 +42,7 @@ export default function SiteFooterDisclaimer({
             NHS
           </a>
           {" • "}
-          <Link to="/responsible-gambling" style={{ textDecoration: "underline" }}>
+          <Link to="/about" style={{ textDecoration: "underline" }}>
             Full info
           </Link>
         </div>
