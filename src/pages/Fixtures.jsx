@@ -8,7 +8,7 @@ import { api } from "../api"; // ← env-based axios client
 const COMP_NAMES = {
   UCL: "UEFA Champions League", UEL: "UEFA Europa League", UECL: "UEFA Europa Conference League",
   EPL: "Premier League", CHAMP: "EFL Championship", LG1: "EFL League One", LG2: "EFL League Two",
-  ENG_FA: "FA Cup", ENG_EFL: "EFL Cup",
+  ENG_FA: "FA Cup", ENG_EFL: "EFL Cup", NAT_LEAGUE: "National League", NAT_NORTH: "National League North", NAT_SOUTH: "National League South",
   SCO_PREM: "Scottish Premiership", SCO_CHAMP: "Scottish Championship", SCO_1: "Scottish League One",
   SCO_2: "Scottish League Two", SCO_SC: "Scottish Cup", SCO_LC: "Scottish League Cup", SCO_CHAL: "Scottish Challenge Cup",
   LIGUE1: "Ligue 1", LIGUE2: "Ligue 2", FRA_CDF: "Coupe de France",
