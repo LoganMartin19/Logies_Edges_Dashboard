@@ -17,6 +17,7 @@ import {
   fetchBillingPortal, // 👈 use Stripe portal instead of direct cancel
 } from "../api";
 import { ensureWebPushForCurrentUser } from "../pushNotifications";
+import SiteFooterDisclaimer from "../components/SiteFooterDisclaimer";
 import { useAuth } from "../components/AuthGate";
 
 /* ---------------- helpers ---------------- */
@@ -1955,6 +1956,7 @@ export default function TipsterDetailPage() {
           color: #e0e0e0;
         }
       `}</style>
+      <SiteFooterDisclaimer variant="short" />
     </div>
   );
 }

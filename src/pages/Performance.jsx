@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import PremiumUpsellBanner from "../components/PremiumUpsellBanner";
+import SiteFooterDisclaimer from "../components/SiteFooterDisclaimer";
 
 /* ---- dark palette (styling only) ---- */
 const COL = {
@@ -598,6 +599,7 @@ function Bar({ value }) {
           transition: "width .25s ease-out",
         }}
       />
+      <SiteFooterDisclaimer variant="short" />
     </div>
   );
 }

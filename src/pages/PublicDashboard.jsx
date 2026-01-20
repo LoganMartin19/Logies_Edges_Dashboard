@@ -8,6 +8,7 @@ import { placeAndTrackEdge } from "../utils/placeAndTrack";
 import PremiumUpsellBanner from "../components/PremiumUpsellBanner";
 import { getBookmakerUrl } from "../utils/bookmakers";
 import FixtureAccessPill from "../components/FixtureAccessPill";
+import SiteFooterDisclaimer from "../components/SiteFooterDisclaimer";
 import { usePreferences } from "../context/PreferencesContext";
 
 /* ---------------- utils ---------------- */
@@ -1271,6 +1272,7 @@ export default function PublicDashboard() {
           </tbody>
         </table>
       )}
+      <SiteFooterDisclaimer variant="short" />
     </div>
   );
 }

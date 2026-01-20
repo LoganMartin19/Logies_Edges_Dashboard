@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchTipsters, fetchTipster } from "../api";
+import SiteFooterDisclaimer from "../components/SiteFooterDisclaimer";
 import PremiumUpsellBanner from "../components/PremiumUpsellBanner";
 
 const tone = (v = 0) => (v > 0 ? "good" : v < 0 ? "bad" : "muted");
@@ -497,6 +498,7 @@ export default function TipstersPage() {
           }
         }
       `}</style>
+      <SiteFooterDisclaimer variant="short" />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import styles from "../styles/Fixtures.module.css";
+import SiteFooterDisclaimer from "../components/SiteFooterDisclaimer";
 import { api } from "../api"; // ← env-based axios client
 
 // ---- Pretty competition names (mirrors PublicDashboard.jsx, with a couple aliases) ----
@@ -94,6 +95,7 @@ const Fixtures = () => {
           </div>
         </div>
       ))}
+      <SiteFooterDisclaimer variant="short" />
     </div>
   );
 };

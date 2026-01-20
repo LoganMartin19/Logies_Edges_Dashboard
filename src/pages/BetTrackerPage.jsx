@@ -3,6 +3,7 @@ import React from "react";
 import BetTracker from "../components/BetTracker";
 import { useAuth } from "../components/AuthGate";
 import PremiumUpsellBanner from "../components/PremiumUpsellBanner";
+import SiteFooterDisclaimer from "../components/SiteFooterDisclaimer";
 import StakingGuide from "../components/StakingGuide"; // ⭐ NEW
 
 export default function BetTrackerPage() {
@@ -26,6 +27,7 @@ export default function BetTrackerPage() {
       <StakingGuide />
 
       <BetTracker />
+      <SiteFooterDisclaimer variant="short" />
     </div>
   );
 }
