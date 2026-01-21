@@ -23,13 +23,16 @@ import { usePreferences } from "../context/PreferencesContext";
 // ⭐ pill component
 import FixtureAccessPill from "../components/FixtureAccessPill";
 
-// ⭐ NEW: team context panel
+// ⭐ team context panel
 import TeamContextPanel from "../components/TeamContextPanel";
+
+// ✅ NEW: match insights panel (you said you already made it)
+import MatchInsights from "../components/MatchInsights";
 
 import { placeAndTrackEdge } from "../utils/placeAndTrack";
 import { getBookmakerUrl } from "../utils/bookmakers";
 
-// ✅ NEW: odds display helper (decimal + fractional)
+// ✅ odds display helper (decimal + fractional)
 import { formatOddsBoth } from "../utils/oddsFormat";
 
 const FixturePage = () => {
@@ -38,12 +41,8 @@ const FixturePage = () => {
   const { user } = useAuth();
 
   // ⭐ favourites from context
-  const {
-    favoriteSports,
-    favoriteTeams,
-    favoriteLeagues,
-    updatePreferences,
-  } = usePreferences();
+  const { favoriteSports, favoriteTeams, favoriteLeagues, updatePreferences } =
+    usePreferences();
 
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -72,6 +71,10 @@ const FixturePage = () => {
 
   // “Adding…” loading state on individual edge
   const [placingKey, setPlacingKey] = useState(null);
+
+  // ✅ NEW: Match Insights state
+  const [insights, setInsights] = useState(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   const formatKickoff = (utcString) => {
     if (!utcString) return "";
@@ -164,10 +167,9 @@ const FixturePage = () => {
     if (!data?.fixture?.comp) return;
     const fetchTable = async () => {
       try {
-        const { data: tableJson } = await api.get(
-          `/api/fixtures/league/table`,
-          { params: { league: data.fixture.comp } }
-        );
+        const { data: tableJson } = await api.get(`/api/fixtures/league/table`, {
+          params: { league: data.fixture.comp },
+        });
         setLeagueTable(
           Array.isArray(tableJson) ? tableJson : tableJson.table || []
         );
@@ -179,12 +181,11 @@ const FixturePage = () => {
     fetchTable();
   }, [data?.fixture?.comp]);
 
-  // --- LOAD EDGES (new freemium endpoint) -----------------------------------
+  // --- LOAD EDGES (freemium endpoint) --------------------------------------
   useEffect(() => {
     const loadEdges = async () => {
       try {
         const json = await fetchFixtureEdges(fixtureIdNum);
-
         const fullEdges = json.edges || json.edges_teaser || [];
 
         setEdges(Array.isArray(fullEdges) ? fullEdges : []);
@@ -204,6 +205,28 @@ const FixturePage = () => {
     };
     if (fixtureIdNum) loadEdges();
   }, [fixtureIdNum]);
+
+  // ✅ LOAD MATCH INSIGHTS (fair prices) -------------------------------------
+  useEffect(() => {
+  const loadInsights = async () => {
+    if (!fixtureIdNum) return;
+    setInsightsLoading(true);
+    try {
+      const { data: json } = await api.get(
+        `/api/fixtures/${fixtureIdNum}/insights`,
+        { params: { model: "team_form" } } // or whatever model you want
+      );
+      setInsights(json || null);
+    } catch (err) {
+      console.error("Error fetching match insights:", err);
+      setInsights(null);
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  loadInsights();
+}, [fixtureIdNum]);
 
   // --- WHY EXPLANATION ------------------------------------------------------
   const fetchExplanation = async (rawMarket, index) => {
@@ -241,12 +264,7 @@ const FixturePage = () => {
 
     try {
       setPlacingKey(key);
-
-      await placeAndTrackEdge(
-        { ...edge, fixture_id: fixtureIdNum },
-        { stake: 1 }
-      );
-
+      await placeAndTrackEdge({ ...edge, fixture_id: fixtureIdNum }, { stake: 1 });
       navigate("/bets");
     } catch (err) {
       console.error("Failed to place bet:", err);
@@ -309,7 +327,6 @@ const FixturePage = () => {
   const fixture = data.fixture;
   const odds = data.odds ?? [];
 
-  // ✅ IMPORTANT: get team ids + context for ClubPage route
   const homeTeamId =
     fixture.provider_home_team_id ??
     fixture.home_team_id ??
@@ -322,17 +339,10 @@ const FixturePage = () => {
     fixture.away_id ??
     fixture.awayTeamId;
 
-  const season =
-    fixture.season ??
-    fixture.league_season ??
-    fixture.year ??
-    2025;
+  const season = fixture.season ?? fixture.league_season ?? fixture.year ?? 2025;
 
   const leagueId =
-    fixture.league_id ??
-    fixture.provider_league_id ??
-    fixture.api_league_id ??
-    null;
+    fixture.league_id ?? fixture.provider_league_id ?? fixture.api_league_id ?? null;
 
   const isHomeFav = favTeams.includes(fixture.home_team);
   const isAwayFav = favTeams.includes(fixture.away_team);
@@ -360,9 +370,6 @@ const FixturePage = () => {
     return `/club/${teamId}/${slug}${qs ? `?${qs}` : ""}`;
   };
 
-  // ==========================================================================
-  // RENDER
-  // ==========================================================================
   return (
     <div className={`${styles.page} scrollX`}>
       <div className={styles.headerBar}>
@@ -380,7 +387,6 @@ const FixturePage = () => {
                 className={styles.teamLogo}
               />
 
-              {/* ✅ FIXED: correct route (/club/:teamId/:slug) + clickable */}
               {clubHref(homeTeamId, fixture.home_team) ? (
                 <Link
                   to={clubHref(homeTeamId, fixture.home_team)}
@@ -425,7 +431,6 @@ const FixturePage = () => {
                 className={styles.teamLogo}
               />
 
-              {/* ✅ FIXED: correct route (/club/:teamId/:slug) + clickable */}
               {clubHref(awayTeamId, fixture.away_team) ? (
                 <Link
                   to={clubHref(awayTeamId, fixture.away_team)}
@@ -484,26 +489,21 @@ const FixturePage = () => {
           </p>
 
           <div className={styles.tabs}>
-            {[
-              "preview",
-              "table",
-              "predictions",
-              "lineups",
-              "players",
-              "events",
-            ].map((tab) => (
-              <button
-                key={tab}
-                className={
-                  activeTab === tab
-                    ? `${styles.tabButton} ${styles.activeTab}`
-                    : styles.tabButton
-                }
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
+            {["preview", "table", "predictions", "lineups", "players", "events"].map(
+              (tab) => (
+                <button
+                  key={tab}
+                  className={
+                    activeTab === tab
+                      ? `${styles.tabButton} ${styles.activeTab}`
+                      : styles.tabButton
+                  }
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              )
+            )}
           </div>
         </div>
       </div>
@@ -514,6 +514,16 @@ const FixturePage = () => {
             <>
               <div className={styles.tabContent}>
                 <MatchPreview fixtureId={fixtureIdNum} isAdmin={isAdminView} />
+              </div>
+
+              {/* ✅ NEW: Match Insights block */}
+              <div style={{ margin: "12px 0 16px" }}>
+                <MatchInsights
+                  fixtureId={fixtureIdNum}
+                  fixture={fixture}
+                  insights={insights}
+                  loading={insightsLoading}
+                />
               </div>
 
               <div
@@ -534,8 +544,7 @@ const FixturePage = () => {
                 <div style={{ fontSize: 13, flex: 1, minWidth: 200 }}>
                   <strong>Player stats & props</strong>
                   <br />
-                  See shots, cards and season breakdowns for every player in
-                  this match – great for props and same-game accas.
+                  See shots, cards and season breakdowns for every player in this match.
                 </div>
                 <button
                   onClick={() => setActiveTab("players")}
@@ -579,21 +588,20 @@ const FixturePage = () => {
                     {edgesMeta.hasFullAccess ? (
                       edgesMeta.isPremium ? (
                         <>
-                          You’re on <b>CSB Premium</b> – full model edges
-                          unlocked for this fixture.
+                          You’re on <b>CSB Premium</b> – full model edges unlocked for this
+                          fixture.
                         </>
                       ) : (
                         <>
-                          This fixture is unlocked. You’ve used{" "}
-                          <b>{edgesMeta.usedToday}</b> / <b>{edgesMeta.limit}</b>{" "}
-                          free fixture unlocks today.
+                          This fixture is unlocked. You’ve used <b>{edgesMeta.usedToday}</b> /{" "}
+                          <b>{edgesMeta.limit}</b> free fixture unlocks today.
                         </>
                       )
                     ) : (
                       <>
-                        Free preview only – showing a small sample of edges.
-                        You’ve used <b>{edgesMeta.usedToday}</b> /{" "}
-                        <b>{edgesMeta.limit}</b> free fixture unlocks today.{" "}
+                        Free preview only – showing a small sample of edges. You’ve used{" "}
+                        <b>{edgesMeta.usedToday}</b> / <b>{edgesMeta.limit}</b> free fixture
+                        unlocks today.{" "}
                         <Link to="/premium" style={{ color: "#FBBF24" }}>
                           Go Premium →
                         </Link>
@@ -629,22 +637,21 @@ const FixturePage = () => {
                       eg &&
                       typeof eg.home === "number" &&
                       typeof eg.away === "number"
-                        ? `Expected goals: ${eg.home.toFixed(
+                        ? `Expected goals: ${eg.home.toFixed(2)} + ${eg.away.toFixed(
                             2
-                          )} + ${eg.away.toFixed(2)} = ${eg.total.toFixed(2)}`
+                          )} = ${eg.total.toFixed(2)}`
                         : null;
 
                     return (
                       <li key={key}>
-                        <b>{e.market}</b> — {e.bookmaker} @{" "}
-                        <b>{formatOddsBoth(e.price)}</b>{" "}
-                        {typeof e.edge === "number" &&
-                        typeof e.prob === "number" ? (
+                        <b>{e.market}</b> — {e.bookmaker} @ <b>{formatOddsBoth(e.price)}</b>{" "}
+                        {typeof e.edge === "number" && typeof e.prob === "number" ? (
                           <>
                             ({(e.edge * 100).toFixed(1)}% edge, model p{" "}
                             {(e.prob * 100).toFixed(1)}%)
                           </>
                         ) : null}
+
                         <button
                           className={styles.whyButton}
                           onClick={() => fetchExplanation(e.market, i)}
@@ -652,6 +659,7 @@ const FixturePage = () => {
                         >
                           Why?
                         </button>
+
                         <button
                           className={styles.addBetLink}
                           style={{ marginLeft: 8 }}
@@ -718,27 +726,23 @@ const FixturePage = () => {
                       normalize(row.team) === normalize(fixture.home_team);
                     const isAway =
                       normalize(row.team) === normalize(fixture.away_team);
-                    const rowClass =
-                      isHome || isAway ? styles.highlightRow : "";
+                    const rowClass = isHome || isAway ? styles.highlightRow : "";
 
                     return (
                       <tr key={i} className={rowClass}>
                         <td>{row.position}</td>
                         <td className={styles.teamName}>
-                          {/* ✅ FIXED: table team now links only if we can map to an id
-                              If you don’t have ids in leagueTable rows, this stays as slug-only.
-                           */}
                           {row.team_id ? (
-                          <Link
-                            to={`/club/${row.team_id}/${slugifyTeamName(row.team)}`}
-                            className={styles.teamLink}
-                            title={`Open ${row.team}`}
-                          >
-                            {row.team}
-                          </Link>
-                        ) : (
-                          <span className={styles.teamLink}>{row.team}</span>
-                        )}
+                            <Link
+                              to={`/club/${row.team_id}/${slugifyTeamName(row.team)}`}
+                              className={styles.teamLink}
+                              title={`Open ${row.team}`}
+                            >
+                              {row.team}
+                            </Link>
+                          ) : (
+                            <span className={styles.teamLink}>{row.team}</span>
+                          )}
                           {isHome && <span> 🏠</span>}
                           {isAway && <span> 🛫</span>}
                         </td>
@@ -799,11 +803,7 @@ const FixturePage = () => {
         </div>
 
         <div className={styles.side}>
-          <Poll
-            fixtureId={id}
-            homeTeam={fixture.home_team}
-            awayTeam={fixture.away_team}
-          />
+          <Poll fixtureId={id} homeTeam={fixture.home_team} awayTeam={fixture.away_team} />
 
           {formData && (
             <div className={`${styles.formSection} ${styles.staticForm}`}>
@@ -842,14 +842,8 @@ const FixturePage = () => {
               </div>
 
               <FormBreakdown
-                home={{
-                  summary: formData.home.summary,
-                  recent: formData.home.recent,
-                }}
-                away={{
-                  summary: formData.away.summary,
-                  recent: formData.away.recent,
-                }}
+                home={{ summary: formData.home.summary, recent: formData.home.recent }}
+                away={{ summary: formData.away.summary, recent: formData.away.recent }}
                 homeName={fixture.home_team}
                 awayName={fixture.away_team}
                 n={formData.n}
