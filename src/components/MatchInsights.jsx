@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 
 const niceMarket = (m) =>
@@ -17,42 +17,46 @@ const niceMarket = (m) =>
 
 export default function MatchInsights({ fixtureId, model = "team_form" }) {
   const [data, setData] = useState(null);
-  const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const url = useMemo(() => `/api/fixtures/${fixtureId}/insights`, [fixtureId]);
 
   useEffect(() => {
-    if (!fixtureId || Number.isNaN(Number(fixtureId))) {
-      setErr("Invalid fixture id.");
-      return;
-    }
+    if (!fixtureId) return;
 
     let cancelled = false;
-    setLoading(true);
-    setErr("");
 
     (async () => {
+      setLoading(true);
+      setErr(null);
+
       try {
-        const res = await api.get(
-          `/api/fixtures/${fixtureId}/insights`,
-          { params: { model } }
-        );
+        const res = await api.get(url, { params: { model } });
+        if (cancelled) return;
 
-        if (!cancelled) {
-          setData(res.data);
-        }
+        setData(res.data);
       } catch (e) {
-        console.error(
-          "❌ MatchInsights error:",
-          e?.response?.status,
-          e?.response?.data || e
-        );
+        if (cancelled) return;
 
-        if (!cancelled) {
-          setErr(
-            e?.response?.data?.detail ||
-              `Failed to load match insights (HTTP ${e?.response?.status || "?"})`
-          );
-        }
+        // Best-effort error extraction
+        const status = e?.response?.status;
+        const body = e?.response?.data;
+        const msg =
+          body?.detail ||
+          (typeof body === "string" ? body : null) ||
+          e?.message ||
+          "Request failed";
+
+        console.error("[MatchInsights] request failed", {
+          url,
+          model,
+          status,
+          body,
+          error: e,
+        });
+
+        setErr({ status, msg, body });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -61,66 +65,59 @@ export default function MatchInsights({ fixtureId, model = "team_form" }) {
     return () => {
       cancelled = true;
     };
-  }, [fixtureId, model]);
+  }, [fixtureId, model, url]);
 
-  // -------------------- UI STATES --------------------
+  // --- UI ---
+  if (!fixtureId) return null;
+
+  if (loading && !data) {
+    return (
+      <div
+        style={{
+          padding: 12,
+          borderRadius: 12,
+          border: "1px solid rgba(0,0,0,.08)",
+          background: "#fff",
+        }}
+      >
+        <b>Match Insights</b>
+        <div style={{ opacity: 0.7, marginTop: 6 }}>Loading fair prices…</div>
+      </div>
+    );
+  }
 
   if (err) {
     return (
       <div
         style={{
-          padding: 14,
+          padding: 12,
           borderRadius: 12,
-          border: "1px solid rgba(239,68,68,.4)",
-          background: "rgba(239,68,68,.08)",
-          color: "#7f1d1d",
+          border: "1px solid rgba(239,68,68,.25)",
+          background: "rgba(239,68,68,.06)",
         }}
       >
         <b>Match Insights</b>
-        <div style={{ marginTop: 6, fontSize: 13 }}>{err}</div>
-      </div>
-    );
-  }
+        <div style={{ marginTop: 6, fontSize: 12 }}>
+          Could not load insights.
+        </div>
 
-  if (loading || !data) {
-    return (
-      <div
-        style={{
-          padding: 14,
-          borderRadius: 12,
-          border: "1px solid rgba(0,0,0,.08)",
-          background: "#fff",
-        }}
-      >
-        <b>Match Insights</b>
-        <div style={{ opacity: 0.7, marginTop: 6 }}>
-          Loading fair prices…
+        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.9 }}>
+          <div>
+            <b>URL:</b> {url}
+          </div>
+          <div>
+            <b>Status:</b> {err.status ?? "unknown"}
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <b>Message:</b> {err.msg ?? "unknown"}
+          </div>
         </div>
       </div>
     );
   }
 
-  const insights = data.insights || [];
-
-  if (!insights.length) {
-    return (
-      <div
-        style={{
-          padding: 14,
-          borderRadius: 12,
-          border: "1px solid rgba(0,0,0,.08)",
-          background: "#fff",
-        }}
-      >
-        <b>Match Insights</b>
-        <div style={{ opacity: 0.7, marginTop: 6 }}>
-          No model probabilities available yet for this match.
-        </div>
-      </div>
-    );
-  }
-
-  // -------------------- MAIN RENDER --------------------
+  const insights = data?.insights || [];
+  if (!insights.length) return null;
 
   return (
     <div
@@ -140,9 +137,7 @@ export default function MatchInsights({ fixtureId, model = "team_form" }) {
         }}
       >
         <div style={{ fontWeight: 800, fontSize: 16 }}>Match Insights</div>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>
-          Model fair prices
-        </div>
+        <div style={{ fontSize: 12, opacity: 0.7 }}>Model fair prices</div>
       </div>
 
       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
@@ -155,45 +150,27 @@ export default function MatchInsights({ fixtureId, model = "team_form" }) {
               background: "rgba(0,0,0,.04)",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 10,
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>
-                {niceMarket(x.market)}
-              </div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ fontWeight: 700 }}>{niceMarket(x.market)}</div>
               <div style={{ fontSize: 13 }}>
                 <span style={{ opacity: 0.75 }}>Fair:</span>{" "}
                 <b>{Number(x.fair_odds).toFixed(2)}</b>
-                <span style={{ opacity: 0.6 }}>
-                  {" "}
-                  ({(x.prob * 100).toFixed(1)}%)
-                </span>
+                <span style={{ opacity: 0.6 }}> ({(x.prob * 100).toFixed(1)}%)</span>
               </div>
             </div>
 
-            {x.blurb && (
-              <div
-                style={{
-                  marginTop: 6,
-                  fontSize: 12,
-                  opacity: 0.8,
-                  lineHeight: 1.35,
-                }}
-              >
+            {x.blurb ? (
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8, lineHeight: 1.35 }}>
                 {x.blurb}
               </div>
-            )}
+            ) : null}
           </div>
         ))}
       </div>
 
       <div style={{ marginTop: 10, fontSize: 11, opacity: 0.65 }}>
-        “Fair” = model probability converted to odds (no bookmaker margin).
-        Markets can move before CSB refreshes.
+        Note: “Fair” = model probability converted to odds (no bookmaker margin). Market odds can move
+        before CSB refreshes.
       </div>
     </div>
   );
