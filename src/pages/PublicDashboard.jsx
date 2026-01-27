@@ -5,6 +5,7 @@ import { api, fetchFixtureEdges } from "../api";
 import FeaturedRecord from "../components/FeaturedRecord";
 import { useAuth } from "../components/AuthGate";
 import { placeAndTrackEdge } from "../utils/placeAndTrack";
+import FreeSignupBanner from "../components/FreeSignupBanner";
 import PremiumUpsellBanner from "../components/PremiumUpsellBanner";
 import { getBookmakerUrl } from "../utils/bookmakers";
 import FixtureAccessPill from "../components/FixtureAccessPill";
@@ -849,6 +850,9 @@ export default function PublicDashboard() {
           </div>
         )}
       </div>
+
+      {/* ✅ Free signup banner ONLY when not logged in */}
+      {!user && <FreeSignupBanner />}
 
       {/* ⭐ Premium Upsell Banner */}
       <PremiumUpsellBanner

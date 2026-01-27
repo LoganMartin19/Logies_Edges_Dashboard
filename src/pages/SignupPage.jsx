@@ -51,9 +51,10 @@ export default function SignUpPage() {
     <div className={styles.wrapper}>
       <div className={styles.card}>
         <header className={styles.header}>
-          <div className={styles.title}>Create account</div>
+          <div className={styles.title}>Create free account</div>
           <div className={styles.subtitle}>
-            Unlock dashboards, save picks, and follow tipsters.
+            Free access to dashboards, save picks, performance tracking and follow tipsters.
+            No card required.
           </div>
         </header>
 
