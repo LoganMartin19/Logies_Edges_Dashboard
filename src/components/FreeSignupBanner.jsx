@@ -1,4 +1,4 @@
-// components/FreeSignupBanner.jsx
+// src/components/FreeSignupBanner.jsx
 import { Link } from "react-router-dom";
 
 export default function FreeSignupBanner() {
@@ -9,18 +9,19 @@ export default function FreeSignupBanner() {
       </h3>
 
       <p className="text-sm text-gray-300 mb-3">
-        Create a free account to access dashboards, track performance,
-        and follow featured picks.
-        <br />
-        <span className="text-gray-400">No card required.</span>
+        Create a free account to access dashboards, track performance, and follow
+        featured picks. No card required.
       </p>
+
+      <ul className="text-sm text-gray-300 mb-4 space-y-1">
+        <li>✔ View today’s model edges</li>
+        <li>✔ Track picks & performance</li>
+        <li>✔ Follow tipsters</li>
+      </ul>
 
       <Link
         to="/signup"
-        className="inline-flex items-center justify-center
-                   bg-green-500 hover:bg-green-600
-                   text-black font-semibold
-                   px-5 py-2 rounded text-sm"
+        className="inline-block bg-green-500 hover:bg-green-600 text-black font-semibold px-5 py-2 rounded text-sm"
       >
         Create free account
       </Link>
