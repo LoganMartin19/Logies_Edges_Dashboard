@@ -1,34 +1,58 @@
 // src/components/FreeSignupBanner.jsx
-import { Link } from "react-router-dom";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function FreeSignupBanner() {
+  const nav = useNavigate();
+
   return (
-    <div className="bg-[#0f2e1f] border-l-4 border-green-500 rounded-lg p-4 mb-4">
-      <h3 className="text-lg font-semibold text-white mb-1">
+    <div
+      style={{
+        background: "#0b1e13",
+        borderRadius: 18,
+        padding: 16,
+        marginBottom: 12,
+        border: "1px solid rgba(255,255,255,.10)",
+        boxShadow: "0 8px 20px rgba(0,0,0,.10)",
+        color: "#fff",
+      }}
+    >
+      <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 6 }}>
         Follow CSB for free
-      </h3>
+      </div>
 
-      <p className="text-sm text-gray-300 mb-3">
-        Create a free account to access dashboards, track performance, and follow
-        featured picks. No card required.
-      </p>
+      <div style={{ fontSize: 13, color: "rgba(255,255,255,.80)", marginBottom: 10 }}>
+        Create a free account to access dashboards, track performance, and follow featured picks.
+        No card required.
+      </div>
 
-      <ul className="text-sm text-gray-300 mb-4 space-y-1">
-        <li>✔ View today’s model edges</li>
-        <li>✔ Track picks & performance</li>
-        <li>✔ Follow tipsters</li>
-      </ul>
+      <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,.85)" }}>✔ View today’s model edges</div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,.85)" }}>✔ Track picks & performance</div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,.85)" }}>✔ Follow tipsters</div>
+      </div>
 
-      <Link
-        to="/signup"
-        className="inline-block bg-green-500 hover:bg-green-600 text-black font-semibold px-5 py-2 rounded text-sm"
-      >
-        Create free account
-      </Link>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={() => nav("/signup")}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,.12)",
+            background: "#22c55e",
+            color: "#0b1e13",
+            fontWeight: 800,
+            cursor: "pointer",
+          }}
+        >
+          Create free account
+        </button>
 
-      <p className="text-xs text-gray-400 mt-2">
-        Free plan · Upgrade to Premium anytime
-      </p>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,.65)" }}>
+          Free plan · Upgrade to Premium anytime
+        </div>
+      </div>
     </div>
   );
 }
